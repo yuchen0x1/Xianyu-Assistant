@@ -26,12 +26,35 @@ if [[ ! "$GITHUB_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || [[ "$GITHUB_RE
     exit 1
 fi
 GITHUB_API="https://api.github.com/repos/${GITHUB_REPO}/releases/latest"
-# 私有仓库安装时可提供令牌；令牌只经 Authorization 请求头发送，不拼入 URL。
-GITHUB_AUTH=()
-if [ -n "${GITHUB_TOKEN:-}" ]; then
-    GITHUB_AUTH=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+# 私有仓库安装时可提供令牌；令牌不拼入 URL、命令参数或日志。
+if [[ "${GITHUB_TOKEN:-}" == *$'\r'* || "${GITHUB_TOKEN:-}" == *$'\n'* ]]; then
+    echo -e "${RED}GITHUB_TOKEN 含非法换行符，已拒绝使用${NC}" >&2
+    exit 1
 fi
-GITHUB_API_HEADERS=(-H 'Accept: application/vnd.github+json' -H 'X-GitHub-Api-Version: 2022-11-28')
+INSTALL_TEMP_FILES=()
+cleanup_install_temp_files() {
+    if [ "${#INSTALL_TEMP_FILES[@]}" -gt 0 ]; then
+        rm -f -- "${INSTALL_TEMP_FILES[@]}"
+    fi
+}
+trap cleanup_install_temp_files EXIT
+GITHUB_API_CURL_CONFIG=$(mktemp "${TMPDIR:-/tmp}/xianyu-github-api-XXXXXX.conf")
+chmod 600 "$GITHUB_API_CURL_CONFIG"
+INSTALL_TEMP_FILES+=("$GITHUB_API_CURL_CONFIG")
+{
+    if [ -n "${GITHUB_TOKEN:-}" ]; then
+        printf 'header = "Authorization: Bearer %s"\n' "$GITHUB_TOKEN"
+    fi
+    printf 'header = "Accept: application/vnd.github+json"\n'
+    printf 'header = "X-GitHub-Api-Version: 2022-11-28"\n'
+} > "$GITHUB_API_CURL_CONFIG"
+GITHUB_PUBLIC_CURL_CONFIG=$(mktemp "${TMPDIR:-/tmp}/xianyu-github-public-XXXXXX.conf")
+chmod 600 "$GITHUB_PUBLIC_CURL_CONFIG"
+INSTALL_TEMP_FILES+=("$GITHUB_PUBLIC_CURL_CONFIG")
+{
+    printf 'header = "Accept: application/octet-stream"\n'
+} > "$GITHUB_PUBLIC_CURL_CONFIG"
+GITHUB_API_ASSET_PREFIX="https://api.github.com/repos/${GITHUB_REPO}/releases/assets/"
 
 # 官方发布签名验证公钥（Ed25519, X.509 SPKI DER 的 Base64）。
 # 私钥仅发布方保管（CI Secret/离线），不随任何发布物分发；
@@ -121,34 +144,38 @@ install_jdk() {
 # 通过 GitHub assets API 下载单个资产。
 # 只允许 HTTPS 的 GitHub API/资产主机；Authorization 仅发往 api.github.com，
 # 所有跨主机重定向都逐跳校验，从根源上避免令牌泄露到 release-assets 等主机。
+API_ASSET_REGEX="^https://api[.]github[.]com/repos/${GITHUB_REPO//./[.]}/releases/assets/[0-9]+$"
+TRUSTED_ASSET_REGEX='^https://(release-assets[.]githubusercontent[.]com|objects[.]githubusercontent[.]com|github[.]com)(/[^[:space:]]*)?$'
+
+is_trusted_github_url() {
+    local URL="$1"
+    [[ "$URL" =~ $API_ASSET_REGEX || "$URL" =~ $TRUSTED_ASSET_REGEX ]]
+}
+
 download_github_asset() {
     local URL="$1"
     local OUTPUT="$2"
-    local TMP_FILE HEADER_FILE STATUS NEXT_URL HOP CURL_EXIT
+    local TMP_FILE HEADER_FILE STATUS NEXT_URL HOP CURL_EXIT CURL_CONFIG
 
     TMP_FILE="${OUTPUT}.tmp.$$"
     rm -f "$TMP_FILE"
     for HOP in 1 2 3 4 5; do
-        case "$URL" in
-            https://api.github.com/repos/*/releases/assets/[0-9]*)
-                REQUEST_HEADERS=("${GITHUB_AUTH[@]}" "${GITHUB_API_HEADERS[@]}" -H 'Accept: application/octet-stream')
-                ;;
-            https://release-assets.githubusercontent.com/*|https://objects.githubusercontent.com/*|https://github.com/*)
-                REQUEST_HEADERS=(-H 'Accept: application/octet-stream')
-                ;;
-            *)
-                echo -e "${RED}拒绝不受信任的 GitHub 下载重定向: ${URL}${NC}" >&2
-                rm -f "$TMP_FILE"
-                return 1
-                ;;
-        esac
+        if [[ "$URL" =~ $API_ASSET_REGEX ]]; then
+            CURL_CONFIG="$GITHUB_API_CURL_CONFIG"
+        elif [[ "$URL" =~ $TRUSTED_ASSET_REGEX ]]; then
+            CURL_CONFIG="$GITHUB_PUBLIC_CURL_CONFIG"
+        else
+            echo -e "${RED}拒绝不受信任的 GitHub 下载重定向: ${URL}${NC}" >&2
+            rm -f "$TMP_FILE"
+            return 1
+        fi
 
         HEADER_FILE=$(mktemp)
         rm -f "$TMP_FILE"
         CURL_EXIT=0
-        STATUS=$(curl -sS --connect-timeout 30 --max-time 300 --proto '=https' --tlsv1.2 \
-            --max-redirs 0 -D "$HEADER_FILE" -o "$TMP_FILE" -w '%{http_code}' \
-            "${REQUEST_HEADERS[@]}" "$URL") || CURL_EXIT=$?
+        STATUS=$(curl -sS --config "$CURL_CONFIG" --connect-timeout 30 --max-time 300 --proto '=https' \
+            --proto-redir '=https' --tlsv1.2 --max-redirs 0 -D "$HEADER_FILE" -o "$TMP_FILE" -w '%{http_code}' \
+            "$URL") || CURL_EXIT=$?
         if [ "$CURL_EXIT" -ne 0 ]; then
             echo -e "${RED}GitHub 资产下载失败（HTTP ${STATUS:-unknown}）${NC}" >&2
             rm -f "$HEADER_FILE" "$TMP_FILE"
@@ -185,42 +212,50 @@ get_latest_release() {
     echo ""
     echo -e "${YELLOW}正在从 GitHub 获取最新版本信息...${NC}"
 
-    RELEASE_INFO=$(curl -fsSL --connect-timeout 10 "${GITHUB_AUTH[@]}" "${GITHUB_API_HEADERS[@]}" "$GITHUB_API" 2>/dev/null || echo "")
+    RELEASE_INFO=$(curl -sS --config "$GITHUB_API_CURL_CONFIG" --connect-timeout 10 --max-time 60 \
+        --proto '=https' --proto-redir '=https' --tlsv1.2 --max-redirs 0 \
+        "$GITHUB_API" 2>/dev/null || echo "")
 
     if [ -z "$RELEASE_INFO" ]; then
-        echo -e "${RED}无法获取版本信息，请检查网络${NC}"
+        echo -e "${RED}无法获取版本信息，请检查网络或 GitHub Release 权限${NC}"
         exit 1
     fi
 
-    # 资产名称仍从 browser_download_url 提取（仅用于匹配后缀）；实际下载一律使用
-    # assets[].url API 地址。这样下载函数可逐跳校验重定向，并在跨主机时剥离令牌。
-    ALL_URLS=$(echo "$RELEASE_INFO" | grep -oE '"browser_download_url"[[:space:]]*:[[:space:]]*"[^"]+"' \
-        | sed -E 's/.*"([^"]+)".*/\1/' || true)
-    ASSET_API_URLS=$(echo "$RELEASE_INFO" \
-        | grep -oE '"url"[[:space:]]*:[[:space:]]*"https://api[.]github[.]com/repos/[^"]+/releases/assets/[0-9]+"' \
-        | sed -E 's/.*"([^"]+)".*/\1/' || true)
-
-    LATEST_VERSION=$(echo "$RELEASE_INFO" | grep -oE '"tag_name"[[:space:]]*:[[:space:]]*"[^"]+"' \
-        | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+    # 由 Node 一次解析顶层 tag_name 与同一 assets[] 对象的 name/url/browser_download_url，
+    # 禁止通过 Release body 或字段文本伪造资产映射。
+    RELEASE_PARSE_FILE=$(mktemp "${TMPDIR:-/tmp}/xianyu-release-parse-XXXXXX.tsv")
+    chmod 600 "$RELEASE_PARSE_FILE"
+    INSTALL_TEMP_FILES+=("$RELEASE_PARSE_FILE")
+    if ! node -e '
+const fs = require("fs");
+const repo = process.argv[1];
+const d = JSON.parse(fs.readFileSync(0, "utf8"));
+const tag = d && d.tag_name;
+if (!/^v[0-9]+\.[0-9]+\.[0-9]+$/.test(tag || "")) process.exit(2);
+const assets = Array.isArray(d.assets) ? d.assets : [];
+const apiPrefix = `https://api.github.com/repos/${repo}/releases/assets/`;
+const browserHost = /^https:\/\/github\.com\/[^\s]+$/;
+process.stdout.write(`${tag}\\n`);
+for (const a of assets) {
+  if (!a || typeof a.name !== "string" || !a.name || typeof a.url !== "string" || !/^https:\/\/api\.github\.com\/repos\/[^\/]+\/[^\/]+\/releases\/assets\/[0-9]+$/.test(a.url) || !a.url.startsWith(apiPrefix) || typeof a.browser_download_url !== "string" || !browserHost.test(a.browser_download_url)) continue;
+  const name = new URL(a.browser_download_url).pathname.split("/").pop();
+  if (name !== a.name || /[\\t\\r\\n]/.test(a.name)) process.exit(3);
+  process.stdout.write(`${a.name}\\t${a.url}\\n`);
+}
+' "$GITHUB_REPO" <<< "$RELEASE_INFO"; then
+        echo -e "${RED}Release 响应格式无效，已拒绝下载${NC}" >&2
+        exit 1
+    fi
+    IFS= read -r LATEST_VERSION < "$RELEASE_PARSE_FILE"
     if [[ ! "$LATEST_VERSION" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
         echo -e "${RED}Release 版本标签无效，已拒绝安装${NC}" >&2
         exit 1
     fi
-
-    if [ -z "$ALL_URLS" ] || [ -z "$ASSET_API_URLS" ]; then
+    ASSET_MAP=$(tail -n +2 "$RELEASE_PARSE_FILE")
+    if [ -z "$ASSET_MAP" ]; then
         echo -e "${RED}Release 响应缺少可用资产信息${NC}"
         exit 1
     fi
-    ASSET_NAME_COUNT=$(printf '%s\n' "$ALL_URLS" | sed '/^$/d' | wc -l | tr -d ' ')
-    ASSET_API_COUNT=$(printf '%s\n' "$ASSET_API_URLS" | sed '/^$/d' | wc -l | tr -d ' ')
-    if [ "$ASSET_NAME_COUNT" -ne "$ASSET_API_COUNT" ]; then
-        echo -e "${RED}Release 资产信息不完整，已拒绝下载${NC}"
-        exit 1
-    fi
-
-    # 按 GitHub assets 数组的稳定顺序将名称与 API URL 配对。browser_download_url
-    # 不再传给 curl，避免携带 Authorization 跟随其跨主机重定向。
-    ASSET_MAP=$(paste <(printf '%s\n' "$ALL_URLS") <(printf '%s\n' "$ASSET_API_URLS"))
     JAR_URL=""
     JAR_NAME=""
     SPLIT_ASSETS=""
@@ -238,10 +273,19 @@ get_latest_release() {
                 JAR_NAME="$ASSET_NAME"
                 JAR_URL="$ASSET_API_URL"
                 ;;
-            *.jar.split-[0-9]*)
+            *.jar.split-[0-9][0-9]*)
+                PART_INDEX="${ASSET_NAME##*.jar.split-}"
+                if [[ ! "$PART_INDEX" =~ ^[0-9]{2,}$ ]]; then
+                    echo -e "${RED}Release 分卷编号无效，已拒绝安装${NC}" >&2
+                    exit 1
+                fi
                 PART_BASE_NAME="${ASSET_NAME%%.split-*}"
                 if [ -n "$SPLIT_BASE_NAME" ] && [ "$SPLIT_BASE_NAME" != "$PART_BASE_NAME" ]; then
                     echo -e "${RED}Release 包含多个分卷 JAR，已拒绝安装${NC}" >&2
+                    exit 1
+                fi
+                if printf '%s\n' "$SPLIT_ASSETS" | cut -f1 | grep -Fxq "$ASSET_NAME"; then
+                    echo -e "${RED}Release 分卷编号重复，已拒绝安装${NC}" >&2
                     exit 1
                 fi
                 SPLIT_BASE_NAME="$PART_BASE_NAME"
@@ -263,8 +307,22 @@ EOF
 $ASSET_MAP
 EOF
     fi
-    # 兼容历史分卷附件：按资产名称中的编号升序拼接。
-    SPLIT_URLS=$(printf '%s\n' "$SPLIT_ASSETS" | sed '/^$/d' | sort -t "$(printf '\t')" -k1,1V | cut -f2-)
+    # 兼容历史分卷附件：要求编号从 00 起连续无缺口，再按编号升序拼接。
+    SPLIT_URLS=""
+    if [ -n "$SPLIT_ASSETS" ]; then
+        SPLIT_NAMES=$(printf '%s\n' "$SPLIT_ASSETS" | sed '/^$/d' | cut -f1 | sort -t '-' -k2,2n)
+        EXPECTED_INDEX=0
+        while IFS= read -r PART_NAME; do
+            [ -n "$PART_NAME" ] || continue
+            ACTUAL_INDEX=$((10#${PART_NAME##*.jar.split-}))
+            if [ "$ACTUAL_INDEX" -ne "$EXPECTED_INDEX" ]; then
+                echo -e "${RED}Release 分卷编号不连续（期望 $(printf '%02d' "$EXPECTED_INDEX")，实际 ${PART_NAME##*.jar.split-}），已拒绝安装${NC}" >&2
+                exit 1
+            fi
+            EXPECTED_INDEX=$((EXPECTED_INDEX + 1))
+        done <<< "$SPLIT_NAMES"
+        SPLIT_URLS=$(printf '%s\n' "$SPLIT_ASSETS" | sed '/^$/d' | sort -t '-' -k2,2n | cut -f2-)
+    fi
 
     if [ -z "$JAR_URL" ] && [ -z "$SPLIT_URLS" ]; then
         echo -e "${RED}未找到 JAR 下载链接${NC}"
@@ -305,14 +363,14 @@ verify_sha256() {
         rm -f "$FILE" "$SHA_FILE"
         exit 1
     fi
-    EXPECTED=$(head -1 "$SHA_FILE" | awk '{print $1}')
+    EXPECTED=$(head -1 "$SHA_FILE" | awk '{print $1}' | tr '[:upper:]' '[:lower:]')
     rm -f "$SHA_FILE"
-    if [ -z "$EXPECTED" ]; then
-        echo -e "${RED}无法解析 SHA-256 校验文件，中止安装${NC}"
+    if [[ ! "$EXPECTED" =~ ^[[:xdigit:]]{64}$ ]]; then
+        echo -e "${RED}SHA-256 校验文件格式无效，中止安装${NC}"
         rm -f "$FILE"
         exit 1
     fi
-    ACTUAL=$($SHA_TOOL "$FILE" | awk '{print $1}')
+    ACTUAL=$($SHA_TOOL "$FILE" | awk '{print $1}' | tr '[:upper:]' '[:lower:]')
     if [ "$ACTUAL" != "$EXPECTED" ]; then
         echo -e "${RED}SHA-256 校验失败，下载内容不完整或被篡改，已删除并中止安装${NC}"
         echo -e "  期望: ${EXPECTED}"
@@ -325,7 +383,7 @@ verify_sha256() {
 
 # 校验下载产物的 Ed25519 发布签名。
 # 官方渠道自 v3.4.9 起随 Release 附带 .jar.sig；缺失或验签失败一律中止安装
-# （仅 openssl 过旧不支持 Ed25519 时降级为警告，应用内更新器仍会强制验签）。
+# （缺少 openssl 或版本不支持 Ed25519 时 fail-closed，应用内更新器同样强制验签）。
 verify_signature() {
     local FILE="$1"
     if ! command -v openssl >/dev/null 2>&1; then
