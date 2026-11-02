@@ -1,0 +1,1423 @@
+<script setup lang="ts">
+import { inject, defineComponent, h, onMounted, ref, computed, type Component } from 'vue'
+import { accountDisplayName } from '@/utils'
+import { useAutoReply } from './useAutoReply'
+import './auto-reply.css'
+import '@/styles/header-selectors.css'
+
+import IconChat from '@/components/icons/IconChat.vue'
+import IconChevronDown from '@/components/icons/IconChevronDown.vue'
+import IconChevronLeft from '@/components/icons/IconChevronLeft.vue'
+import IconRobot from '@/components/icons/IconRobot.vue'
+import IconSend from '@/components/icons/IconSend.vue'
+import IconImage from '@/components/icons/IconImage.vue'
+import IconSparkle from '@/components/icons/IconSparkle.vue'
+import IconCheck from '@/components/icons/IconCheck.vue'
+import IconPackage from '@/components/icons/IconPackage.vue'
+import IconClipboard from '@/components/icons/IconClipboard.vue'
+import IconSearch from '@/components/icons/IconSearch.vue'
+
+import GoodsDetailDialog from '../goods/components/GoodsDetailDialog.vue'
+import ImageUploader from '@/components/ImageUploader.vue'
+import DecisionLogDialog from './components/DecisionLogDialog.vue'
+
+const goodsPanelCollapsed = ref(true)
+const isDesktopCollapsed = computed(() => !isMobile.value && goodsPanelCollapsed.value)
+
+// 未回复原因记录（决策日志）弹窗
+const decisionLogVisible = ref(false)
+
+const {
+  // State
+  accounts,
+  selectedAccountId,
+  goodsList,
+  selectedGoods,
+  goodsTotal,
+  goodsLoading,
+  goodsListRef,
+  onlyOnSale,
+  detailDialogVisible,
+  selectedGoodsId,
+  rightTab,
+  dataContent,
+  uploading,
+  fixedMaterial,
+  fixedMaterialSaving,
+  fixedMaterialSyncing,
+  fixedMaterialExpanded,
+  dataList,
+  dataLoading,
+  dataVisible,
+  chatMessages,
+  chatInput,
+  chatSending,
+  chatListRef,
+  isMobile,
+  mobileView,
+  confirmDialog,
+  delaySeconds,
+  configSaving,
+  recordsVisible,
+  recordsList,
+  recordsLoading,
+  recordsTotal,
+  recordsPage,
+  recordsPageSize,
+  recordDetailVisible,
+  recordDetail,
+  contextExpanded,
+  pendingVisible,
+  pendingList,
+  pendingLoading,
+  pendingTotal,
+  pendingPage,
+  pendingPageSize,
+  confirmDialogVisible,
+  confirmRecord,
+  confirmContent,
+  confirmSending,
+
+  // Methods
+  handleAccountChange,
+  selectGoods,
+  toggleAutoReply,
+  toggleContextOn,
+  handleUploadData,
+  handleQueryData,
+  handleDeleteData,
+  handleSendChat,
+  handleChatKeydown,
+  handleGoodsScroll,
+  goBackToGoods,
+  toggleOnlyOnSale,
+  viewGoodsDetail,
+  goToAutoDelivery,
+  handleDialogConfirm,
+  handleDialogCancel,
+  formatTime,
+  formatPrice,
+  getStatusText,
+  getStatusClass,
+  updateDelaySeconds,
+  toggleRecords,
+  viewRecordDetail,
+  handleRecordsPageChange,
+  parseTriggerContext,
+  toggleManualConfirm,
+  toggleBargain,
+  saveBargainConfig,
+  bargainFloorPrice,
+  bargainStepPrice,
+  bargainMaxRounds,
+  bargainSaving,
+  togglePendingConfirm,
+  handlePendingPageChange,
+  openConfirmDialog,
+  handleConfirmSend,
+  handleDismiss,
+  getRecordStateText,
+  handleSaveFixedMaterial,
+  handleSyncDetailToFixedMaterial,
+  toggleFixedMaterialExpanded,
+  keywordRules, newKeyword,
+  toggleKeywordReply, toggleHumanIntervention, updateHumanInterventionMinutes, handleDeleteContent,
+  replyModeTab, selectedKeywordRuleId, selectedKeywordRule,
+  handleContentImageDelete,
+  addKeywordDialogVisible, addReplyDialogVisible,
+  addReplyText, addReplyImageUrls,
+  handleAddKeywordFromDialog, handleAddReplyFromDialog,
+  handleUpdateMatchMode,
+  fallbackText, fallbackImageUrls, fallbackExpanded, handleSaveFallbackText,
+  editKeywordDialogVisible, editKeywordName,
+  handleOpenEditKeyword, handleSaveEditKeyword, handleDeleteFromEditDialog
+} = useAutoReply()
+
+// 导航栏注入
+const setHeaderContent = inject<(content: Component | null) => void>('setHeaderContent')
+
+const HeaderSelectors = defineComponent({
+  setup() {
+    return () => h('div', { class: 'header-selectors' }, [
+      h('div', { class: 'header-select-wrap' }, [
+        h('select', {
+          class: 'header-select',
+          onChange: (e: Event) => {
+            const val = (e.target as HTMLSelectElement).value
+            selectedAccountId.value = val ? parseInt(val) : null
+            handleAccountChange()
+          }
+        }, [
+          h('option', { value: '', disabled: true, selected: !selectedAccountId.value }, '账号'),
+          ...accounts.value.map(acc =>
+            h('option', {
+              value: acc.id.toString(),
+              selected: selectedAccountId.value === acc.id
+            }, accountDisplayName(acc))
+          )
+        ]),
+        h(IconChevronDown, { class: 'header-select-icon' })
+      ])
+    ])
+  }
+})
+
+onMounted(() => {
+  if (setHeaderContent) setHeaderContent(HeaderSelectors)
+})
+</script>
+
+<template>
+  <div class="ar">
+    <!-- Header -->
+    <div class="ar__header">
+      <div class="ar__title-row">
+        <div class="ar__title-icon">
+          <IconChat />
+        </div>
+        <h1 class="ar__title">自动回复</h1>
+      </div>
+      <div class="ar__actions">
+        <button
+          class="btn btn--ghost btn--sm dl-trigger"
+          title="查看买家消息未被自动回复的原因"
+          @click="decisionLogVisible = true"
+        >
+          <IconSearch />
+          <span class="mobile-hidden">未回复记录</span>
+        </button>
+        <div class="ar__select-wrap">
+          <select
+            v-model="selectedAccountId"
+            class="ar__select"
+            @change="handleAccountChange"
+          >
+            <option :value="null" disabled>选择账号</option>
+            <option v-for="acc in accounts" :key="acc.id" :value="acc.id">
+              {{ accountDisplayName(acc) }}
+            </option>
+          </select>
+          <span class="ar__select-icon">
+            <IconChevronDown />
+          </span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="ar__body">
+      <!-- Goods Panel (Left) -->
+      <div
+        class="ar__goods-panel"
+        :class="{ 'ar__goods-panel--hidden': isMobile && mobileView === 'config', 'ar__goods-panel--collapsed': isDesktopCollapsed }"
+      >
+        <template v-if="!isDesktopCollapsed">
+          <div class="ar__goods-toolbar">
+            <span class="ar__goods-toolbar-title">商品列表</span>
+            <span v-if="goodsTotal > 0" class="ar__goods-toolbar-count">共 {{ goodsTotal }} 件</span>
+            <button class="ar__only-on-sale-btn" :class="{ 'ar__only-on-sale-btn--active': onlyOnSale }" @click="toggleOnlyOnSale">
+              {{ onlyOnSale ? '在售' : '全部' }}
+            </button>
+          </div>
+
+          <div
+            class="ar__goods-list"
+            ref="goodsListRef"
+            @scroll="handleGoodsScroll"
+          >
+            <!-- Loading first page -->
+            <div v-if="goodsLoading && goodsList.length === 0" class="ar__loading">
+              <div class="ar__spinner"></div>
+              <span>加载中...</span>
+            </div>
+
+            <!-- Goods items -->
+            <div
+              v-for="goods in goodsList"
+              :key="goods.item.xyGoodId"
+              class="ar__goods-item"
+              :class="{ 'ar__goods-item--active': selectedGoods?.item.xyGoodId === goods.item.xyGoodId, 'ar__goods-item--offline': goods.item.status !== 0 }"
+              @click="selectGoods(goods)"
+            >
+              <img
+                :src="goods.item.coverPic"
+                :alt="goods.item.title"
+                class="ar__goods-cover"
+              />
+              <div class="ar__goods-info">
+                <div class="ar__goods-title">{{ goods.item.title }}</div>
+                <div class="ar__goods-meta">
+                  <span class="ar__goods-price">{{ formatPrice(goods.item.soldPrice) }}</span>
+                  <span
+                    class="ar__goods-status"
+                    :class="`ar__goods-status--${getStatusClass(goods.item.status)}`"
+                  >
+                    {{ getStatusText(goods.item.status) }}
+                  </span>
+                  <span
+                    v-if="goods.xianyuAutoReplyOn === 1"
+                    class="ar__goods-auto-badge ar__goods-auto-badge--on"
+                  >
+                    <IconSparkle />
+                    AI
+                  </span>
+                  <span
+                    v-if="goods.xianyuKeywordReplyOn === 1"
+                    class="ar__goods-auto-badge ar__goods-auto-badge--kw"
+                  >
+                    <IconChat />
+                    关键词
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Loading more -->
+            <div v-if="goodsLoading && goodsList.length > 0" class="ar__loading">
+              <div class="ar__spinner"></div>
+              <span>加载中...</span>
+            </div>
+
+            <!-- No more data -->
+            <div
+              v-if="!goodsLoading && goodsList.length > 0 && goodsList.length >= goodsTotal"
+              class="ar__no-more"
+            >
+              已加载全部
+            </div>
+
+            <!-- Empty -->
+            <div v-if="!goodsLoading && goodsList.length === 0" class="ar__empty">
+              <IconPackage />
+              <span class="ar__empty-text">暂无商品</span>
+            </div>
+          </div>
+        </template>
+        <template v-else>
+          <div class="ar__goods-icons">
+            <div
+              v-for="goods in goodsList"
+              :key="goods.item.xyGoodId"
+              class="ar__goods-icon-item"
+              :class="{ 'ar__goods-icon-item--active': selectedGoods?.item.xyGoodId === goods.item.xyGoodId }"
+              :title="goods.item.title"
+              @click="selectGoods(goods)"
+            >
+              <img :src="goods.item.coverPic" class="ar__goods-icon-img" />
+            </div>
+          </div>
+        </template>
+        <button
+          class="ar__goods-toggle"
+          :title="goodsPanelCollapsed ? '展开商品列表' : '折叠商品列表'"
+          @click="goodsPanelCollapsed = !goodsPanelCollapsed"
+        >
+          <svg v-if="goodsPanelCollapsed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+          <svg v-else xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+      </div>
+
+      <!-- Config Panel (Right) -->
+      <div
+        class="ar__config-panel"
+        :class="{ 'ar__config-panel--hidden': isMobile && mobileView === 'goods' }"
+      >
+        <!-- Mobile back button -->
+        <div v-if="isMobile && selectedGoods" class="ar__config-header">
+          <button class="ar__back-btn" @click="goBackToGoods">
+            <IconChevronLeft />
+            返回
+          </button>
+          <img
+            v-if="selectedGoods"
+            :src="selectedGoods.item.coverPic"
+            :alt="selectedGoods.item.title"
+            class="ar__config-goods-cover"
+          />
+          <div class="ar__config-goods-info">
+            <div class="ar__config-goods-title">{{ selectedGoods.item.title }}</div>
+            <div class="ar__config-goods-sub">{{ formatPrice(selectedGoods.item.soldPrice) }}</div>
+          </div>
+        </div>
+
+        <!-- Desktop config header -->
+        <div v-if="!isMobile && selectedGoods" class="ar__config-header">
+          <img
+            :src="selectedGoods.item.coverPic"
+            :alt="selectedGoods.item.title"
+            class="ar__config-goods-cover"
+          />
+          <div class="ar__config-goods-info">
+            <div class="ar__config-goods-title">{{ selectedGoods.item.title }}</div>
+            <div class="ar__config-goods-sub">{{ formatPrice(selectedGoods.item.soldPrice) }}</div>
+          </div>
+          <button class="btn btn--ghost btn--sm" @click="viewGoodsDetail">
+            <IconImage />
+            <span class="mobile-hidden">详情</span>
+          </button>
+          <button class="btn btn--ghost btn--sm" @click="goToAutoDelivery">
+            <IconPackage />
+            <span class="mobile-hidden">配置发货</span>
+          </button>
+        </div>
+
+        <!-- Empty state -->
+        <div v-if="!selectedGoods" class="ar__config-empty">
+          <IconChat />
+          <span class="ar__config-empty-text">选择商品以配置自动回复</span>
+        </div>
+
+        <!-- Config content -->
+        <div v-if="selectedGoods" class="ar__config-scroll">
+          <!-- Reply Mode Tabs -->
+          <div class="ar__config-section">
+            <div class="ar__reply-mode-tabs">
+              <button
+                class="ar__reply-mode-tab"
+                :class="{ 'ar__reply-mode-tab--active': replyModeTab === 'ai' }"
+                @click="replyModeTab = 'ai'"
+              >
+                <IconSparkle />
+                <span>AI回复</span>
+                <span class="ar__reply-mode-dot" :class="{ 'ar__reply-mode-dot--on': selectedGoods.xianyuAutoReplyOn === 1 }"></span>
+              </button>
+              <button
+                class="ar__reply-mode-tab"
+                :class="{ 'ar__reply-mode-tab--active': replyModeTab === 'keyword' }"
+                @click="replyModeTab = 'keyword'"
+              >
+                <IconChat />
+                <span>关键词回复</span>
+                <span class="ar__reply-mode-dot" :class="{ 'ar__reply-mode-dot--on': selectedGoods.xianyuKeywordReplyOn === 1 }"></span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Delay Config (shared) -->
+          <div class="ar__config-section">
+            <div class="ar__delay-config">
+              <div class="ar__delay-row">
+                <span class="ar__delay-label">回复延时</span>
+                <input
+                  type="number"
+                  v-model.number="delaySeconds"
+                  class="ar__delay-input"
+                  min="5"
+                  max="120"
+                  :disabled="configSaving"
+                />
+                <span class="ar__delay-unit">秒</span>
+                <button
+                  class="ar__delay-btn"
+                  :disabled="configSaving"
+                  @click="updateDelaySeconds"
+                >
+                  保存
+                </button>
+              </div>
+              <div class="ar__delay-hint">买家发送消息后等待指定时间，若无新消息则自动回复</div>
+            </div>
+          </div>
+
+          <!-- Human Intervention Config (shared) -->
+          <div class="ar__config-section">
+            <div class="ar__toggle-row">
+              <div class="ar__toggle-info">
+                <div class="ar__toggle-label">人工干预</div>
+                <div class="ar__toggle-hint">开启后，若卖家在延时期间已回复买家，则在指定时间内不再自动回复</div>
+              </div>
+              <label class="ar__switch">
+                <input
+                  type="checkbox"
+                  :checked="selectedGoods.humanInterventionOn === 1"
+                  @change="toggleHumanIntervention(($event.target as HTMLInputElement).checked)"
+                />
+                <span class="ar__switch-track"></span>
+                <span class="ar__switch-thumb"></span>
+              </label>
+            </div>
+            <div v-if="selectedGoods.humanInterventionOn === 1" class="ar__intervention-minutes">
+              <span class="ar__intervention-label">不回复持续时间</span>
+              <div class="ar__intervention-input-wrap">
+                <input
+                  type="number"
+                  class="ar__intervention-input"
+                  :value="selectedGoods.humanInterventionMinutes || 10"
+                  min="1"
+                  max="120"
+                  @change="updateHumanInterventionMinutes(Math.max(1, Math.min(120, Number(($event.target as HTMLInputElement).value) || 10)))"
+                />
+                <span class="ar__intervention-unit">分钟</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- AI Reply Config -->
+          <div v-if="replyModeTab === 'ai'" class="ar__config-section">
+            <div class="ar__toggle-row">
+              <div class="ar__toggle-info">
+                <div class="ar__toggle-label">AI回复</div>
+                <div class="ar__toggle-hint">买家咨询时基于AI知识库自动回复</div>
+              </div>
+              <label class="ar__switch">
+                <input
+                  type="checkbox"
+                  :checked="selectedGoods.xianyuAutoReplyOn === 1"
+                  @change="toggleAutoReply(($event.target as HTMLInputElement).checked)"
+                />
+                <span class="ar__switch-track"></span>
+                <span class="ar__switch-thumb"></span>
+              </label>
+            </div>
+
+            <div v-if="selectedGoods.xianyuAutoReplyOn === 1" class="ar__toggle-row">
+              <div class="ar__toggle-info">
+                <div class="ar__toggle-label">携带上下文</div>
+                <div class="ar__toggle-hint">将会话中买家和卖家的历史消息一起发送给大模型</div>
+              </div>
+              <label class="ar__switch">
+                <input
+                  type="checkbox"
+                  :checked="selectedGoods.xianyuAutoReplyContextOn === 1"
+                  @change="toggleContextOn(($event.target as HTMLInputElement).checked)"
+                />
+                <span class="ar__switch-track"></span>
+                <span class="ar__switch-thumb"></span>
+              </label>
+            </div>
+
+            <!-- 智能议价 -->
+            <div v-if="selectedGoods.xianyuAutoReplyOn === 1" class="ar__toggle-row">
+              <div class="ar__toggle-info">
+                <div class="ar__toggle-label">智能议价</div>
+                <div class="ar__toggle-hint">买家砍价时按保底价和让价步长自动应对，低于保底价绝不松口</div>
+              </div>
+              <label class="ar__switch">
+                <input
+                  type="checkbox"
+                  :checked="selectedGoods.bargainOn === 1"
+                  @change="toggleBargain(($event.target as HTMLInputElement).checked)"
+                />
+                <span class="ar__switch-track"></span>
+                <span class="ar__switch-thumb"></span>
+              </label>
+            </div>
+
+            <div v-if="selectedGoods.xianyuAutoReplyOn === 1 && selectedGoods.bargainOn === 1" class="ar__bargain-config">
+              <div class="ar__bargain-fields">
+                <label class="ar__bargain-field">
+                  <span class="ar__bargain-field-label">保底价（元）</span>
+                  <input
+                    v-model="bargainFloorPrice"
+                    class="ar__bargain-input"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    placeholder="如 80"
+                  />
+                </label>
+                <label class="ar__bargain-field">
+                  <span class="ar__bargain-field-label">每轮让价（元）</span>
+                  <input
+                    v-model="bargainStepPrice"
+                    class="ar__bargain-input"
+                    type="number"
+                    min="0.01"
+                    step="0.01"
+                    placeholder="留空自动均分"
+                  />
+                </label>
+                <label class="ar__bargain-field">
+                  <span class="ar__bargain-field-label">最大轮数</span>
+                  <input
+                    v-model.number="bargainMaxRounds"
+                    class="ar__bargain-input"
+                    type="number"
+                    min="1"
+                    max="10"
+                    placeholder="3"
+                  />
+                </label>
+              </div>
+              <div class="ar__bargain-actions">
+                <span class="ar__bargain-hint">出价≥保底价自动同意；到最大轮数后坚持保底价</span>
+                <button class="ar__bargain-save" :disabled="bargainSaving" @click="saveBargainConfig">
+                  {{ bargainSaving ? '保存中…' : '保存议价策略' }}
+                </button>
+              </div>
+            </div>
+          </div>
+            <div class="ar__toggle-row">
+              <div class="ar__toggle-info">
+                <div class="ar__toggle-label">人工确认模式</div>
+                <div class="ar__toggle-hint">AI生成回复草稿后不自动发送，需在"待人工确认"中确认/编辑后再发送</div>
+              </div>
+              <label class="ar__switch">
+                <input
+                  type="checkbox"
+                  :checked="selectedGoods.replyManualConfirmOn === 1"
+                  @change="toggleManualConfirm(($event.target as HTMLInputElement).checked)"
+                />
+                <span class="ar__switch-track"></span>
+                <span class="ar__switch-thumb"></span>
+              </label>
+            </div>
+
+          <!-- Keyword Reply Config -->
+          <div v-if="replyModeTab === 'keyword'" class="ar__config-section">
+            <div class="ar__toggle-row">
+              <div class="ar__toggle-info">
+                <div class="ar__toggle-label">关键词回复</div>
+                <div class="ar__toggle-hint">
+                  匹配买家消息中的关键词，回复预设内容
+                  <template v-if="selectedGoods.xianyuAutoReplyOn === 1 && selectedGoods.xianyuKeywordReplyOn === 1">
+                    （AI润化）
+                  </template>
+                </div>
+              </div>
+              <label class="ar__switch">
+                <input
+                  type="checkbox"
+                  :checked="selectedGoods.xianyuKeywordReplyOn === 1"
+                  @change="toggleKeywordReply(($event.target as HTMLInputElement).checked)"
+                />
+                <span class="ar__switch-track"></span>
+                <span class="ar__switch-thumb"></span>
+              </label>
+            </div>
+
+            <div class="ar__kw-fallback">
+              <div class="ar__kw-fallback-header" @click="fallbackExpanded = !fallbackExpanded">
+                <span class="ar__kw-fallback-toggle" :class="{ 'ar__kw-fallback-toggle--expanded': fallbackExpanded }">
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none"><path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                </span>
+                <span class="ar__kw-fallback-label">未匹配到关键词时回复</span>
+                <span v-if="!fallbackExpanded && (fallbackText || fallbackImageUrls.length)" class="ar__kw-fallback-summary">{{ fallbackText || `已配置${fallbackImageUrls.length}张图片` }}</span>
+              </div>
+              <div v-if="fallbackExpanded" class="ar__kw-fallback-body">
+                <div class="ar__kw-fallback-left">
+                  <div v-if="fallbackImageUrls.length" class="ar__kw-fallback-img-list">
+                    <div v-for="(url, idx) in fallbackImageUrls" :key="idx" class="ar__kw-fallback-preview">
+                      <img :src="url" />
+                      <button class="ar__kw-fallback-img-del" @click="fallbackImageUrls.splice(idx, 1)">×</button>
+                    </div>
+                  </div>
+                  <div :class="fallbackImageUrls.length ? 'ar__kw-upload-sm' : 'ar__kw-upload-lg'">
+                    <ImageUploader v-if="selectedAccountId" :account-id="selectedAccountId" @update:model-value="(v: string) => v && fallbackImageUrls.push(v)" />
+                  </div>
+                </div>
+                <div class="ar__kw-fallback-right">
+                  <textarea v-model="fallbackText" class="ar__kw-fallback-textarea" placeholder="输入回复文本（可选）" rows="3"></textarea>
+                  <button class="ar__kw-fallback-save" @click="handleSaveFallbackText">保存</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="ar__kw">
+              <div class="ar__kw-toolbar">
+                <button class="ar__kw-toolbar-btn" @click="addKeywordDialogVisible = true">+ 添加关键词</button>
+              </div>
+              <!-- Mobile: keyword list / reply list view switch -->
+              <div v-if="isMobile" class="ar__kw-mobile">
+                <div v-if="!selectedKeywordRuleId" class="ar__kw-mobile-list">
+                  <div v-if="keywordRules.length > 0" class="ar__kw-items">
+                    <div v-for="rule in keywordRules" :key="rule.id" class="ar__kw-item" @click="selectedKeywordRuleId = rule.id">
+                      <span class="ar__kw-item-text">{{ rule.keyword }}</span>
+                      <span class="ar__kw-item-mode">{{ rule.matchMode === 2 ? '精准' : '模糊' }}</span>
+                      <span class="ar__kw-item-count">{{ rule.contents?.length || 0 }}条</span>
+                      <button class="ar__kw-item-edit" @click.stop="handleOpenEditKeyword(rule)">编辑</button>
+                    </div>
+                  </div>
+                  <div v-else class="ar__kw-empty">添加关键词开始配置</div>
+                </div>
+                <div v-else class="ar__kw-mobile-detail">
+                  <button class="ar__kw-back" @click="selectedKeywordRuleId = null">‹ 返回关键词</button>
+                  <template v-if="selectedKeywordRule">
+                    <div class="ar__kw-detail-header">
+                      <span class="ar__kw-detail-title">{{ selectedKeywordRule.keyword }}</span>
+                      <div class="ar__kw-detail-actions">
+                        <button class="ar__kw-add-reply-btn" @click="addReplyDialogVisible = true">+ 添加回复</button>
+                        <button class="ar__kw-del-rule-btn" @click="handleOpenEditKeyword(selectedKeywordRule!)">编辑</button>
+                      </div>
+                    </div>
+                    <div class="ar__kw-detail-meta">
+                      <div class="ar__kw-match-mode">
+                        <button class="ar__kw-mode-btn" :class="{ 'ar__kw-mode-btn--active': selectedKeywordRule.matchMode !== 2 }" @click="handleUpdateMatchMode(selectedKeywordRule.id, 1)">模糊</button>
+                        <button class="ar__kw-mode-btn" :class="{ 'ar__kw-mode-btn--active': selectedKeywordRule.matchMode === 2 }" @click="handleUpdateMatchMode(selectedKeywordRule.id, 2)">精准</button>
+                      </div>
+                    </div>
+                    <div v-if="selectedKeywordRule.contents?.length" class="ar__kw-replies">
+                      <div v-for="(c, i) in selectedKeywordRule.contents" :key="c.id" class="ar__kw-reply">
+                        <div class="ar__kw-reply-top"><span class="ar__kw-reply-num">#{{ i + 1 }}</span><button class="ar__kw-reply-del" @click="handleDeleteContent(c.id, selectedKeywordRule!.id)">删除</button></div>
+                        <div class="ar__kw-reply-body">
+                          <div v-if="c.replyImageUrl" class="ar__kw-reply-img"><img :src="c.replyImageUrl" /><button class="ar__kw-reply-img-del" @click="handleContentImageDelete(c)">×</button></div>
+                          <div class="ar__kw-reply-text-row" v-if="c.replyText"><span class="ar__kw-reply-text-show">{{ c.replyText }}</span></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="ar__kw-empty">暂无回复内容</div>
+                  </template>
+                </div>
+              </div>
+
+              <!-- Desktop/Tablet: left-right layout -->
+              <div v-else class="ar__kw-desktop">
+                <div class="ar__kw-sidebar">
+                  <div class="ar__kw-sidebar-head">
+                    <span class="ar__kw-sidebar-label">关键词</span>
+                  </div>
+                  <div v-if="keywordRules.length > 0" class="ar__kw-items">
+                    <div v-for="rule in keywordRules" :key="rule.id" class="ar__kw-item" :class="{ 'ar__kw-item--active': selectedKeywordRuleId === rule.id }" @click="selectedKeywordRuleId = rule.id">
+                      <span class="ar__kw-item-text">{{ rule.keyword }}</span>
+                      <span class="ar__kw-item-mode">{{ rule.matchMode === 2 ? '精准' : '模糊' }}</span>
+                      <span class="ar__kw-item-count">{{ rule.contents?.length || 0 }}</span>
+                      <button class="ar__kw-item-edit" @click.stop="handleOpenEditKeyword(rule)">编辑</button>
+                    </div>
+                  </div>
+                  <div v-else class="ar__kw-empty">点击上方添加关键词</div>
+                </div>
+                <div class="ar__kw-main">
+                  <template v-if="selectedKeywordRule">
+                    <div class="ar__kw-detail-header">
+                      <span class="ar__kw-detail-title">{{ selectedKeywordRule.keyword }}</span>
+                      <div class="ar__kw-detail-actions">
+                        <button class="ar__kw-add-reply-btn" @click="addReplyDialogVisible = true">+ 添加回复</button>
+                        <button class="ar__kw-del-rule-btn" @click="handleOpenEditKeyword(selectedKeywordRule!)">编辑关键词</button>
+                      </div>
+                    </div>
+                    <div class="ar__kw-detail-meta">
+                      <div class="ar__kw-match-mode">
+                        <button class="ar__kw-mode-btn" :class="{ 'ar__kw-mode-btn--active': selectedKeywordRule.matchMode !== 2 }" @click="handleUpdateMatchMode(selectedKeywordRule.id, 1)">模糊匹配</button>
+                        <button class="ar__kw-mode-btn" :class="{ 'ar__kw-mode-btn--active': selectedKeywordRule.matchMode === 2 }" @click="handleUpdateMatchMode(selectedKeywordRule.id, 2)">精准匹配</button>
+                      </div>
+                    </div>
+                    <div class="ar__kw-detail-sub">匹配此关键词时随机回复以下内容</div>
+                    <div v-if="selectedKeywordRule.contents?.length" class="ar__kw-replies">
+                      <div v-for="(c, i) in selectedKeywordRule.contents" :key="c.id" class="ar__kw-reply">
+                        <div class="ar__kw-reply-top"><span class="ar__kw-reply-num">#{{ i + 1 }}</span><button class="ar__kw-reply-del" @click="handleDeleteContent(c.id, selectedKeywordRule!.id)">删除</button></div>
+                        <div class="ar__kw-reply-body">
+                          <div v-if="c.replyImageUrl" class="ar__kw-reply-img"><img :src="c.replyImageUrl" /><button class="ar__kw-reply-img-del" @click="handleContentImageDelete(c)">×</button></div>
+                          <div class="ar__kw-reply-text-row" v-if="c.replyText"><span class="ar__kw-reply-text-show">{{ c.replyText }}</span></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div v-else class="ar__kw-empty">暂无回复，点击上方添加</div>
+                  </template>
+                  <div v-else class="ar__kw-placeholder">
+                    <div class="ar__kw-placeholder-icon"><IconChat aria-hidden="true" /></div>
+                    <div>选择左侧关键词查看回复</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Add Keyword Dialog (iOS style) -->
+          <Teleport to="body">
+            <div v-if="addKeywordDialogVisible" class="ar__dialog-overlay" @click.self="addKeywordDialogVisible = false">
+              <div class="ar__dialog">
+                <div class="ar__dialog-header">添加关键词</div>
+                <div class="ar__dialog-body">
+                  <input type="text" v-model="newKeyword" class="ar__dialog-input" placeholder="输入关键词" @keydown.enter="handleAddKeywordFromDialog" autofocus />
+                </div>
+                <div class="ar__dialog-actions">
+                  <button class="ar__dialog-btn ar__dialog-btn--cancel" @click="addKeywordDialogVisible = false; newKeyword = ''">取消</button>
+                  <button class="ar__dialog-btn ar__dialog-btn--confirm" @click="handleAddKeywordFromDialog" :disabled="!newKeyword.trim()">确定</button>
+                </div>
+              </div>
+            </div>
+          </Teleport>
+
+          <!-- Edit Keyword Dialog -->
+          <Teleport to="body">
+            <div v-if="editKeywordDialogVisible" class="ar__dialog-overlay" @click.self="editKeywordDialogVisible = false">
+              <div class="ar__dialog">
+                <div class="ar__dialog-header">编辑关键词</div>
+                <div class="ar__dialog-body">
+                  <input type="text" v-model="editKeywordName" class="ar__dialog-input" placeholder="输入关键词" @keydown.enter="handleSaveEditKeyword" />
+                </div>
+                <div class="ar__dialog-actions">
+                  <button class="ar__dialog-btn ar__dialog-btn--danger" @click="handleDeleteFromEditDialog">删除</button>
+                  <button class="ar__dialog-btn ar__dialog-btn--cancel" @click="editKeywordDialogVisible = false">取消</button>
+                  <button class="ar__dialog-btn ar__dialog-btn--confirm" @click="handleSaveEditKeyword" :disabled="!editKeywordName.trim()">保存</button>
+                </div>
+              </div>
+            </div>
+          </Teleport>
+
+          <!-- Add Reply Dialog (iOS style) -->
+          <Teleport to="body">
+            <div v-if="addReplyDialogVisible" class="ar__dialog-overlay" @click.self="addReplyDialogVisible = false">
+              <div class="ar__dialog ar__dialog--reply">
+                <div class="ar__dialog-header">添加回复</div>
+                <div class="ar__dialog-body ar__dialog-body--reply">
+                  <div class="ar__dialog-left">
+                    <div class="ar__dialog-img-list">
+                      <div v-for="(url, idx) in addReplyImageUrls" :key="idx" class="ar__dialog-img-item">
+                        <img :src="url" />
+                        <button class="ar__dialog-img-del" @click="addReplyImageUrls.splice(idx, 1)">×</button>
+                      </div>
+                    </div>
+                  <div v-if="addReplyImageUrls.length === 0" class="ar__kw-upload-lg">
+                    <ImageUploader v-if="selectedAccountId" :account-id="selectedAccountId" @update:model-value="(v: string) => v && addReplyImageUrls.push(v)" />
+                  </div>
+                  </div>
+                  <div class="ar__dialog-right">
+                    <textarea class="ar__dialog-textarea" v-model="addReplyText" placeholder="输入回复文本（可选）"></textarea>
+                  </div>
+                </div>
+                <div class="ar__dialog-actions">
+                  <button class="ar__dialog-btn ar__dialog-btn--cancel" @click="addReplyDialogVisible = false; addReplyText = ''; addReplyImageUrls = []">取消</button>
+                  <button class="ar__dialog-btn ar__dialog-btn--confirm" @click="handleAddReplyFromDialog" :disabled="!addReplyText.trim() && addReplyImageUrls.length === 0">确定</button>
+                </div>
+              </div>
+            </div>
+          </Teleport>
+
+          <!-- Tab Switch: Data / Chat (only in AI reply mode) -->
+          <div v-if="replyModeTab === 'ai'" class="ar__tab-group">
+            <button
+              class="ar__tab-btn"
+              :class="{ 'ar__tab-btn--active': rightTab === 'data' }"
+              @click="rightTab = 'data'"
+            >
+              <IconClipboard />
+              知识资料
+            </button>
+            <button
+              class="ar__tab-btn"
+              :class="{ 'ar__tab-btn--active': rightTab === 'chat' }"
+              @click="rightTab = 'chat'"
+            >
+              <IconRobot />
+              AI回答测试
+            </button>
+          </div>
+
+          <!-- ====== 知识资料视图 ====== -->
+          <template v-if="replyModeTab === 'ai' && rightTab === 'data'">
+            <!-- Fixed material section -->
+            <div class="ar__config-section">
+              <div class="ar__config-section-header" @click="toggleFixedMaterialExpanded">
+                <div class="ar__config-section-title-row">
+                  <IconChevronDown class="ar__config-section-chevron" :class="{ 'ar__config-section-chevron--collapsed': !fixedMaterialExpanded }" />
+                  <div class="ar__config-section-title">固定资料</div>
+                  <span v-if="fixedMaterial" class="ar__config-section-badge">已配置</span>
+                </div>
+                <button
+                  v-if="fixedMaterialExpanded"
+                  class="btn btn--ghost btn--sm"
+                  :class="{ 'btn--loading': fixedMaterialSyncing }"
+                  :disabled="fixedMaterialSyncing"
+                  @click.stop="handleSyncDetailToFixedMaterial"
+                >
+                  <IconSparkle />
+                  同步商品详情
+                </button>
+              </div>
+              
+              <div v-show="fixedMaterialExpanded" class="ar__config-section-body">
+                <div class="ar__toggle-hint" style="margin-bottom: 8px;">
+                  固定资料会每次AI回复时都带上，保存在本地数据库
+                </div>
+
+                <textarea
+                  v-model="fixedMaterial"
+                  class="ar__textarea"
+                  placeholder="请输入固定资料内容，如商品规格、注意事项等"
+                  maxlength="5000"
+                ></textarea>
+                <div class="ar__textarea-footer">
+                  <span class="ar__textarea-hint">固定资料随商品保存</span>
+                  <span class="ar__textarea-count">{{ fixedMaterial.length }} / 5000</span>
+                </div>
+
+                <div class="ar__save-row" style="margin-bottom: 16px;">
+                  <button
+                    class="btn btn--primary"
+                    :class="{ 'btn--loading': fixedMaterialSaving }"
+                    :disabled="fixedMaterialSaving"
+                    @click="handleSaveFixedMaterial"
+                  >
+                    <IconCheck />
+                    保存固定资料
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Upload view -->
+            <div v-if="!dataVisible" class="ar__config-section">
+              <div class="ar__config-section-title">添加资料</div>
+              <div class="ar__toggle-hint" style="margin-bottom: 8px;">
+                上传商品相关资料到AI知识库，AI将基于这些资料自动回复买家咨询
+              </div>
+
+              <textarea
+                v-model="dataContent"
+                class="ar__textarea"
+                placeholder="请输入商品资料内容，如商品介绍、规格参数、使用说明、常见问题等"
+                maxlength="5000"
+              ></textarea>
+              <div class="ar__textarea-footer">
+                <span class="ar__textarea-hint">支持文本内容，将存入AI知识库</span>
+                <span class="ar__textarea-count">{{ dataContent.length }} / 5000</span>
+              </div>
+
+              <div class="ar__save-row">
+                <button
+                  class="btn btn--primary"
+                  :class="{ 'btn--loading': uploading }"
+                  :disabled="uploading"
+                  @click="handleUploadData"
+                >
+                  <IconCheck />
+                  添加资料
+                </button>
+                <button
+                  class="btn btn--secondary"
+                  :class="{ 'btn--loading': dataLoading }"
+                  :disabled="dataLoading"
+                  @click="dataVisible = true; handleQueryData()"
+                >
+                  <IconSearch />
+                  查看现有资料
+                </button>
+                <button
+                  class="btn btn--secondary"
+                  @click="toggleRecords"
+                >
+                  <IconSearch />
+                  查看回复记录
+                </button>
+                <button
+                  class="btn btn--secondary"
+                  :class="{ 'btn--loading': pendingLoading }"
+                  @click="togglePendingConfirm"
+                >
+                  <IconSearch />
+                  待人工确认
+                  <span v-if="pendingTotal > 0" class="ar__pending-badge">{{ pendingTotal }}</span>
+                </button>
+              </div>
+            </div>
+
+            <!-- Existing data view (replaces upload view) -->
+            <div v-else class="ar__data-section">
+              <div class="ar__data-section-header">
+                <span class="ar__data-section-title">现有资料</span>
+                <span v-if="!dataLoading && dataList.length > 0" class="ar__data-section-count">共 {{ dataList.length }} 条</span>
+                <button class="btn btn--ghost btn--sm" style="margin-left: auto;" @click="dataVisible = false">
+                  返回上传
+                </button>
+              </div>
+
+              <div class="ar__data-scroll">
+                <div v-if="dataLoading" class="ar__loading">
+                  <div class="ar__spinner"></div>
+                  <span>加载中...</span>
+                </div>
+
+                <div v-else-if="dataList.length === 0" class="ar__data-empty">
+                  <span class="ar__data-empty-text">暂无资料</span>
+                </div>
+
+                <!-- Desktop: Table view -->
+                <table v-else-if="!isMobile" class="ar__data-table">
+                  <thead class="ar__data-table-head">
+                    <tr>
+                      <th class="ar__data-table-th ar__data-table-th--index">#</th>
+                      <th class="ar__data-table-th ar__data-table-th--content">资料内容</th>
+                      <th class="ar__data-table-th ar__data-table-th--time">创建时间</th>
+                      <th class="ar__data-table-th ar__data-table-th--action">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody class="ar__data-table-body">
+                    <tr v-for="(item, index) in dataList" :key="item.documentId" class="ar__data-table-tr">
+                      <td class="ar__data-table-td ar__data-table-td--index">{{ index + 1 }}</td>
+                      <td class="ar__data-table-td ar__data-table-td--content">
+                        <span class="ar__data-content-text">{{ item.content }}</span>
+                      </td>
+                      <td class="ar__data-table-td ar__data-table-td--time">{{ formatTime(item.createTime) }}</td>
+                      <td class="ar__data-table-td ar__data-table-td--action">
+                        <button class="ar__data-del-btn" @click="handleDeleteData(item.documentId)">删除</button>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+
+                <!-- Mobile: Card view -->
+                <div v-else class="ar__data-card-list">
+                  <div v-for="(item, index) in dataList" :key="item.documentId" class="ar__data-card">
+                    <div class="ar__data-card-header">
+                      <span class="ar__data-card-index">#{{ index + 1 }}</span>
+                      <span class="ar__data-card-time">{{ formatTime(item.createTime) }}</span>
+                    </div>
+                    <div class="ar__data-card-content">{{ item.content }}</div>
+                    <div class="ar__data-card-footer">
+                      <button class="ar__data-del-btn" @click="handleDeleteData(item.documentId)">删除</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <!-- ====== AI 对话视图 ====== -->
+          <template v-if="replyModeTab === 'ai' && rightTab === 'chat'">
+            <div class="ar__chat-container">
+              <!-- Chat messages -->
+              <div
+                v-if="chatMessages.length > 0"
+                class="ar__chat-list"
+                ref="chatListRef"
+              >
+                <div
+                  v-for="msg in chatMessages"
+                  :key="msg.id"
+                  class="ar__chat-msg"
+                  :class="`ar__chat-msg--${msg.role}`"
+                >
+                  <div class="ar__chat-bubble" :class="{ 'ar__chat-bubble--loading': msg.loading }">
+                    <template v-if="msg.loading">
+                      <div class="ar__chat-dots">
+                        <span class="ar__chat-dot"></span>
+                        <span class="ar__chat-dot"></span>
+                        <span class="ar__chat-dot"></span>
+                      </div>
+                    </template>
+                    <template v-else>
+                      {{ msg.content }}
+                    </template>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Chat empty -->
+              <div v-if="chatMessages.length === 0" class="ar__chat-empty">
+                <IconRobot />
+                <span class="ar__chat-empty-text">AI 对话</span>
+                <span class="ar__chat-empty-hint">基于商品知识库回答问题，输入消息开始对话</span>
+              </div>
+
+              <!-- Chat input -->
+              <div class="ar__chat-input-area">
+                <textarea
+                  v-model="chatInput"
+                  class="ar__chat-input"
+                  placeholder="输入消息..."
+                  rows="1"
+                  :disabled="chatSending"
+                  @keydown="handleChatKeydown"
+                ></textarea>
+                <button
+                  class="ar__chat-send-btn"
+                  :disabled="!chatInput.trim() || chatSending"
+                  @click="handleSendChat"
+                >
+                  <IconSend />
+                </button>
+              </div>
+            </div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Goods Detail Dialog -->
+    <GoodsDetailDialog
+      v-model="detailDialogVisible"
+      :goods-id="selectedGoodsId"
+      :account-id="selectedAccountId"
+    />
+
+    <!-- Pending Manual Confirm Dialog -->
+    <Transition name="overlay-fade">
+      <div
+        v-if="pendingVisible"
+        class="ar__dialog-overlay"
+        @click.self="pendingVisible = false"
+      >
+        <div class="ar__records-dialog">
+          <div class="ar__records-dialog-header">
+            <h3 class="ar__records-dialog-title">待人工确认的AI回复</h3>
+            <span v-if="!pendingLoading" class="ar__records-dialog-count">共 {{ pendingTotal }} 条</span>
+            <button class="ar__detail-dialog-close" @click="pendingVisible = false">&times;</button>
+          </div>
+          <div class="ar__records-dialog-body">
+            <div v-if="pendingLoading" class="ar__loading">
+              <div class="ar__spinner"></div>
+              <span>加载中...</span>
+            </div>
+
+            <div v-else-if="pendingList.length === 0" class="ar__records-empty">
+              <span>暂无待确认草稿</span>
+            </div>
+
+            <template v-else>
+              <div
+                v-for="record in pendingList"
+                :key="record.id"
+                class="ar__record-card ar__record-card--confirm"
+              >
+                <div class="ar__record-card-header">
+                  <span class="ar__record-time">{{ formatTime(record.createTime) }}</span>
+                  <span class="ar__record-state ar__record-state--confirm">待人工确认</span>
+                </div>
+                <div class="ar__record-meta">
+                  <span v-if="record.buyerUserName">{{ record.buyerUserName }}</span>
+                  <span v-if="record.matchedKeyword" class="ar__record-keyword">关键词：{{ record.matchedKeyword }}</span>
+                </div>
+                <div class="ar__record-question">
+                  <span class="ar__record-question-label">Q</span>
+                  <span class="ar__record-question-text">{{ record.buyerMessage }}</span>
+                </div>
+                <div class="ar__record-reply">
+                  <span class="ar__record-reply-label">A</span>
+                  <span class="ar__record-reply-text">{{ record.replyContent || '—' }}</span>
+                </div>
+                <div class="ar__record-card-footer ar__record-card-footer--confirm">
+                  <button class="btn btn--ghost btn--sm" @click="handleDismiss(record)">忽略</button>
+                  <button class="btn btn--primary btn--sm" @click="openConfirmDialog(record)">确认并发送</button>
+                </div>
+              </div>
+
+              <div v-if="pendingTotal > pendingPageSize" class="ar__records-pagination">
+                <button
+                  class="ar__records-page-btn"
+                  :disabled="pendingPage <= 1"
+                  @click="handlePendingPageChange(pendingPage - 1)"
+                >上一页</button>
+                <span class="ar__records-page-info">{{ pendingPage }} / {{ Math.ceil(pendingTotal / pendingPageSize) }}</span>
+                <button
+                  class="ar__records-page-btn"
+                  :disabled="pendingPage >= Math.ceil(pendingTotal / pendingPageSize)"
+                  @click="handlePendingPageChange(pendingPage + 1)"
+                >下一页</button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Confirm Send Dialog -->
+    <Transition name="overlay-fade">
+      <div
+        v-if="confirmDialogVisible"
+        class="ar__dialog-overlay"
+        @click.self="confirmDialogVisible = false"
+      >
+        <div class="ar__confirm-dialog">
+          <div class="ar__records-dialog-header">
+            <h3 class="ar__records-dialog-title">确认并发送回复</h3>
+            <button class="ar__detail-dialog-close" @click="confirmDialogVisible = false">&times;</button>
+          </div>
+          <div class="ar__confirm-dialog-body" v-if="confirmRecord">
+            <div class="ar__confirm-dialog-meta">
+              <span v-if="confirmRecord.buyerUserName">买家：{{ confirmRecord.buyerUserName }}</span>
+              <span>{{ formatTime(confirmRecord.createTime) }}</span>
+            </div>
+            <div class="ar__confirm-dialog-buyer">
+              <span class="ar__record-question-label">Q</span>
+              <span>{{ confirmRecord.buyerMessage }}</span>
+            </div>
+            <textarea
+              v-model="confirmContent"
+              class="ar__confirm-textarea"
+              rows="5"
+              placeholder="可编辑回复内容"
+            ></textarea>
+            <div class="ar__confirm-dialog-actions">
+              <button class="btn btn--ghost" @click="confirmDialogVisible = false">取消</button>
+              <button
+                class="btn btn--primary"
+                :class="{ 'btn--loading': confirmSending }"
+                :disabled="confirmSending"
+                @click="handleConfirmSend"
+              >发送</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Records List Dialog -->
+    <Transition name="overlay-fade">
+      <div
+        v-if="recordsVisible"
+        class="ar__dialog-overlay"
+        @click.self="recordsVisible = false"
+      >
+        <div class="ar__records-dialog">
+          <div class="ar__records-dialog-header">
+            <h3 class="ar__records-dialog-title">自动回复记录</h3>
+            <span v-if="!recordsLoading" class="ar__records-dialog-count">共 {{ recordsTotal }} 条</span>
+            <button class="ar__detail-dialog-close" @click="recordsVisible = false">&times;</button>
+          </div>
+          <div class="ar__records-dialog-body">
+            <div v-if="recordsLoading" class="ar__loading">
+              <div class="ar__spinner"></div>
+              <span>加载中...</span>
+            </div>
+
+            <div v-else-if="recordsList.length === 0" class="ar__records-empty">
+              <span>暂无回复记录</span>
+            </div>
+
+            <template v-else>
+              <div
+                v-for="record in recordsList"
+                :key="record.id"
+                class="ar__record-card"
+              >
+                <div class="ar__record-card-header">
+                  <span class="ar__record-time">{{ formatTime(record.createTime) }}</span>
+                  <span
+                    class="ar__record-state"
+                    :class="{
+                      'ar__record-state--success': record.state === 1,
+                      'ar__record-state--fail': record.state === -1,
+                      'ar__record-state--pending': record.state === 0
+                    }"
+                  >
+                    {{ getRecordStateText(record.state) }}
+                  </span>
+                </div>
+
+                <!-- User questions (max 3) -->
+                <div class="ar__record-questions">
+                  <template v-if="parseTriggerContext(record.triggerContext)?.triggerMessages?.length">
+                    <div
+                      v-for="(msg, idx) in parseTriggerContext(record.triggerContext).triggerMessages.slice(0, 3)"
+                      :key="idx"
+                      class="ar__record-question"
+                    >
+                      <span class="ar__record-question-label">Q{{ Number(idx) + 1 }}</span>
+                      <span class="ar__record-question-text">{{ msg.msgContent }}</span>
+                    </div>
+                    <div
+                      v-if="parseTriggerContext(record.triggerContext).triggerMessages.length > 3"
+                      class="ar__record-more"
+                    >
+                      还有 {{ parseTriggerContext(record.triggerContext).triggerMessages.length - 3 }} 条消息，点击详情查看
+                    </div>
+                  </template>
+                  <template v-else>
+                    <div class="ar__record-question">
+                      <span class="ar__record-question-label">Q</span>
+                      <span class="ar__record-question-text">{{ record.buyerMessage }}</span>
+                    </div>
+                  </template>
+                </div>
+
+                <!-- AI reply -->
+                <div class="ar__record-reply">
+                  <span class="ar__record-reply-label">A</span>
+                  <span class="ar__record-reply-text">{{ record.replyContent || '—' }}</span>
+                </div>
+
+                <!-- Detail button -->
+                <div class="ar__record-card-footer">
+                  <button class="btn btn--ghost btn--sm" @click="viewRecordDetail(record)">
+                    详情
+                  </button>
+                </div>
+              </div>
+
+              <!-- Pagination -->
+              <div v-if="recordsTotal > recordsPageSize" class="ar__records-pagination">
+                <button
+                  class="ar__records-page-btn"
+                  :disabled="recordsPage <= 1"
+                  @click="handleRecordsPageChange(recordsPage - 1)"
+                >上一页</button>
+                <span class="ar__records-page-info">{{ recordsPage }} / {{ Math.ceil(recordsTotal / recordsPageSize) }}</span>
+                <button
+                  class="ar__records-page-btn"
+                  :disabled="recordsPage >= Math.ceil(recordsTotal / recordsPageSize)"
+                  @click="handleRecordsPageChange(recordsPage + 1)"
+                >下一页</button>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Record Detail Dialog -->
+    <Transition name="overlay-fade">
+      <div
+        v-if="recordDetailVisible"
+        class="ar__dialog-overlay"
+        @click.self="recordDetailVisible = false"
+      >
+        <div class="ar__detail-dialog">
+          <div class="ar__detail-dialog-header">
+            <h3 class="ar__detail-dialog-title">回复记录详情</h3>
+            <button class="ar__detail-dialog-close" @click="recordDetailVisible = false">&times;</button>
+          </div>
+          <div class="ar__detail-dialog-body" v-if="recordDetail">
+            <div class="ar__detail-row">
+              <span class="ar__detail-label">回复时间</span>
+              <span class="ar__detail-value">{{ formatTime(recordDetail.createTime) }}</span>
+            </div>
+            <div class="ar__detail-row">
+              <span class="ar__detail-label">状态</span>
+              <span
+                class="ar__detail-value"
+                :class="{
+                  'ar__record-state--success': recordDetail.state === 1,
+                  'ar__record-state--fail': recordDetail.state === -1,
+                  'ar__record-state--pending': recordDetail.state === 0
+                }"
+              >{{ getRecordStateText(recordDetail.state) }}</span>
+            </div>
+            <div class="ar__detail-row">
+              <span class="ar__detail-label">买家</span>
+              <span class="ar__detail-value">{{ recordDetail.buyerUserName || recordDetail.buyerUserId }}</span>
+            </div>
+
+            <!-- All user questions -->
+            <div class="ar__detail-section">
+              <div class="ar__detail-section-title">用户问题</div>
+              <template v-if="parseTriggerContext(recordDetail.triggerContext)?.triggerMessages?.length">
+                <div
+                  v-for="(msg, idx) in parseTriggerContext(recordDetail.triggerContext).triggerMessages"
+                  :key="idx"
+                  class="ar__detail-msg-item"
+                >
+                  <div class="ar__detail-msg-meta">
+                    <span class="ar__detail-msg-sender">{{ msg.senderUserName || msg.senderUserId }}</span>
+                    <span v-if="msg.messageTime" class="ar__detail-msg-time">{{ new Date(msg.messageTime).toLocaleString('zh-CN') }}</span>
+                  </div>
+                  <div class="ar__detail-msg-content">{{ msg.msgContent }}</div>
+                </div>
+              </template>
+              <template v-else>
+                <div class="ar__detail-msg-item">
+                  <div class="ar__detail-msg-content">{{ recordDetail.buyerMessage }}</div>
+                </div>
+              </template>
+            </div>
+
+            <!-- AI reply -->
+            <div class="ar__detail-section">
+              <div class="ar__detail-section-title">AI 回复</div>
+              <div class="ar__detail-reply-content">{{ recordDetail.replyContent || '—' }}</div>
+            </div>
+
+            <!-- RAG hit details -->
+            <template v-if="parseTriggerContext(recordDetail.triggerContext)?.ragHitDetails?.length">
+              <div class="ar__detail-section">
+                <div class="ar__detail-section-title">RAG 命中资料</div>
+                <div
+                  v-for="(hit, idx) in parseTriggerContext(recordDetail.triggerContext).ragHitDetails"
+                  :key="idx"
+                  class="ar__detail-hit-item"
+                >
+                  <div class="ar__detail-hit-meta">
+                    <span class="ar__detail-hit-doc">文档 #{{ idx + 1 }}</span>
+                    <span v-if="hit.score" class="ar__detail-hit-score">相似度: {{ (Number(hit.score) * 100).toFixed(1) }}%</span>
+                  </div>
+                  <div class="ar__detail-hit-content">{{ hit.content }}</div>
+                </div>
+              </div>
+            </template>
+
+            <!-- Context messages (collapsible) -->
+            <template v-if="parseTriggerContext(recordDetail.triggerContext)?.contextMessages">
+              <div class="ar__detail-section">
+                <div class="ar__detail-context-header" @click="(_e: Event) => { contextExpanded = !contextExpanded }">
+                  <span class="ar__detail-section-title" style="margin-bottom:0">携带上下文</span>
+                  <span class="ar__detail-context-toggle">{{ contextExpanded ? '收起' : '展开' }}</span>
+                </div>
+                <div v-if="contextExpanded" class="ar__detail-context-body">
+                  <div
+                    v-for="(line, idx) in parseTriggerContext(recordDetail.triggerContext).contextMessages.split('\n')"
+                    :key="idx"
+                    class="ar__detail-context-line"
+                    :class="{ 'ar__detail-context-line--user': line.startsWith('user:'), 'ar__detail-context-line--assistant': line.startsWith('assistant:') }"
+                  >{{ line }}</div>
+                </div>
+              </div>
+            </template>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- Confirm Dialog -->
+    <Transition name="overlay-fade">
+      <div
+        v-if="confirmDialog.visible"
+        class="ar__dialog-overlay"
+        @click.self="handleDialogCancel"
+      >
+        <div class="ar__dialog">
+          <div class="ar__dialog-header">
+            <h3 class="ar__dialog-title">{{ confirmDialog.title }}</h3>
+          </div>
+          <div class="ar__dialog-body">
+            <p class="ar__dialog-text">{{ confirmDialog.message }}</p>
+          </div>
+          <div class="ar__dialog-footer">
+            <button
+              class="ar__dialog-btn ar__dialog-btn--cancel"
+              @click="handleDialogCancel"
+            >
+              取消
+            </button>
+            <button
+              class="ar__dialog-btn"
+              :class="confirmDialog.type === 'danger' ? 'ar__dialog-btn--danger' : 'ar__dialog-btn--primary'"
+              @click="handleDialogConfirm"
+            >
+              确定
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
+
+    <!-- 未回复原因记录（决策日志） -->
+    <DecisionLogDialog :visible="decisionLogVisible" @close="decisionLogVisible = false" />
+  </div>
+</template>
+
+<style scoped>
+.overlay-fade-enter-active,
+.overlay-fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.overlay-fade-enter-from,
+.overlay-fade-leave-to {
+  opacity: 0;
+}
+
+.ar__kw-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  color: var(--text-3);
+  font-size: var(--text-sm);
+}
+
+.ar__kw-placeholder-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  color: var(--text-3);
+}
+
+.ar__kw-placeholder-icon :deep(svg) {
+  width: 22px;
+  height: 22px;
+}
+</style>

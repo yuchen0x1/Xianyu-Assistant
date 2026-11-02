@@ -1,0 +1,63 @@
+name: Release
+
+# 构建并发布到 GitHub Release（唯一发布源）。
+# 需要 GitHub Actions Secrets 配置：
+#   RELEASE_SIGN_PRIVATE_KEY    发布物 Ed25519 签名私钥（PKCS#8 DER Base64）
+#                               scripts/sign-release.sh gen-key 生成，官方渠道必须配置。
+# GITHUB_TOKEN 由 GitHub Actions 自动注入，无需另建 Secret。
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and publish to GitHub Release
+    runs-on: ubuntu-22.04
+    timeout-minutes: 30
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Java 21
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      - name: Set up Node.js
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: '22.12.0'
+          cache: npm
+          cache-dependency-path: vue-code/package-lock.json
+
+      - name: Verify tag format
+        shell: bash
+        run: |
+          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must use the vMAJOR.MINOR.PATCH format"
+            exit 1
+          fi
+
+      - name: Build and publish to GitHub Release
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          GITHUB_REPO: ${{ github.repository }}
+          RELEASE_SIGN_PRIVATE_KEY: ${{ secrets.RELEASE_SIGN_PRIVATE_KEY }}
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          bash scripts/publish-github.sh "$version"

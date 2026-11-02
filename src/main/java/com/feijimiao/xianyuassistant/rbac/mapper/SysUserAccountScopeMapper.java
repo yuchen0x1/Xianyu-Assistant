@@ -1,0 +1,8 @@
+package com.feijimiao.xianyuassistant.rbac.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.feijimiao.xianyuassistant.rbac.entity.SysUserAccountScope;
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface SysUserAccountScopeMapper extends BaseMapper<SysUserAccountScope> {}

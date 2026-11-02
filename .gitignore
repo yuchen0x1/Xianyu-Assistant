@@ -1,0 +1,66 @@
+HELP.md
+target/
+.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
+!**/src/main/**/build/
+!**/src/test/**/build/
+
+### VS Code ###
+.vscode/
+/src/main/resources/pythondemo/xianyu-auto-reply-main/
+
+### Database ###
+/dbdata/
+*.db
+*.db-journal
+/logs/
+/codex-run-*.log
+/nul
+/vue-code/nul
+/demo/
+/.codeartsdoer/
+/.arts/
+/.qoder/
+/.qoder/
+/.arts/
+
+# 前端构建产物：不入库，发布时由 CI/Docker 构建（cd vue-code && npm ci && npm run build）
+/src/main/resources/static/
+
+# local test artifacts
+gui-test-screenshots/
+.mimosa/
+
+# WorkBuddy session data and local dependencies
+/.workbuddy/
+/node_modules/
+/vue-code/node_modules/
+
+# Local environment overrides and secrets
+.env
+.env.*
+!.env.example

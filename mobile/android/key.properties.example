@@ -1,0 +1,10 @@
+# Android 正式签名配置示例。
+# 复制为 mobile/android/key.properties（该文件已被 .gitignore 忽略，禁止入库），
+# 并将 keystore 文件放在仓库外安全位置。CI 环境通过 Secrets 注入同名文件。
+#
+# 缺少该文件时，release 构建会在 Gradle 任务图解析阶段直接失败，
+# 不再回退到 debug 签名，避免产出不可升级上架的假正式包。
+storeFile=/absolute/or/relative/path/to/upload-keystore.jks
+storePassword=CHANGE_ME
+keyAlias=upload
+keyPassword=CHANGE_ME

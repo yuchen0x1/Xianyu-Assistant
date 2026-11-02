@@ -1,0 +1,193 @@
+server:
+  address: ${XIANYU_ASSISTANT_BIND_ADDRESS:127.0.0.1}
+  port: 12400
+
+# 运行探针：供本机、Docker 或未来反向代理确认服务可用。
+# 固定只暴露 health、info 两个端点；metrics/env 等敏感端点不开放。
+info:
+  app:
+    name: ${spring.application.name}
+    version: ${app.version:3.4.10}
+    description: "XianYu Seller Console"
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # 固定开放健康检查与版本信息，不接受环境变量扩面（metrics/prometheus 含业务指标）。
+        include: health,info
+  endpoint:
+    health:
+      show-details: ${XIANYU_ASSISTANT_HEALTH_SHOW_DETAILS:never}
+      probes:
+        enabled: true
+  info:
+    # /actuator/info 无需登录即可访问，禁止 env 贡献器向其输出环境数据
+    env:
+      enabled: false
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+app:
+  version: "@project.version@"
+  # 安全配置：
+  security:
+    # 受信反代地址白名单（逗号分隔）。反向代理部署（nginx 等）时配置为代理所在地址（如 127.0.0.1），
+    # 登录/注册限流将按 X-Real-IP / X-Forwarded-For 最右一跳统计真实客户端 IP；留空则忽略转发头。
+    trusted-proxies: "${XIANYU_ASSISTANT_TRUSTED_PROXIES:}"
+    ai-endpoint:
+      # AI服务端点（ai_base_url / ai_embedding_base_url）额外放行主机，逗号分隔。
+      # 默认只允许解析到公网地址的 https 端点；本地模型（ollama/LM Studio 等）
+      # 需把对应主机加入此处，例如 "127.0.0.1,192.168.1.10,my-ollama.lan"。
+      extra-allowed-hosts: "${XIANYU_ASSISTANT_AI_EXTRA_ALLOWED_HOSTS:}"
+  # 异步消息、日志和订单处理的线程池。可按部署实例的 CPU/负载用环境变量调整，避免扩容时修改代码。
+  async:
+    core-pool-size: ${XIANYU_ASSISTANT_ASYNC_CORE_POOL_SIZE:5}
+    max-pool-size: ${XIANYU_ASSISTANT_ASYNC_MAX_POOL_SIZE:10}
+    queue-capacity: ${XIANYU_ASSISTANT_ASYNC_QUEUE_CAPACITY:100}
+    shutdown-await-seconds: ${XIANYU_ASSISTANT_ASYNC_SHUTDOWN_AWAIT_SECONDS:60}
+  qr-login:
+    # QR轮询包含最长5分钟的阻塞HTTP调用，使用独立有界线程池避免占用通用异步任务线程。
+    executor:
+      core-pool-size: ${XIANYU_ASSISTANT_QR_LOGIN_CORE_POOL_SIZE:2}
+      max-pool-size: ${XIANYU_ASSISTANT_QR_LOGIN_MAX_POOL_SIZE:4}
+      # 默认不排队，满载时立即返回失败，避免二维码在队列中等待至过期。
+      queue-capacity: ${XIANYU_ASSISTANT_QR_LOGIN_QUEUE_CAPACITY:0}
+      shutdown-await-seconds: ${XIANYU_ASSISTANT_QR_LOGIN_SHUTDOWN_AWAIT_SECONDS:5}
+  update-check:
+    # 在线更新检查：默认使用 GitHub Release API。
+    enabled: ${XIANYU_ASSISTANT_UPDATE_CHECK_ENABLED:true}
+    api-url: "${XIANYU_ASSISTANT_UPDATE_API_URL:}"
+    github-repository: "${XIANYU_ASSISTANT_UPDATE_GITHUB_REPOSITORY:yuchen0x1/xianyu-seller-console}"
+    # 兼容旧版 Gitee 配置读取，但新默认不再指向 Gitee。
+    gitee-repository: "${XIANYU_ASSISTANT_UPDATE_GITEE_REPOSITORY:}"
+    # 在线检查结果短缓存，避免每次打开更新提示都访问公网；设为 0 可关闭缓存。
+    cache-seconds: ${XIANYU_ASSISTANT_UPDATE_CACHE_SECONDS:300}
+  self-update:
+    # 在线自更新：从发布通道下载新 JAR → SHA-256 校验 → 原子替换 → 按策略重启。
+    # 仅在以独立 JAR 方式运行时可用（IDE 开发模式自动不可用）。
+    enabled: ${XIANYU_ASSISTANT_SELF_UPDATE_ENABLED:true}
+    # 重启策略：exit=退出进程交由 systemd/Docker/install.sh 循环等进程管理器拉起（默认，要求配置自动重启）；
+    # self=进程自拉起（退出前以相同命令行生成新进程接管服务，适合裸 nohup java -jar 部署；
+    #      不要与外部循环/容器重启策略同时使用，否则会端口竞争）；
+    # manual=只替换新包，人工重启。旧 command 模式（执行自定义 shell）已废弃，按 exit 处理。
+    restart-mode: ${XIANYU_ASSISTANT_SELF_UPDATE_RESTART_MODE:exit}
+    # 可选 JAR 下载镜像前缀，按 {前缀}/{文件名} 拼接；下载内容仍强制 SHA-256 校验。
+    # 注意：下载主机白名单固定为 GitHub（github.com 及官方资产域名），其他域名的镜像会被拒绝并回退官方源。
+    # 留空使用官方发布源。
+    jar-base-url: "${XIANYU_ASSISTANT_UPDATE_JAR_BASE_URL:}"
+    # 发布物 Ed25519 签名校验：auto=官方渠道强制、社区渠道(Fork自建发布源)不强制；
+    # true=总是强制；false=总是关闭。验证公钥内置在程序中，可用环境变量
+    # XIANYU_ASSISTANT_RELEASE_PUBLIC_KEY 覆盖（密钥轮换/社区渠道自管签名）。
+    signature-required: "${XIANYU_ASSISTANT_SELF_UPDATE_SIGNATURE_REQUIRED:auto}"
+  api-delivery-fallback:
+    # 默认禁用断线后的订单轮询。启用时仍须显式列出允许API兜底的账号ID，且商品已开启自动发货。
+    enabled: ${XIANYU_ASSISTANT_API_DELIVERY_FALLBACK_ENABLED:false}
+    account-ids: "${XIANYU_ASSISTANT_API_DELIVERY_FALLBACK_ACCOUNT_IDS:}"
+  image-download:
+    # URL代传仅允许可信HTTPS图片域名，避免服务端被用于访问本机或内网。
+    allowed-hosts: "${XIANYU_ASSISTANT_IMAGE_DOWNLOAD_ALLOWED_HOSTS:alicdn.com,goofish.com}"
+  auto-reply:
+    # 自动回复决策日志保留天数（每天本地时区凌晨 03:30 清理一次超期记录，0=不清理）。
+    decision-retention-days: ${XIANYU_ASSISTANT_DECISION_RETENTION_DAYS:90}
+  backup:
+    # 默认每 12 小时自动导出全部数据到本地；首次启动后 60 秒执行一次。
+    enabled: ${XIANYU_ASSISTANT_BACKUP_ENABLED:true}
+    interval-ms: ${XIANYU_ASSISTANT_BACKUP_INTERVAL_MS:43200000}
+    initial-delay-ms: ${XIANYU_ASSISTANT_BACKUP_INITIAL_DELAY_MS:60000}
+    directory: "${XIANYU_ASSISTANT_BACKUP_DIRECTORY:dbdata/backups}"
+    retention-count: ${XIANYU_ASSISTANT_BACKUP_RETENTION_COUNT:14}
+  webhook:
+    executor:
+      pool-size: ${XIANYU_ASSISTANT_WEBHOOK_POOL_SIZE:2}
+      queue-capacity: ${XIANYU_ASSISTANT_WEBHOOK_QUEUE_CAPACITY:100}
+      shutdown-await-seconds: ${XIANYU_ASSISTANT_WEBHOOK_SHUTDOWN_AWAIT_SECONDS:10}
+
+# AI功能开关（默认开启，API Key从数据库xianyu_sys_setting表读取，未配置时AI功能自动降级）
+ai:
+  enabled: true
+  http:
+    # 同步模型调用必须早于前端45秒超时结束，避免用户重试时叠加仍在运行的请求。
+    connect-timeout-seconds: ${XIANYU_ASSISTANT_AI_CONNECT_TIMEOUT_SECONDS:5}
+    response-timeout-seconds: ${XIANYU_ASSISTANT_AI_RESPONSE_TIMEOUT_SECONDS:35}
+  vectorstore:
+    simple:
+          file-path: dbdata/vectorstore.json
+
+# JWT配置
+jwt:
+  # 生产环境建议设置至少32字节的 XIANYU_ASSISTANT_JWT_SECRET；未设置时会在本地密钥文件中持久化生成的密钥
+  secret: "${XIANYU_ASSISTANT_JWT_SECRET:}"
+  secret-file: "${XIANYU_ASSISTANT_JWT_SECRET_FILE:dbdata/jwt-secret.key}"
+  # 7天（毫秒）。活跃会话由前端定期调用 /api/login/refresh 轮换续期，非活跃会话到期后需重新登录
+  expiration: 604800000
+
+
+spring:
+  application:
+    name: xianyu-seller-console
+  task:
+    scheduling:
+      # 保活巡检不能被Cookie浏览器刷新等长任务长期阻塞。
+      pool:
+        size: ${XIANYU_ASSISTANT_SCHEDULING_POOL_SIZE:4}
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+  datasource:
+    url: jdbc:sqlite:dbdata/xianyu_assistant.db?foreign_keys=on&busy_timeout=5000&journal_mode=WAL
+  # AI配置说明：
+  # - ai_api_key、ai_base_url、ai_model 配置在数据库 xianyu_sys_setting 表中
+  # - 通过 DynamicAIChatClientManager 动态读取，支持热更新无需重启
+  # - 默认值：base_url=https://dashscope.aliyuncs.com/compatible-mode, model=deepseek-v3
+
+# SimpleVectorStore配置（本地文件持久化）
+
+# MyBatis配置
+mybatis-plus:
+  type-handlers-package: com.feijimiao.xianyuassistant.config
+  configuration:
+    default-enum-type-handler: org.apache.ibatis.type.EnumOrdinalTypeHandler
+
+# WebSocket配置（参考Python代码）
+websocket:
+  # 心跳间隔（秒）
+  heartbeat-interval: 15
+  # 心跳超时（秒）
+  heartbeat-timeout: 5
+  # Token刷新间隔（秒，默认1小时）
+  token-refresh-interval: 3600
+  # Token重试间隔（秒，默认5分钟）
+  token-retry-interval: 300
+  # 凭证刷新间隔（分钟），用于Cookie保活和_m_h5_tk兜底刷新
+  credential-refresh-min-minutes: 15
+  credential-refresh-max-minutes: 20
+  # 消息过期时间（毫秒，默认5分钟）
+  message-expire-time: 300000
+  # 人工接管超时（秒，默认1小时）
+  manual-mode-timeout: 3600
+  # 人工接管切换关键词
+  toggle-keywords: 。
+  # 模拟人工输入延迟
+  simulate-human-typing: false
+  # 连接重连延迟（秒）
+  reconnect-delay: 5
+  # 最大重连次数（无限重连 + 指数退避，连续失败5次触发邮件通知；此字段保留兼容）
+  max-reconnect-attempts: 10
+  # 消息发送重试次数
+  message-retry-attempts: 3
+  # 消息发送重试延迟（毫秒）
+  message-retry-delay: 1000
+  # 是否额外记录解密消息的脱敏长度信息（不会记录消息正文）
+  print-raw-message: ${XIANYU_ASSISTANT_PRINT_RAW_MESSAGE:false}
+  # 调度线程池：多账号时扩容可避免心跳发送/超时检测排队，减少误判掉线与恢复延迟
+  heartbeat-pool-size: ${XIANYU_ASSISTANT_HEARTBEAT_POOL_SIZE:4}
+  token-refresh-pool-size: ${XIANYU_ASSISTANT_TOKEN_REFRESH_POOL_SIZE:2}
+  reconnect-pool-size: ${XIANYU_ASSISTANT_RECONNECT_POOL_SIZE:4}
+  # Cookie保活并发线程数：多账号并行执行 hasLogin 保活，单账号慢请求不拖累全部
+  keep-alive-pool-size: ${XIANYU_ASSISTANT_KEEP_ALIVE_POOL_SIZE:4}
+  # 连接保活巡检（启动恢复 + 运行期 watchdog）
+  connection-watchdog-interval-ms: ${XIANYU_ASSISTANT_CONNECTION_WATCHDOG_INTERVAL_MS:15000}
+  connection-watchdog-initial-delay-ms: ${XIANYU_ASSISTANT_CONNECTION_WATCHDOG_INITIAL_DELAY_MS:15000}
