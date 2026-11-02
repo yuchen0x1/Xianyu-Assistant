@@ -235,12 +235,12 @@ if (!/^v[0-9]+\.[0-9]+\.[0-9]+$/.test(tag || "")) process.exit(2);
 const assets = Array.isArray(d.assets) ? d.assets : [];
 const apiPrefix = `https://api.github.com/repos/${repo}/releases/assets/`;
 const browserHost = /^https:\/\/github\.com\/[^\s]+$/;
-process.stdout.write(`${tag}\\n`);
+process.stdout.write(`${tag}\n`);
 for (const a of assets) {
   if (!a || typeof a.name !== "string" || !a.name || typeof a.url !== "string" || !/^https:\/\/api\.github\.com\/repos\/[^\/]+\/[^\/]+\/releases\/assets\/[0-9]+$/.test(a.url) || !a.url.startsWith(apiPrefix) || typeof a.browser_download_url !== "string" || !browserHost.test(a.browser_download_url)) continue;
   const name = new URL(a.browser_download_url).pathname.split("/").pop();
   if (name !== a.name || /[\\t\\r\\n]/.test(a.name)) process.exit(3);
-  process.stdout.write(`${a.name}\\t${a.url}\\n`);
+  process.stdout.write(`${a.name}\t${a.url}\n`);
 }
 ' "$GITHUB_REPO" <<< "$RELEASE_INFO"; then
         echo -e "${RED}Release 响应格式无效，已拒绝下载${NC}" >&2
