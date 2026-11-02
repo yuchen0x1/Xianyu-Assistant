@@ -145,7 +145,7 @@ install_jdk() {
 # 只允许 HTTPS 的 GitHub API/资产主机；Authorization 仅发往 api.github.com，
 # 所有跨主机重定向都逐跳校验，从根源上避免令牌泄露到 release-assets 等主机。
 API_ASSET_REGEX="^https://api[.]github[.]com/repos/${GITHUB_REPO//./[.]}/releases/assets/[0-9]+$"
-TRUSTED_ASSET_REGEX='^https://(release-assets[.]githubusercontent[.]com|objects[.]githubusercontent[.]com|github[.]com)(/[^[:space:]]*)?$'
+TRUSTED_ASSET_REGEX='^https://(release-assets[.]githubusercontent[.]com|objects[.]githubusercontent[.]com|github[.]com)/[^?#[:space:]]*$'
 
 is_trusted_github_url() {
     local URL="$1"
