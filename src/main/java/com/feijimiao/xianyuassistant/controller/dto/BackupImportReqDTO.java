@@ -1,0 +1,16 @@
+package com.feijimiao.xianyuassistant.controller.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
+import lombok.Data;
+
+import java.util.List;
+
+@Data
+public class BackupImportReqDTO {
+    @NotBlank(message = "备份数据不能为空")
+    private String jsonData;
+
+    @NotEmpty(message = "导入模块不能为空")
+    private List<String> modules;
+}

@@ -1,0 +1,195 @@
+.header-selectors {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.header-select-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 1;
+  min-width: 0;
+}
+
+.header-select {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 32px;
+  padding: 0 24px 0 8px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-1);
+  background: var(--glass-bg-soft);
+  border: 1px solid var(--glass-border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  outline: none;
+  width: 100%;
+}
+
+.header-select:hover {
+  border-color: var(--glass-border-strong);
+}
+
+.header-select:focus {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px var(--ring-brand);
+}
+
+.header-select-icon {
+  position: absolute;
+  right: 6px;
+  pointer-events: none;
+  color: var(--text-2);
+  display: flex;
+  width: 12px;
+  height: 12px;
+}
+
+.header-refresh-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-soft);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.header-refresh-btn:hover:not(:disabled) {
+  border-color: var(--glass-border-strong);
+}
+
+.header-refresh-btn:active:not(:disabled) {
+  background: var(--bg-hover);
+}
+
+.header-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.header-refresh-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-1);
+  transition: transform 0.3s ease;
+}
+
+.header-refresh-btn--loading .header-refresh-icon {
+  animation: header-refresh-spin 0.8s linear infinite;
+}
+
+@keyframes header-refresh-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.header-toggle-btn {
+  width: 44px;
+  height: 26px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.header-toggle-track {
+  width: 44px;
+  height: 26px;
+  border-radius: 13px;
+  background: rgba(0, 0, 0, 0.12);
+  position: relative;
+  display: block;
+  transition: background 0.2s ease;
+}
+
+.header-toggle-btn--on .header-toggle-track {
+  background: #34c759;
+}
+
+.header-toggle-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  transition: transform 0.2s ease;
+  display: block;
+}
+
+.header-toggle-btn--on .header-toggle-thumb {
+  transform: translateX(18px);
+}
+
+.header-filter-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg-soft);
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.header-filter-btn:hover {
+  border-color: var(--glass-border-strong);
+}
+
+.header-filter-btn:active {
+  background: var(--bg-hover);
+}
+
+.header-filter-icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-1);
+}
+
+/* Header controls are shared by several legacy views; keep them theme-aware. */
+[data-theme="dark"] .header-select,
+[data-theme="dark"] .header-refresh-btn,
+[data-theme="dark"] .header-filter-btn {
+  color: var(--text-1);
+  background: var(--bg-elevated);
+  border-color: var(--border-1);
+}
+
+[data-theme="dark"] .header-select:hover,
+[data-theme="dark"] .header-refresh-btn:hover:not(:disabled),
+[data-theme="dark"] .header-filter-btn:hover {
+  border-color: var(--border-2);
+  background: var(--bg-hover);
+}
+
+[data-theme="dark"] .header-select-icon,
+[data-theme="dark"] .header-refresh-icon,
+[data-theme="dark"] .header-filter-icon {
+  color: var(--text-2);
+}
+
+[data-theme="dark"] .header-toggle-track {
+  background: color-mix(in srgb, var(--text-3) 45%, transparent);
+}

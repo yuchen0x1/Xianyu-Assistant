@@ -1,0 +1,11 @@
+-- ============================================================
+-- V3_5：v3.2.0 性能索引评审（P1.1）
+-- 对应版本：v3.2.0（应用版本）→ schema 版本 V3_5
+-- 幂等：CREATE INDEX IF NOT EXISTS，可安全重复执行
+-- ============================================================
+-- 说明：评审结论 —— 以下三个索引已在 sql/schema.sql 中定义，
+--       DatabaseInitListener 每次启动会检查并补齐缺失索引，故此处不再重复创建：
+--       1. idx_chat_message_s_id           ON xianyu_chat_message(s_id)               （schema.sql 已有）
+--       2. idx_operation_log_create_time   ON xianyu_operation_log(create_time)       （schema.sql 已有）
+--       3. idx_auto_reply_record_create_time ON xianyu_goods_auto_reply_record(create_time)（schema.sql 已有）
+-- 本迁移仅作版本记录，避免历史部署环境漏建索引时缺版本标记。

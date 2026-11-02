@@ -1,0 +1,131 @@
+/* =========================================================
+   Accounts — Design System (tokenized)
+   ========================================================= */
+
+.accounts {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
+  background: transparent;
+  overflow: hidden;
+}
+
+.accounts__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.accounts__title-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.accounts__title {
+  margin: 0;
+  color: var(--text-1);
+  font-size: 22px;
+  font-weight: 780;
+  letter-spacing: 0;
+  line-height: 1.2;
+}
+
+.accounts__subtitle {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.accounts__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.accounts__content {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur-sm);
+  backdrop-filter: var(--glass-blur-sm);
+  overflow: hidden;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .accounts__content {
+    background: var(--surface-solid);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+}
+
+.accounts__table-wrap {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: auto;
+}
+
+.accounts__footer {
+  display: none;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.accounts .desktop-only { display: flex; }
+.accounts .mobile-only { display: none; }
+.accounts .mobile-hidden { display: block; }
+
+@media (max-width: 767.98px) {
+  .accounts__header {
+    flex-direction: column;
+  }
+
+  .accounts__actions {
+    width: 100%;
+  }
+
+  .accounts__title {
+    font-size: 20px;
+  }
+
+  .accounts .desktop-only { display: none !important; }
+  .accounts .mobile-only { display: flex; }
+  .accounts .mobile-hidden { display: none !important; }
+
+  .accounts__footer {
+    display: flex;
+  }
+
+  .accounts__footer .ui-btn {
+    flex: 1 1 0;
+  }
+}
+
+.accounts :deep(.ui-page__footer) {
+  display: none;
+}
+
+@media (max-width: 767.98px) {
+  .accounts :deep(.ui-page__footer) {
+    display: flex;
+    gap: 8px;
+  }
+
+  .accounts :deep(.ui-page__footer .ui-btn) {
+    flex: 1 1 0;
+  }
+}
