@@ -17,7 +17,7 @@ COPY vue-code/ ./
 RUN npm run build:spring
 
 # 阶段2: 构建后端 JAR
-FROM eclipse-temurin:21-jdk-alpine AS backend-build
+FROM eclipse-temurin:25-jdk-alpine AS backend-build
 
 WORKDIR /app
 
@@ -39,7 +39,7 @@ COPY src/ src/
 RUN ./mvnw clean package -DskipTests
 
 # 阶段3: 提供Java 21运行时
-FROM eclipse-temurin:21-jre-jammy AS java-runtime
+FROM eclipse-temurin:25-jre-jammy AS java-runtime
 
 # 阶段4: 运行时镜像
 # 必须与 pom.xml 中的 Playwright Java 版本严格匹配，镜像内含对应 Chromium 及系统依赖。
