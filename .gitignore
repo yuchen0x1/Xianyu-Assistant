@@ -64,3 +64,6 @@ gui-test-screenshots/
 .env
 .env.*
 !.env.example
+
+# ZCode session workspace config
+/.zcode/
