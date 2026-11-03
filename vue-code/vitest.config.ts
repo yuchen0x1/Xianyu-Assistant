@@ -12,6 +12,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['tests/**/*.test.ts'],
+    // 各测试文件会声明不同的 vi.mock；关闭文件级并行，避免 mock 注册
+    // 在共享模块缓存中互相覆盖，导致 runner/config 为空等非确定性错误。
+    fileParallelism: false,
     restoreMocks: true,
   },
 })
