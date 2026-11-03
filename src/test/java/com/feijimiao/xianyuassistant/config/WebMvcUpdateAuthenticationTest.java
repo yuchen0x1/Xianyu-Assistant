@@ -1,8 +1,10 @@
 package com.feijimiao.xianyuassistant.config;
 
 import com.feijimiao.xianyuassistant.controller.SystemController;
+import com.feijimiao.xianyuassistant.controller.dto.VersionInfoRespDTO;
 import com.feijimiao.xianyuassistant.interceptor.AuthInterceptor;
 import com.feijimiao.xianyuassistant.service.AuthService;
+import com.feijimiao.xianyuassistant.service.update.UpdateCheckService;
 import com.feijimiao.xianyuassistant.util.JwtUtil;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,9 @@ class WebMvcUpdateAuthenticationTest {
     @MockitoBean
     private com.feijimiao.xianyuassistant.service.update.SelfUpdateService selfUpdateService;
 
+    @MockitoBean
+    private UpdateCheckService updateCheckService;
+
     @Test
     void anonymousUpdateCheckIsRejected() throws Exception {
         mockMvc.perform(get("/api/system/checkUpdate"))
@@ -54,6 +59,13 @@ class WebMvcUpdateAuthenticationTest {
         when(authService.isTokenValid("valid-token")).thenReturn(true);
         when(jwtUtil.getUserIdFromToken("valid-token")).thenReturn(7L);
         when(jwtUtil.getUsernameFromToken("valid-token")).thenReturn("operator");
+
+        VersionInfoRespDTO disabled = new VersionInfoRespDTO();
+        disabled.setCurrentVersion("2.1.8");
+        disabled.setLatestVersion("2.1.8");
+        disabled.setHasUpdate(false);
+        disabled.setCheckStatus("disabled");
+        when(updateCheckService.checkUpdate()).thenReturn(disabled);
 
         mockMvc.perform(get("/api/system/checkUpdate")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer valid-token"))

@@ -168,6 +168,11 @@ cd vue-code && npm run test
 - `XIANYU_ASSISTANT_BACKUP_ENABLED` / `XIANYU_ASSISTANT_BACKUP_INTERVAL_MS` / `XIANYU_ASSISTANT_BACKUP_DIRECTORY` / `XIANYU_ASSISTANT_BACKUP_RETENTION_COUNT`（默认 `true` / `43200000` / `dbdata/backups` / `14`）：自动备份开关、间隔、目录与保留份数
 - `XIANYU_ASSISTANT_UPDATE_CHECK_ENABLED`（默认 `true`）：在线更新检查（读取 GitHub Release）
 - `XIANYU_ASSISTANT_UPDATE_GITHUB_REPOSITORY`（默认 `yuchen0x1/Xianyu-Assistant`）：GitHub 更新源仓库（当前更新检查使用公开 Release API，不配置仓库令牌）
+- `XIANYU_ASSISTANT_SELF_UPDATE_ENABLED`（默认 `true`）：应用内在线自更新（下载新 JAR → SHA-256 + Ed25519 验签 → 原子替换），仅在以独立 JAR 方式运行时可用
+- `XIANYU_ASSISTANT_SELF_UPDATE_RESTART_MODE`（默认 `exit`）：重启策略，`exit`=退出进程交由 systemd `Restart=always`/守护循环拉起；`self`=进程退出前自拉起新进程接管（适合裸 `nohup java -jar`，勿与外部守护同时使用）；`manual`=只替换新包，人工重启
+- `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED`（默认 `true`）：定时自动更新——发现新版本自动下载、校验、替换并按上述重启策略重启（`manual` 模式下只替换不自动重启）
+- `XIANYU_ASSISTANT_AUTO_UPDATE_CHECK_INTERVAL_MS`（默认 `21600000`，6 小时）：自动更新检查间隔
+- `XIANYU_ASSISTANT_AUTO_UPDATE_INITIAL_DELAY_MS`（默认 `300000`，5 分钟）：启动后首次自动检查延迟
 - `XIANYU_ASSISTANT_API_DELIVERY_FALLBACK_ENABLED` / `XIANYU_ASSISTANT_API_DELIVERY_FALLBACK_ACCOUNT_IDS`（默认 `false` / 空）：API 兜底发货开关与允许的账号 ID 白名单
 - `XIANYU_ASSISTANT_IMAGE_DOWNLOAD_ALLOWED_HOSTS`（默认 `alicdn.com,goofish.com`）：URL 代传图片仅允许的可信域名（防 SSRF）
 - `XIANYU_ASSISTANT_TOKEN_REFRESH_POOL_SIZE`（默认 `2`）：Cookie 保活线程池大小
