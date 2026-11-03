@@ -1,3 +1,10 @@
+# 未发布（Unreleased）
+
+- **功能：服务器无人值守自动更新**：新增 `SelfUpdateAutoScheduler` 定时调度器，默认每 6 小时（启动 5 分钟后首检）检查官方 GitHub Release，发现新版本自动执行 下载 → SHA-256 + Ed25519 验签 → 原子替换（失败回滚）→ 按 `restart-mode` 重启；`exit` 模式（默认）配合 systemd `Restart=always` 即可实现"自动更新 + 更新后自动重启"闭环。可通过 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false` 关闭，检查间隔/首检延迟分别由 `XIANYU_ASSISTANT_AUTO_UPDATE_CHECK_INTERVAL_MS` / `XIANYU_ASSISTANT_AUTO_UPDATE_INITIAL_DELAY_MS` 控制。
+- **重构：更新检查逻辑抽取为 `UpdateCheckService`**：原 `SystemController` 内的在线更新检查（GitHub/Gitee 源解析、主机白名单、5 分钟缓存、版本比较）整体迁移为独立服务，`/api/system/checkUpdate` 端点行为不变，供控制器与自动更新调度器共用。
+- **文档**：`docs/production-deployment.md` 补充 systemd 单元自动重启要求（`Restart=always`）与应用内自动更新说明；`README` 配置参考补齐 `XIANYU_ASSISTANT_SELF_UPDATE_*` 与 `XIANYU_ASSISTANT_AUTO_UPDATE_*` 环境变量。
+- **验证**：新增 `SelfUpdateAutoSchedulerTest`（13 项：开关/互斥/失败/超时/manual 模式等分支）与 `UpdateCheckServiceTest`（自原 controller 测试迁移）；`WebMvcUpdateAuthenticationTest` 适配服务注入，鉴权行为断言不变。
+
 # 发布源迁移说明（2026-11-03）
 
 - 官方仓库与 Release 已迁移到 GitHub：`yuchen0x1/Xianyu-Assistant`。

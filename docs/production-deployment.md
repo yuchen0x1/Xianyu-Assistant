@@ -24,7 +24,7 @@
 
 ## 自动部署
 
-推送到 `codex/stability-upgrade` 后，`Deploy production` 工作流会依次执行：
+`Deploy production` 工作流（`.github/workflows/deploy-production.yml`）为手动触发（`workflow_dispatch`），在 GitHub Actions 页面选择运行后依次执行：
 
 1. `xianyu-production` Runner 检出触发提交。
 2. 前端安装锁定依赖，执行测试、类型检查和生产构建。
@@ -36,6 +36,27 @@
 Runner 以独立的 `github-runner` 系统用户运行。它只能通过 sudo 调用固定部署脚本；脚本校验版本号、提交 SHA、JAR 路径与文件所有者，不能执行任意 root 命令。Maven 和 npm 缓存保留在 Runner 用户目录，首次构建后会复用缓存。
 
 原有 `XIANYU_DEPLOY_*` Secrets 不再参与自动部署，可以保留作应急切换记录；工作流本身不读取这些 Secrets。
+
+## systemd 服务要求（自动重启）
+
+应用内自更新的重启策略 `exit`（默认）依赖进程管理器自动拉起，`xianyu-assistant.service` 必须配置自动重启：
+
+```ini
+[Service]
+Type=simple
+ExecStart=/usr/bin/java --enable-native-access=ALL-UNNAMED -jar /opt/xianyu-assistant/app.jar
+WorkingDirectory=/opt/xianyu-assistant
+Restart=always
+RestartSec=5
+```
+
+关键点：`Restart=always` + `RestartSec=5`。应用更新替换 JAR 后主动退出，systemd 5 秒内拉起新版本，完成"更新 → 重启"闭环。修改 unit 后执行 `systemctl daemon-reload && systemctl restart xianyu-assistant`。
+
+## 应用内定时自动更新
+
+除 CI 部署外，应用自身会定时检查官方 GitHub Release（默认每 6 小时，启动 5 分钟后首检）：发现新版本即自动下载 → SHA-256 + Ed25519 验签 → 原子替换（失败自动回滚）→ 按 `restart-mode` 重启，实现无人值守升级。相关开关见 `application.yaml` 的 `app.self-update.auto-update` 与环境变量 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED`（默认开启）。
+
+与 CI 部署并存时的互斥：两条链路共用 `SelfUpdateService` 状态机，同一时间只允许一个更新流程；一方进行中时另一方自动跳过，先完成者生效。若希望服务器完全跟随 Release 标签由 CI 部署，可设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false` 关闭应用内自动更新。
 
 ## 人工复核
 

@@ -1,45 +1,44 @@
-package com.feijimiao.xianyuassistant.controller;
+package com.feijimiao.xianyuassistant.service.update;
 
-import com.feijimiao.xianyuassistant.common.ResultObject;
 import com.feijimiao.xianyuassistant.controller.dto.VersionInfoRespDTO;
 import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.test.util.ReflectionTestUtils;
-import com.sun.net.httpserver.HttpServer;
 
-import java.net.InetSocketAddress;
-import java.time.Duration;
 import java.io.IOException;
+import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
-class SystemControllerUpdatePolicyTest {
+class UpdateCheckServiceTest {
 
     @Test
     void disabledUpdateCheckReturnsLocalVersionWithoutContactingConfiguredUrl() {
-        SystemController controller = new SystemController();
-        ReflectionTestUtils.setField(controller, "currentVersion", "2.1.2");
-        ReflectionTestUtils.setField(controller, "updateCheckEnabled", false);
-        ReflectionTestUtils.setField(controller, "updateApiUrl", "http://10.255.255.1/never-contact");
+        UpdateCheckService service = new UpdateCheckService();
+        ReflectionTestUtils.setField(service, "currentVersion", "2.1.2");
+        ReflectionTestUtils.setField(service, "updateCheckEnabled", false);
+        ReflectionTestUtils.setField(service, "updateApiUrl", "http://10.255.255.1/never-contact");
 
-        ResultObject<VersionInfoRespDTO> result = assertTimeoutPreemptively(
-                Duration.ofMillis(500), controller::checkUpdate);
+        VersionInfoRespDTO result = assertTimeoutPreemptively(
+                Duration.ofMillis(500), service::checkUpdate);
 
-        assertThat(result.getCode()).isEqualTo(200);
-        assertThat(result.getData().getCurrentVersion()).isEqualTo("2.1.2");
-        assertThat(result.getData().getLatestVersion()).isEqualTo("2.1.2");
-        assertThat(result.getData().getHasUpdate()).isFalse();
+        assertThat(result.getCurrentVersion()).isEqualTo("2.1.2");
+        assertThat(result.getLatestVersion()).isEqualTo("2.1.2");
+        assertThat(result.getHasUpdate()).isFalse();
     }
 
     @Test
@@ -54,18 +53,17 @@ class SystemControllerUpdatePolicyTest {
         });
         server.start();
         try {
-            SystemController controller = new SystemController();
-            ReflectionTestUtils.setField(controller, "currentVersion", "2.1.8");
-            ReflectionTestUtils.setField(controller, "updateCheckEnabled", true);
-            ReflectionTestUtils.setField(controller, "updateApiUrl", "http://127.0.0.1:" + server.getAddress().getPort() + "/release");
+            UpdateCheckService service = new UpdateCheckService();
+            ReflectionTestUtils.setField(service, "currentVersion", "2.1.8");
+            ReflectionTestUtils.setField(service, "updateCheckEnabled", true);
+            ReflectionTestUtils.setField(service, "updateApiUrl", "http://127.0.0.1:" + server.getAddress().getPort() + "/release");
 
-            ResultObject<VersionInfoRespDTO> result = controller.checkUpdate();
+            VersionInfoRespDTO result = service.checkUpdate();
 
-            assertThat(result.getCode()).isEqualTo(200);
-            assertThat(result.getData().getLatestVersion()).isEqualTo("2.2.0");
-            assertThat(result.getData().getHasUpdate()).isTrue();
-            assertThat(result.getData().getCheckStatus()).isEqualTo("available");
-            assertThat(result.getData().getChannel()).isEqualTo("github");
+            assertThat(result.getLatestVersion()).isEqualTo("2.2.0");
+            assertThat(result.getHasUpdate()).isTrue();
+            assertThat(result.getCheckStatus()).isEqualTo("available");
+            assertThat(result.getChannel()).isEqualTo("github");
         } finally {
             server.stop(0);
         }
@@ -73,10 +71,10 @@ class SystemControllerUpdatePolicyTest {
 
     @Test
     void githubRepositorySettingBuildsGithubReleaseApiUrl() {
-        SystemController controller = new SystemController();
-        ReflectionTestUtils.setField(controller, "updateGithubRepository", "https://github.com/example/private-app");
+        UpdateCheckService service = new UpdateCheckService();
+        ReflectionTestUtils.setField(service, "updateGithubRepository", "https://github.com/example/private-app");
 
-        String resolved = ReflectionTestUtils.invokeMethod(controller, "resolveUpdateApiUrl");
+        String resolved = ReflectionTestUtils.invokeMethod(service, "resolveUpdateApiUrl");
 
         assertThat(resolved).isEqualTo("https://api.github.com/repos/example/private-app/releases/latest");
     }
@@ -90,15 +88,15 @@ class SystemControllerUpdatePolicyTest {
                     "{\"tag_name\":\"v2.2.0\",\"body\":\"release\",\"published_at\":\"2026-07-18T00:00:00Z\",\"html_url\":\"https://gitee.com/example/app/releases/tag/v2.2.0\"}");
         });
         try {
-            SystemController controller = configuredController(server, 300);
+            UpdateCheckService service = configuredService(server, 300);
 
-            ResultObject<VersionInfoRespDTO> first = controller.checkUpdate();
-            first.getData().setLatestVersion("tampered-by-caller");
-            ResultObject<VersionInfoRespDTO> second = controller.checkUpdate();
+            VersionInfoRespDTO first = service.checkUpdate();
+            first.setLatestVersion("tampered-by-caller");
+            VersionInfoRespDTO second = service.checkUpdate();
 
             assertThat(requests).hasValue(1);
-            assertThat(second.getData().getLatestVersion()).isEqualTo("2.2.0");
-            assertThat(second.getData()).isNotSameAs(first.getData());
+            assertThat(second.getLatestVersion()).isEqualTo("2.2.0");
+            assertThat(second).isNotSameAs(first);
         } finally {
             server.stop(0);
         }
@@ -120,19 +118,19 @@ class SystemControllerUpdatePolicyTest {
         });
         ExecutorService executor = Executors.newFixedThreadPool(6);
         try {
-            SystemController controller = configuredController(server, 300);
+            UpdateCheckService service = configuredService(server, 300);
             CountDownLatch start = new CountDownLatch(1);
-            List<Future<ResultObject<VersionInfoRespDTO>>> futures = new ArrayList<>();
+            List<Future<VersionInfoRespDTO>> futures = new ArrayList<>();
             for (int i = 0; i < 6; i++) {
                 futures.add(executor.submit(() -> {
                     start.await();
-                    return controller.checkUpdate();
+                    return service.checkUpdate();
                 }));
             }
             start.countDown();
 
-            for (Future<ResultObject<VersionInfoRespDTO>> future : futures) {
-                assertThat(future.get(5, java.util.concurrent.TimeUnit.SECONDS).getData().getLatestVersion())
+            for (Future<VersionInfoRespDTO> future : futures) {
+                assertThat(future.get(5, TimeUnit.SECONDS).getLatestVersion())
                         .isEqualTo("2.2.0");
             }
             assertThat(requests).hasValue(1);
@@ -150,14 +148,14 @@ class SystemControllerUpdatePolicyTest {
             sendJson(exchange, 503, "{}");
         });
         try {
-            SystemController controller = configuredController(server, 300);
+            UpdateCheckService service = configuredService(server, 300);
 
-            ResultObject<VersionInfoRespDTO> first = controller.checkUpdate();
-            ResultObject<VersionInfoRespDTO> second = controller.checkUpdate();
+            VersionInfoRespDTO first = service.checkUpdate();
+            VersionInfoRespDTO second = service.checkUpdate();
 
             assertThat(requests).hasValue(1);
-            assertThat(first.getData().getCheckStatus()).isEqualTo("unavailable");
-            assertThat(second.getData().getCheckStatus()).isEqualTo("unavailable");
+            assertThat(first.getCheckStatus()).isEqualTo("unavailable");
+            assertThat(second.getCheckStatus()).isEqualTo("unavailable");
         } finally {
             server.stop(0);
         }
@@ -189,11 +187,11 @@ class SystemControllerUpdatePolicyTest {
     void invalidJsonResponseExplainsResponseFormatProblem() throws Exception {
         HttpServer server = startServer(exchange -> sendJson(exchange, 200, "不是 JSON"));
         try {
-            ResultObject<VersionInfoRespDTO> result = configuredController(server, 0).checkUpdate();
+            VersionInfoRespDTO result = configuredService(server, 0).checkUpdate();
 
-            assertThat(result.getData().getCheckStatus()).isEqualTo("unavailable");
-            assertThat(result.getData().getMessage()).isEqualTo("更新源响应格式无效，请稍后重试");
-            assertThat(result.getData().getMessage()).doesNotContain("不是 JSON");
+            assertThat(result.getCheckStatus()).isEqualTo("unavailable");
+            assertThat(result.getMessage()).isEqualTo("更新源响应格式无效，请稍后重试");
+            assertThat(result.getMessage()).doesNotContain("不是 JSON");
         } finally {
             server.stop(0);
         }
@@ -205,39 +203,39 @@ class SystemControllerUpdatePolicyTest {
         int port = server.getAddress().getPort();
         server.stop(0);
 
-        SystemController controller = new SystemController();
-        ReflectionTestUtils.setField(controller, "currentVersion", "2.1.8");
-        ReflectionTestUtils.setField(controller, "updateCheckEnabled", true);
-        ReflectionTestUtils.setField(controller, "updateApiUrl", "http://127.0.0.1:" + port + "/release");
-        ReflectionTestUtils.setField(controller, "updateCheckCacheSeconds", 0L);
+        UpdateCheckService service = new UpdateCheckService();
+        ReflectionTestUtils.setField(service, "currentVersion", "2.1.8");
+        ReflectionTestUtils.setField(service, "updateCheckEnabled", true);
+        ReflectionTestUtils.setField(service, "updateApiUrl", "http://127.0.0.1:" + port + "/release");
+        ReflectionTestUtils.setField(service, "updateCheckCacheSeconds", 0L);
 
-        ResultObject<VersionInfoRespDTO> result = controller.checkUpdate();
+        VersionInfoRespDTO result = service.checkUpdate();
 
-        assertThat(result.getData().getCheckStatus()).isEqualTo("unavailable");
-        assertThat(result.getData().getMessage()).isEqualTo("无法连接 GitHub 更新源，请检查网络后重试");
+        assertThat(result.getCheckStatus()).isEqualTo("unavailable");
+        assertThat(result.getMessage()).isEqualTo("无法连接 GitHub 更新源，请检查网络后重试");
     }
 
     private void assertStatusMessage(int status, String expectedMessage) throws Exception {
         HttpServer server = startServer(exchange -> sendJson(exchange, status, "{\"message\":\"内部详情不应返回\"}"));
         try {
-            ResultObject<VersionInfoRespDTO> result = configuredController(server, 0).checkUpdate();
+            VersionInfoRespDTO result = configuredService(server, 0).checkUpdate();
 
-            assertThat(result.getData().getCheckStatus()).isEqualTo("unavailable");
-            assertThat(result.getData().getMessage()).isEqualTo(expectedMessage);
-            assertThat(result.getData().getMessage()).doesNotContain("内部详情");
+            assertThat(result.getCheckStatus()).isEqualTo("unavailable");
+            assertThat(result.getMessage()).isEqualTo(expectedMessage);
+            assertThat(result.getMessage()).doesNotContain("内部详情");
         } finally {
             server.stop(0);
         }
     }
 
-    private SystemController configuredController(HttpServer server, long cacheSeconds) {
-        SystemController controller = new SystemController();
-        ReflectionTestUtils.setField(controller, "currentVersion", "2.1.8");
-        ReflectionTestUtils.setField(controller, "updateCheckEnabled", true);
-        ReflectionTestUtils.setField(controller, "updateApiUrl",
+    private UpdateCheckService configuredService(HttpServer server, long cacheSeconds) {
+        UpdateCheckService service = new UpdateCheckService();
+        ReflectionTestUtils.setField(service, "currentVersion", "2.1.8");
+        ReflectionTestUtils.setField(service, "updateCheckEnabled", true);
+        ReflectionTestUtils.setField(service, "updateApiUrl",
                 "http://127.0.0.1:" + server.getAddress().getPort() + "/release");
-        ReflectionTestUtils.setField(controller, "updateCheckCacheSeconds", cacheSeconds);
-        return controller;
+        ReflectionTestUtils.setField(service, "updateCheckCacheSeconds", cacheSeconds);
+        return service;
     }
 
     private HttpServer startServer(com.sun.net.httpserver.HttpHandler handler) throws IOException {
@@ -256,4 +254,3 @@ class SystemControllerUpdatePolicyTest {
         }
     }
 }
-
