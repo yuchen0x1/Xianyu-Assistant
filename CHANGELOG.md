@@ -1,9 +1,18 @@
 # 发布源迁移说明（2026-11-03）
 
-- 官方仓库与 Release 已迁移到 GitHub：`yuchen0x1/xianyu-seller-console`。
+- 官方仓库与 Release 已迁移到 GitHub：`yuchen0x1/Xianyu-Assistant`。
 - `install.sh` 默认读取 GitHub Release API；安装仍强制校验 JAR 的 SHA-256，并在支持 Ed25519 的 OpenSSL 上校验 `.jar.sig`。
 - `.github/workflows/release.yml` 使用 GitHub Actions 内置 `GITHUB_TOKEN` 创建/更新 Release 并上传资产；`scripts/publish-github.sh` 是正式发布入口，旧 `scripts/publish-gitee.sh` 保留为兼容包装脚本。
 - GitHub 默认发布整包 JAR，不再为 Gitee 的 100MB 单附件限制自动分卷；设置 `SPLIT_JAR=1` 可兼容历史分卷资产。
+
+# Version 3.5.16
+
+> Release: 2026-11-03
+
+- **功能：任务调度增加租约围栏（防重复/脑裂执行）**：新增 V3_26 Flyway 迁移与 `JobDefinition` 租约字段，`JobEngine` 在运行任务前获取并定期续期租约，避免多实例或异常恢复下同一任务被重复执行或并发脑裂。
+- **发布：轮换 Ed25519 发布签名密钥**：原签名私钥已丢失（不在仓库亦不在 CI Secret），导致此前签名发布无法完成。本次生成全新 Ed25519 密钥对，新验证公钥已内置进客户端（`SelfUpdateService`）。**已在旧版本上的用户需重新下载 v3.5.16 安装包**以完成密钥信任轮换；自更新通道此后恢复强制验签。
+- **构建：三处版本坐标对齐到 3.5.16**（`pom.xml` 项目版本、前端 `vue-code/package.json`、移动端 `mobile/pubspec.yaml`），消除发布脚本的版本一致性校验失败。
+- **验证**：后端单元测试（含租约围栏与 V3_26 schema 迁移）、前端类型检查与构建全绿；`release.yml` 自动构建、签名并发布 Release（含 JAR、SHA-256 与 `.jar.sig`）。
 
 # Version 3.4.10
 
