@@ -92,7 +92,7 @@ public class SelfUpdateService {
      * 可用环境变量 XIANYU_ASSISTANT_RELEASE_PUBLIC_KEY 覆盖（密钥轮换/社区渠道自管签名）。
      */
     static final String OFFICIAL_RELEASE_PUBLIC_KEY =
-            "MCowBQYDK2VwAyEA4BjYdeOn5znHC0utuw8PFFZkzmejLdVRYGQOzpUgK+M=";
+            "MCowBQYDK2VwAyEAsstW68X2ZMRu5o2ZVHwBiV3m4YezlHuScQy3Jo/Lie4=";
 
     @Value("${app.version:3.4.10}")
     private String currentVersion;
