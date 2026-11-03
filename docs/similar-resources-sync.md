@@ -16,7 +16,7 @@
 ## 验证结果
 - ✅ 4 个仓库的 GitHub API 均可达，默认分支 HEAD commit 已逐条记录（与面板「上游最新」的更新时间一致）。
 - ✅ 本地此前无副本，无冲突需处理（若后续再次同步且本地有改动，才会出现冲突，届需逐文件合并）。
-- ℹ️ 本仓库（Xianyu Assistant）已迁移至 GitHub：`github.com/yuchen0x1/xianyu-seller-console`；本次「同类资源」同步不修改任何 Git remote。
+- ℹ️ 本仓库（Xianyu Assistant）已迁移至 GitHub：`github.com/yuchen0x1/Xianyu-Assistant`；本次「同类资源」同步不修改任何 Git remote。
 
 ## 下一步（可选）
 如需把**完整源码快照**拉到本地做参考：

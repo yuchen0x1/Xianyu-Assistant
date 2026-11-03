@@ -60,7 +60,7 @@ app:
     # 在线更新检查：默认使用 GitHub Release API。
     enabled: ${XIANYU_ASSISTANT_UPDATE_CHECK_ENABLED:true}
     api-url: "${XIANYU_ASSISTANT_UPDATE_API_URL:}"
-    github-repository: "${XIANYU_ASSISTANT_UPDATE_GITHUB_REPOSITORY:yuchen0x1/xianyu-seller-console}"
+    github-repository: "${XIANYU_ASSISTANT_UPDATE_GITHUB_REPOSITORY:yuchen0x1/Xianyu-Assistant}"
     # 兼容旧版 Gitee 配置读取，但新默认不再指向 Gitee。
     gitee-repository: "${XIANYU_ASSISTANT_UPDATE_GITEE_REPOSITORY:}"
     # 在线检查结果短缓存，避免每次打开更新提示都访问公网；设为 0 可关闭缓存。

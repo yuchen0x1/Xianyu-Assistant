@@ -13,7 +13,7 @@
 #
 # 环境变量:
 #   GITHUB_TOKEN         必填，GitHub fine-grained token（Contents: read/write）；仅经 Authorization 头传递
-#   GITHUB_REPO          默认 yuchen0x1/xianyu-seller-console
+#   GITHUB_REPO          默认 yuchen0x1/Xianyu-Assistant
 #   GITHUB_TARGET_BRANCH 默认 main（创建 Release 时的目标分支）
 #   RELEASE_SIGN_KEY_FILE / RELEASE_SIGN_PRIVATE_KEY  官方渠道发布物签名私钥
 #   SKIP_BUILD=1         跳过构建，仅发布 target/ 下已存在的产物
@@ -23,7 +23,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-REPO_SLUG="${GITHUB_REPO:-yuchen0x1/xianyu-seller-console}"
+REPO_SLUG="${GITHUB_REPO:-yuchen0x1/Xianyu-Assistant}"
 [[ "$REPO_SLUG" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { echo "GITHUB_REPO 格式无效，应为 owner/repository" >&2; exit 1; }
 [[ "$REPO_SLUG" != *..* ]] || { echo "GITHUB_REPO 不允许包含连续点号" >&2; exit 1; }
 API_BASE="https://api.github.com/repos/${REPO_SLUG}"
@@ -50,7 +50,7 @@ TEMP_FILES+=("$CURL_CONFIG")
 } > "$CURL_CONFIG"
 
 IS_OFFICIAL_REPO=0
-[ "${REPO_SLUG,,}" = "yuchen0x1/xianyu-seller-console" ] && IS_OFFICIAL_REPO=1
+[ "${REPO_SLUG,,}" = "yuchen0x1/xianyu-assistant" ] && IS_OFFICIAL_REPO=1
 
 log() { echo -e "\033[1;34m[release]\033[0m $*"; }
 die() { echo -e "\033[1;31m[release] $*\033[0m" >&2; exit 1; }

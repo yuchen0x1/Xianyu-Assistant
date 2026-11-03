@@ -230,7 +230,7 @@ class SelfUpdateServiceTest {
         ReflectionTestUtils.setField(service, "enabled", true);
         ReflectionTestUtils.setField(service, "currentVersion", "3.4.6");
         ReflectionTestUtils.setField(service, "currentJarPath", fakeJar);
-        ReflectionTestUtils.setField(service, "githubRepository", "yuchen0x1/xianyu-seller-console");
+        ReflectionTestUtils.setField(service, "githubRepository", "yuchen0x1/Xianyu-Assistant");
         // 该链路测试下载/校验/换包机制，历史 Release 无签名文件，显式关闭签名强制
         ReflectionTestUtils.setField(service, "signatureRequiredMode", "false");
 
@@ -270,7 +270,7 @@ class SelfUpdateServiceTest {
     @Test
     void 签名强制模式按配置与渠道判定() {
         SelfUpdateService service = newService();
-        ReflectionTestUtils.setField(service, "githubRepository", "yuchen0x1/xianyu-seller-console");
+        ReflectionTestUtils.setField(service, "githubRepository", "yuchen0x1/Xianyu-Assistant");
         // auto：官方渠道强制
         assertThat(service.isSignatureRequired()).isTrue();
         ReflectionTestUtils.setField(service, "signatureRequiredMode", "false");
