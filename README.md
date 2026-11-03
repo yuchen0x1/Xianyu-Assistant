@@ -5,7 +5,7 @@
 「闲鱼卖家运营控制台」（项目历史名称：「闲鱼自动发货助手」）是一个面向**自有闲鱼账号**的本地化运营工具：账号连接、商品管理、消息处理、自动回复、自动发货、卡密库存、任务调度、Webhook、数据备份与运行监控一站式覆盖，支持同时管理多个账号。数据保存在本地 SQLite 中，不依赖第三方服务器。
 
 - 当前版本：`v3.4.10`，正式发布
-- 本仓库托管于 GitHub（`yuchen0x1/xianyu-seller-console`），基于上游项目持续二次开发，上游来源与版权说明见文末《二次开发声明》
+- 本仓库托管于 GitHub（`yuchen0x1/Xianyu-Assistant`），基于上游项目持续二次开发，上游来源与版权说明见文末《二次开发声明》
 
 ## 一、它能帮你做什么
 
@@ -64,8 +64,8 @@
 ### 获取代码
 
 ```bash
-git clone https://github.com/yuchen0x1/xianyu-seller-console.git
-cd xianyu-seller-console
+git clone https://github.com/yuchen0x1/Xianyu-Assistant.git
+cd Xianyu-Assistant
 ```
 
 ### 部署与运行
@@ -167,7 +167,7 @@ cd vue-code && npm run test
 - `XIANYU_ASSISTANT_JWT_SECRET_FILE`（默认 `dbdata/jwt-secret.key`）：JWT 密钥持久化文件
 - `XIANYU_ASSISTANT_BACKUP_ENABLED` / `XIANYU_ASSISTANT_BACKUP_INTERVAL_MS` / `XIANYU_ASSISTANT_BACKUP_DIRECTORY` / `XIANYU_ASSISTANT_BACKUP_RETENTION_COUNT`（默认 `true` / `43200000` / `dbdata/backups` / `14`）：自动备份开关、间隔、目录与保留份数
 - `XIANYU_ASSISTANT_UPDATE_CHECK_ENABLED`（默认 `true`）：在线更新检查（读取 GitHub Release）
-- `XIANYU_ASSISTANT_UPDATE_GITHUB_REPOSITORY`（默认 `yuchen0x1/xianyu-seller-console`）：GitHub 更新源仓库（当前更新检查使用公开 Release API，不配置仓库令牌）
+- `XIANYU_ASSISTANT_UPDATE_GITHUB_REPOSITORY`（默认 `yuchen0x1/Xianyu-Assistant`）：GitHub 更新源仓库（当前更新检查使用公开 Release API，不配置仓库令牌）
 - `XIANYU_ASSISTANT_API_DELIVERY_FALLBACK_ENABLED` / `XIANYU_ASSISTANT_API_DELIVERY_FALLBACK_ACCOUNT_IDS`（默认 `false` / 空）：API 兜底发货开关与允许的账号 ID 白名单
 - `XIANYU_ASSISTANT_IMAGE_DOWNLOAD_ALLOWED_HOSTS`（默认 `alicdn.com,goofish.com`）：URL 代传图片仅允许的可信域名（防 SSRF）
 - `XIANYU_ASSISTANT_TOKEN_REFRESH_POOL_SIZE`（默认 `2`）：Cookie 保活线程池大小

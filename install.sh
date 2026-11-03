@@ -1,7 +1,7 @@
 #!/bin/bash
 #
-# XianYu Seller Console installer
-# 使用方法: 下载 https://raw.githubusercontent.com/yuchen0x1/xianyu-seller-console/main/install.sh 后执行 bash install.sh
+# Xianyu Assistant installer
+# 使用方法: 下载 https://raw.githubusercontent.com/yuchen0x1/Xianyu-Assistant/main/install.sh 后执行 bash install.sh
 #
 
 set -e
@@ -20,7 +20,7 @@ JAVA_OPTS="${JAVA_OPTS:--Xms256m -Xmx512m}"
 JDK_VERSION="21"
 
 # GitHub API（唯一发布源）
-GITHUB_REPO="${GITHUB_REPO:-yuchen0x1/xianyu-seller-console}"
+GITHUB_REPO="${GITHUB_REPO:-yuchen0x1/Xianyu-Assistant}"
 if [[ ! "$GITHUB_REPO" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || [[ "$GITHUB_REPO" == *..* ]]; then
     echo -e "${RED}GITHUB_REPO 格式无效，应为 owner/repository${NC}" >&2
     exit 1

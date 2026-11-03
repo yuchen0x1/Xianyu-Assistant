@@ -48,8 +48,8 @@ public class SystemController {
     private String updateApiUrl;
 
     /** GitHub 更新源仓库（owner/repository）。 */
-    @Value("${app.update-check.github-repository:yuchen0x1/xianyu-seller-console}")
-    private String updateGithubRepository = "yuchen0x1/xianyu-seller-console";
+    @Value("${app.update-check.github-repository:yuchen0x1/Xianyu-Assistant}")
+    private String updateGithubRepository = "yuchen0x1/Xianyu-Assistant";
 
     /** 兼容旧配置的 Gitee 仓库；新默认不再使用 Gitee。 */
     @Value("${app.update-check.gitee-repository:}")
@@ -539,7 +539,7 @@ public class SystemController {
     /** GitHub Release API 前缀；自定义 api-url 仅允许同源 API 的 releases 路径。 */
     private static final String GITHUB_API_PREFIX = "https://api.github.com/repos/";
     private static final String GITEE_API_PREFIX = "https://gitee.com/api/v5/repos/";
-    private static final String DEFAULT_GITHUB_REPOSITORY = "yuchen0x1/xianyu-seller-console";
+    private static final String DEFAULT_GITHUB_REPOSITORY = "yuchen0x1/Xianyu-Assistant";
     private static final Pattern GITHUB_RELEASE_URL = Pattern.compile(
             "https?://github\\.com/([^/\\s]+/[^/\\s]+)/releases/latest/?",
             Pattern.CASE_INSENSITIVE);

@@ -66,7 +66,7 @@
 - **签名端**：`scripts/sign-release.sh`——`gen-key` 生成密钥对；`sign` 用 openssl Ed25519（`pkeyutl -sign -rawin`）产出原始签名 Base64。私钥经 `RELEASE_SIGN_KEY_FILE`（PEM 文件）或 `RELEASE_SIGN_PRIVATE_KEY`（Base64，可直接作 CI Secret）提供。
 - **发布端**：`scripts/publish-github.sh` 集成签名，`.jar.sig` 随 Release 上传；**官方仓库发布未配置签名私钥时直接拒绝发布**（fail-closed）；`scripts/publish-gitee.sh` 保留为兼容入口并转发到 GitHub；社区渠道（Fork 自建发布源）可选签名。
 - **验证端**：
-  - Java 客户端 `security/ReleaseSignatureVerifier.java`（JDK 原生 JCA Ed25519，无自制密码学、无新依赖）；`SelfUpdateService` 在 SHA-256 通过后下载 `.jar.sig` 验签。强制模式 `app.self-update.signature-required=auto`：更新源为官方仓库 `yuchen0x1/xianyu-seller-console` 时**必须**验签通过，缺签名/验签失败/公钥缺失一律拒绝更新；社区 Fork 默认 `auto` 不强制，保持社区版开箱可用（不破坏 Fork），可显式 `true`/`false` 覆盖。
+  - Java 客户端 `security/ReleaseSignatureVerifier.java`（JDK 原生 JCA Ed25519，无自制密码学、无新依赖）；`SelfUpdateService` 在 SHA-256 通过后下载 `.jar.sig` 验签。强制模式 `app.self-update.signature-required=auto`：更新源为官方仓库 `yuchen0x1/Xianyu-Assistant` 时**必须**验签通过，缺签名/验签失败/公钥缺失一律拒绝更新；社区 Fork 默认 `auto` 不强制，保持社区版开箱可用（不破坏 Fork），可显式 `true`/`false` 覆盖。
   - `install.sh` 同步验签：内置公钥，`base64 -d` + `openssl pkeyutl -verify -rawin`；缺签名文件或验签失败中止安装（仅 openssl 过旧不支持 Ed25519 时降级为警告，应用内更新器仍强制）。
 - **公钥管理**：验证公钥内置在开源代码中（`SelfUpdateService.OFFICIAL_RELEASE_PUBLIC_KEY`、`install.sh`）——公钥可公开，私钥绝不进仓库/客户端/发布物。密钥轮换可用环境变量 `XIANYU_ASSISTANT_RELEASE_PUBLIC_KEY` 覆盖。
 - **CI 接线**：`.github/workflows/release.yml` 传入 `secrets.RELEASE_SIGN_PRIVATE_KEY`。
@@ -112,7 +112,7 @@
 
 | | 社区版（Fork 自建） | 官方版（本仓库发布） |
 | --- | --- | --- |
-| 更新源 | 任意 GitHub 仓库（`app.update-check.github-repository`） | 官方仓库 `yuchen0x1/xianyu-seller-console`（内置） |
+| 更新源 | 任意 GitHub 仓库（`app.update-check.github-repository`） | 官方仓库 `yuchen0x1/Xianyu-Assistant`（内置） |
 | 完整性校验 | SHA-256（必须） | SHA-256（必须）+ Ed25519 验签（强制） |
 | 签名能力 | 可选（`auto` 不强制；可用 `XIANYU_ASSISTANT_RELEASE_PUBLIC_KEY` 自管公钥） | 必须签名，缺签名拒绝更新/安装 |
 | 官方私钥 | **不可获得**（仅 CI Secret/离线保管） | 同左（仅官方持有） |

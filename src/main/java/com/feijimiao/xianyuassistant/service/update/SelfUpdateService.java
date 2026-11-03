@@ -84,7 +84,7 @@ public class SelfUpdateService {
     private static final int MAX_REDIRECT_HOPS = 5;
 
     /** 官方发布渠道仓库标识：更新源为该仓库时强制发布物签名校验（auto 模式）。 */
-    static final String OFFICIAL_UPDATE_SLUG = "yuchen0x1/xianyu-seller-console";
+    static final String OFFICIAL_UPDATE_SLUG = "yuchen0x1/Xianyu-Assistant";
 
     /**
      * 官方发布签名验证公钥（Ed25519，X.509 SPKI DER 的 Base64）。
@@ -100,7 +100,7 @@ public class SelfUpdateService {
     @Value("${app.self-update.enabled:true}")
     private boolean enabled;
 
-    @Value("${app.update-check.github-repository:yuchen0x1/xianyu-seller-console}")
+    @Value("${app.update-check.github-repository:yuchen0x1/Xianyu-Assistant}")
     private String githubRepository;
 
     /** 兼容历史配置字段；更新源始终以 GitHub 配置为准。 */
