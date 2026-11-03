@@ -49,7 +49,7 @@ $frontendOut = Join-Path $logDir 'frontend-dev.out.log'
 $frontendErr = Join-Path $logDir 'frontend-dev.err.log'
 
 # 启动后端（后台运行，日志重定向到文件）
-$backendArgs = '--enable-native-access=ALL-UNNAMED -Dserver.port=' + $BackendPort + ' -jar ' + $jar
+$backendArgs = '--enable-native-access=ALL-UNNAMED -Dserver.port=' + $BackendPort + ' -jar "' + $jar + '"'
 
 $backend = Start-Process -FilePath (Join-Path $javaHome 'bin\java.exe') `
   -ArgumentList $backendArgs `
