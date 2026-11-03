@@ -35,8 +35,7 @@ COPY --from=frontend-build /app/vue-code/../src/main/resources/static src/main/r
 # 复制后端源码
 COPY src/ src/
 
-# 构建 JAR（跳过测试）
-RUN ./mvnw clean package -DskipTests
+RUN ./mvnw --batch-mode --no-transfer-progress clean package
 
 # 阶段3: 提供Java 21运行时
 FROM eclipse-temurin:21-jre-jammy AS java-runtime
