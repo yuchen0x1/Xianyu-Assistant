@@ -7,6 +7,7 @@ import com.feijimiao.xianyuassistant.mapper.XianyuAccountMapper;
 import com.feijimiao.xianyuassistant.mapper.XianyuGoodsConfigMapper;
 import com.feijimiao.xianyuassistant.mapper.XianyuGoodsOrderMapper;
 import com.feijimiao.xianyuassistant.service.SysSettingService;
+import com.feijimiao.xianyuassistant.service.delivery.DeliveryOrderState;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -320,13 +321,11 @@ public class ApiDeliveryScheduler {
         if (order == null) {
             return false;
         }
-        if (Integer.valueOf(1).equals(order.getState())) {
+        if (Integer.valueOf(DeliveryOrderState.DELIVERED).equals(order.getState())) {
             return true;
         }
-        return (Integer.valueOf(0).equals(order.getState())
-                && order.getFailReason() != null
-                && order.getFailReason().contains("结果未知"))
-                || (Integer.valueOf(-1).equals(order.getState())
+        return DeliveryOrderState.isAwaitingManualReview(order.getState(), order.getFailReason())
+                || (Integer.valueOf(DeliveryOrderState.FAILED).equals(order.getState())
                 && order.getFailReason() != null
                 && order.getFailReason().startsWith("发货风控拦截:"));
     }

@@ -19,6 +19,7 @@ import com.feijimiao.xianyuassistant.service.WebSocketService;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryContext;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryOrderLease;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryOrderLeaseManager;
+import com.feijimiao.xianyuassistant.service.delivery.DeliveryOrderState;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryReservation;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryStrategyResolver;
 import com.feijimiao.xianyuassistant.service.delivery.OrderDetailFetcher;
@@ -452,7 +453,7 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
             XianyuGoodsConfig goodsConfig = goodsConfigMapper.selectByAccountAndGoodsId(accountId, xyGoodsId);
             if (goodsConfig == null || goodsConfig.getXianyuAutoDeliveryOn() == null || goodsConfig.getXianyuAutoDeliveryOn() != 1) {
                 log.warn("【账号{}】商品未开启自动发货: xyGoodsId={}", accountId, xyGoodsId);
-                updateRecordState(recordId, -1, null, "商品未开启自动发货");
+                updateRecordState(recordId, DeliveryOrderState.FAILED, null, "商品未开启自动发货");
                 return;
             }
 
@@ -460,7 +461,7 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
             if (orderDetail == null && orderId != null && !orderId.isEmpty()) {
                 log.warn("【账号{}】获取订单详情失败(可能Cookie过期或API异常)，中断发货: orderId={}", accountId, orderId);
                 String failReason = "获取订单详情失败(可能Cookie过期)，请检查Cookie状态";
-                updateRecordState(recordId, -1, null, failReason);
+                updateRecordState(recordId, DeliveryOrderState.FAILED, null, failReason);
                 emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, failReason);
                 notifyDeliveryFailure(accountId, xyGoodsId, orderId, failReason);
                 return;
@@ -487,7 +488,7 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                     accountId, xyGoodsId, orderId, buyerUserId);
             if (blockDecision.blocked()) {
                 String failReason = "发货风控拦截: " + blockDecision.reason();
-                updateRecordState(recordId, -1, null, failReason);
+                updateRecordState(recordId, DeliveryOrderState.FAILED, null, failReason);
                 log.warn("【账号{}】自动发货已被风控规则阻止: orderId={}, ruleCode={}",
                         accountId, orderId, blockDecision.ruleCode());
                 return;
@@ -503,7 +504,7 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
 
             if (deliveryConfig == null) {
                 log.warn("【账号{}】商品无匹配的发货配置: xyGoodsId={}, skuId={}", accountId, xyGoodsId, orderSkuId);
-                updateRecordState(recordId, -1, null, "无匹配的发货配置");
+                updateRecordState(recordId, DeliveryOrderState.FAILED, null, "无匹配的发货配置");
                 return;
             }
 
@@ -540,7 +541,7 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                             rollbackReservations(reservations);
                             String failMsg = buildResolveFailureMessage(deliveryMode);
                             log.warn("【账号{}】发货内容解析失败: {}", accountId, failMsg);
-                            updateRecordState(recordId, -1, joinContents(contents), failMsg);
+                            updateRecordState(recordId, DeliveryOrderState.FAILED, joinContents(contents), failMsg);
                             emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, failMsg);
                             return;
                         }
@@ -566,7 +567,7 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                     String failMsg = "虚拟发货内容超过200字";
                     log.error("【账号{}】{}，拒绝调用API: orderId={}, length={}",
                             accountId, failMsg, orderId, content.length());
-                    updateRecordState(recordId, -1, content, failMsg);
+                    updateRecordState(recordId, DeliveryOrderState.FAILED, content, failMsg);
                     emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, failMsg);
                     return;
                 }
@@ -597,14 +598,18 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                             ? "虚拟发货结果未知，请人工核对；卡密已保留预占"
                             : "虚拟发货结果未知，请人工核对";
                     log.warn("【账号{}】虚拟发货结果未知，保留资源等待人工核对: recordId={}", accountId, recordId);
-                    updateRecordState(recordId, 0, content, unknownReason);
+                    boolean manualReviewPersisted = updateRecordState(
+                            recordId, DeliveryOrderState.PENDING, content, unknownReason);
+                    if (!manualReviewPersisted) {
+                        alertManualReviewNotPersisted(accountId, recordId, orderId);
+                    }
                     emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, unknownReason);
                     notifyDeliveryFailure(accountId, xyGoodsId, orderId, unknownReason);
                     return;
                 } else {
                     rollbackReservations(reservations);
                     log.error("【账号{}】❌ 虚拟发货API失败: recordId={}", accountId, recordId);
-                    updateRecordState(recordId, -1, content, "虚拟发货API失败");
+                    updateRecordState(recordId, DeliveryOrderState.FAILED, content, "虚拟发货API失败");
                     emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, "虚拟发货API失败");
                     notifyDeliveryFailure(accountId, xyGoodsId, orderId, "虚拟发货API失败");
                     return;
@@ -622,7 +627,7 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                     if (content == null) {
                         String failMsg = buildResolveFailureMessage(deliveryMode);
                         log.warn("【账号{}】发货内容解析失败: {}", accountId, failMsg);
-                        updateRecordState(recordId, -1, allContent.toString(), failMsg);
+                        updateRecordState(recordId, DeliveryOrderState.FAILED, allContent.toString(), failMsg);
                         emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, failMsg);
                         return;
                     }
@@ -652,7 +657,7 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                         reservation.rollback();
                         String failMsg = String.format("第%d/%d件消息发送失败", i + 1, buyNum);
                         log.error("【账号{}】❌ 发货失败[{}/{}]: recordId={}", accountId, i + 1, buyNum, recordId);
-                        updateRecordState(recordId, -1, allContent.toString(), failMsg);
+                        updateRecordState(recordId, DeliveryOrderState.FAILED, allContent.toString(), failMsg);
                         emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, failMsg);
                         notifyDeliveryFailure(accountId, xyGoodsId, orderId, failMsg);
                         return;
@@ -667,7 +672,11 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                         String unknownMsg = buildUnknownSendMessage(i + 1, buyNum, "消息", deliveryMode);
                         log.warn("【账号{}】发货结果未知[{}/{}]，停止后续发送: recordId={}",
                                 accountId, i + 1, buyNum, recordId);
-                        updateRecordState(recordId, 0, allContent.toString(), unknownMsg);
+                        boolean manualReviewPersisted = updateRecordState(
+                                recordId, DeliveryOrderState.PENDING, allContent.toString(), unknownMsg);
+                        if (!manualReviewPersisted) {
+                            alertManualReviewNotPersisted(accountId, recordId, orderId);
+                        }
                         emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, unknownMsg);
                         notifyDeliveryFailure(accountId, xyGoodsId, orderId, unknownMsg);
                         return;
@@ -691,7 +700,12 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                         String outcomeMsg = unknown
                                 ? buildUnknownSendMessage(i + 1, buyNum, "图片", deliveryMode)
                                 : String.format("第%d/%d件图片发送失败", i + 1, buyNum);
-                        updateRecordState(recordId, unknown ? 0 : -1, allContent.toString(), outcomeMsg);
+                        boolean imageStateSaved = updateRecordState(recordId,
+                                unknown ? DeliveryOrderState.PENDING : DeliveryOrderState.FAILED,
+                                allContent.toString(), outcomeMsg);
+                        if (!imageStateSaved && unknown) {
+                            alertManualReviewNotPersisted(accountId, recordId, orderId);
+                        }
                         emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, outcomeMsg);
                         notifyDeliveryFailure(accountId, xyGoodsId, orderId, outcomeMsg);
                         return;
@@ -700,7 +714,14 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
 
             } // end else (wsConnected)
 
-            updateRecordState(recordId, 1, allContent.toString(), null);
+            boolean stateSaved = updateRecordState(
+                    recordId, DeliveryOrderState.DELIVERED, allContent.toString(), null);
+            if (!stateSaved) {
+                // 消息已经送达、卡密已经 commit，此时绝不能再回滚库存。
+                // 尽力写入“待人工核对”标记，让调度器跳过该记录，并立即告警。
+                handleDeliveredStateSaveFailure(recordId, accountId, xyGoodsId, orderId, allContent.toString());
+                return;
+            }
             delivered = true;
             try {
                 webhookService.dispatch("delivery.completed", java.util.Map.of(
@@ -734,7 +755,7 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
             }
             log.error("【账号{}】执行自动发货异常: recordId={}, xyGoodsId={}", accountId, recordId, xyGoodsId, e);
             String failReason = "发货异常: " + e.getMessage();
-            updateRecordState(recordId, -1, null, failReason);
+            updateRecordState(recordId, DeliveryOrderState.FAILED, null, failReason);
             emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, failReason);
             notifyDeliveryFailure(accountId, xyGoodsId, orderId, failReason);
         }
@@ -804,7 +825,8 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
 
     private String buildUnknownSendMessage(int unitNumber, int buyNum, String payloadType, int deliveryMode) {
         String message = String.format(
-                "第%d/%d件%s发送结果未知（10秒未收到服务端响应），请人工核对",
+                "第%d/%d件%s发送" + DeliveryOrderState.MANUAL_REVIEW_MARKER
+                        + "（10秒未收到服务端响应），请人工核对",
                 unitNumber, buyNum, payloadType);
         return deliveryMode == 2 ? message + "；卡密已保留预占" : message;
     }
@@ -870,12 +892,68 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
         });
     }
 
-    private void updateRecordState(Long recordId, Integer state, String content, String failReason) {
+    /**
+     * 更新订单发货记录状态。
+     *
+     * @return true=状态已确实写入；false=更新抛出异常或被 SQL 幂等守卫拦下（调用方必须处理）
+     */
+    private boolean updateRecordState(Long recordId, Integer state, String content, String failReason) {
         try {
             // 幂等守卫在 SQL 层：state=1 的记录不会被失败状态覆盖
-            orderMapper.updateStateContentAndFailReason(recordId, state, content, failReason);
+            int updated = orderMapper.updateStateContentAndFailReason(recordId, state, content, failReason);
+            if (updated <= 0) {
+                log.error("更新订单状态未生效: recordId={}, state={}, affectedRows={}", recordId, state, updated);
+                return false;
+            }
+            return true;
         } catch (Exception e) {
             log.error("更新订单状态失败: recordId={}, state={}", recordId, state, e);
+            return false;
+        }
+    }
+
+    /**
+     * 消息已确认送达但订单状态落库失败：卡密绝不回滚，尽力写入“待人工核对”标记并告警。
+     */
+    private void handleDeliveredStateSaveFailure(Long recordId, Long accountId, String xyGoodsId,
+                                                 String orderId, String content) {
+        String reason = DeliveryOrderState.STATE_SAVE_FAILED_REASON;
+        boolean marked = updateRecordState(recordId, DeliveryOrderState.PENDING, content, reason);
+        log.error("【账号{}】发货已送达但订单状态落库失败，转人工核对: recordId={}, orderId={}, manualReviewPersisted={}",
+                accountId, recordId, orderId, marked);
+        try {
+            emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, reason);
+        } catch (Exception e) {
+            log.warn("发货状态落库失败邮件通知异常: accountId={}, errorType={}",
+                    accountId, e.getClass().getSimpleName());
+        }
+        try {
+            alertService.alert("delivery_state_save_failed_" + accountId,
+                    "发货状态落库失败",
+                    String.format("账号 %s 记录 %s 订单 %s 已发送发货内容，但订单状态落库失败，请人工核对，勿自动重发",
+                            accountId, recordId, orderId),
+                    "ERROR", accountId);
+        } catch (Exception e) {
+            log.warn("发货状态落库失败告警异常: accountId={}, errorType={}",
+                    accountId, e.getClass().getSimpleName());
+        }
+    }
+
+    /**
+     * “待人工核对”标记本身未能落库：调度器可能仍会重试，立即告警由人工介入。
+     */
+    private void alertManualReviewNotPersisted(Long accountId, Long recordId, String orderId) {
+        log.error("【账号{}】待人工核对状态未能落库，调度器可能重试: recordId={}, orderId={}",
+                accountId, recordId, orderId);
+        try {
+            alertService.alert("delivery_manual_review_unpersisted_" + accountId,
+                    "发货待核对状态落库失败",
+                    String.format("账号 %s 记录 %s 订单 %s 需要人工核对，但状态未能落库，请立即处理",
+                            accountId, recordId, orderId),
+                    "ERROR", accountId);
+        } catch (Exception e) {
+            log.warn("待核对状态告警异常: accountId={}, errorType={}",
+                    accountId, e.getClass().getSimpleName());
         }
     }
 
@@ -928,17 +1006,17 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
             MessageSendResult sendResult = webSocketService.sendMessageWithOutcome(
                     xianyuAccountId, cid, toId, content);
             if (sendResult == MessageSendResult.SUCCESS) {
-                updateRecordState(record.getId(), 1, content, null);
+                updateRecordState(record.getId(), DeliveryOrderState.DELIVERED, content, null);
                 sentMessageSaveService.saveAiAssistantReply(xianyuAccountId, cid, toId, content, record.getXyGoodsId());
                 log.info("【账号{}】自定义发货成功: orderId={}", xianyuAccountId, orderId);
                 return com.feijimiao.xianyuassistant.common.ResultObject.success("自定义发货成功");
             } else if (sendResult == MessageSendResult.UNKNOWN) {
                 String unknownReason = "消息发送结果未知（10秒未收到服务端响应），请人工核对";
-                updateRecordState(record.getId(), 0, content, unknownReason);
+                updateRecordState(record.getId(), DeliveryOrderState.PENDING, content, unknownReason);
                 log.warn("【账号{}】自定义发货结果未知，需人工核对: orderId={}", xianyuAccountId, orderId);
                 return com.feijimiao.xianyuassistant.common.ResultObject.failed(unknownReason);
             } else {
-                updateRecordState(record.getId(), -1, content, "消息发送失败");
+                updateRecordState(record.getId(), DeliveryOrderState.FAILED, content, "消息发送失败");
                 log.error("【账号{}】自定义发货失败: orderId={}", xianyuAccountId, orderId);
                 return com.feijimiao.xianyuassistant.common.ResultObject.failed("消息发送失败");
             }
