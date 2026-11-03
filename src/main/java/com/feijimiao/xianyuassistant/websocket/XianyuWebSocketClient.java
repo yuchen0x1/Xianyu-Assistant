@@ -893,7 +893,9 @@ public class XianyuWebSocketClient extends WebSocketClient {
             log.error("【账号{}】WebSocket未连接，无法发送消息", accountId);
             return MessageSendResult.FAILED;
         }
-        
+
+        boolean sendAttempted = false;
+
         try {
             String cleanCid = cid.replace("@goofish", "");
             String cleanToId = toId.replace("@goofish", "");
@@ -969,6 +971,7 @@ public class XianyuWebSocketClient extends WebSocketClient {
             try {
                 String messageJson = objectMapper.writeValueAsString(message);
                 log.debug("【账号{}】发送消息JSON: payloadLength={}", accountId, messageJson.length());
+                sendAttempted = true;
                 send(messageJson);
                 log.info("【账号{}】消息已发送到WebSocket，等待响应: mid={}", accountId, mid);
 
@@ -987,9 +990,11 @@ public class XianyuWebSocketClient extends WebSocketClient {
             }
 
         } catch (Exception e) {
-            log.error("【账号{}】❌ 发送消息失败: cid={}, toId={}, errorType={}",
-                    accountId, cid, toId, e.getClass().getSimpleName());
-            return MessageSendResult.FAILED;
+            // 序列化/组装阶段失败才能证明消息未写出；一旦进入 send()，异常可能发生在
+            // 帧写出之后，此时判 FAILED 会让发货链路回滚卡密并造成二次售卖。
+            log.error("【账号{}】❌ 发送消息失败: cid={}, toId={}, errorType={}, sendAttempted={}",
+                    accountId, cid, toId, e.getClass().getSimpleName(), sendAttempted);
+            return sendAttempted ? MessageSendResult.UNKNOWN : MessageSendResult.FAILED;
         }
     }
     
@@ -1230,9 +1235,8 @@ public class XianyuWebSocketClient extends WebSocketClient {
             // 中断只代表本地不再等待，帧可能已经写出，不能据此判定为确定失败。
             return MessageSendResult.UNKNOWN;
         } catch (ExecutionException e) {
-            // 本地等待机制自身失败（future 异常完成），无服务端响应可判，
-            // 按既有语义视为确定失败。
-            return MessageSendResult.FAILED;
+            // 发送已发起，帧可能已经写出；本地等待机制失败不能证明消息未送达。
+            return MessageSendResult.UNKNOWN;
         }
     }
     

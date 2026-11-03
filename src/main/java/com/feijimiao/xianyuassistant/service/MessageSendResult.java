@@ -7,10 +7,13 @@ public enum MessageSendResult {
     /** The server explicitly acknowledged the message with code 200. */
     SUCCESS,
 
-    /** The server rejected the message, or it could not be sent locally. */
+    /** The server explicitly rejected the message, or it provably failed before any frame was written. */
     FAILED,
 
-    /** The message was written to the socket, but no acknowledgement arrived in time. */
+    /**
+     * The frame may already have been written (or a local failure happened after the write),
+     * but no definitive server acknowledgement arrived. Callers must not assume failure.
+     */
     UNKNOWN;
 
     public static MessageSendResult fromResponseCode(Integer code) {

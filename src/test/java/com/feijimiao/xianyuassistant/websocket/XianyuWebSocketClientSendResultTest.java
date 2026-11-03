@@ -20,6 +20,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -46,12 +47,35 @@ class XianyuWebSocketClientSendResultTest {
     }
 
     @Test
-    void mapsLocalWaitingFailureToFailed() {
+    void mapsLocalWaitingFailureToUnknownBecauseTheFrameMayHaveBeenWritten() {
         CompletableFuture<Integer> failed = new CompletableFuture<>();
         failed.completeExceptionally(new IllegalStateException("local failure"));
 
         MessageSendResult result = XianyuWebSocketClient.awaitPendingResponse(
                 failed, 1, TimeUnit.SECONDS);
+
+        assertThat(result).isEqualTo(MessageSendResult.UNKNOWN);
+    }
+
+    @Test
+    void localSendExceptionIsUnknownBecauseTheFrameMayAlreadyBeWritten() throws Exception {
+        XianyuWebSocketClient client = spy(new XianyuWebSocketClient(
+                new URI("ws://127.0.0.1"), Map.of(), "7", null));
+        ReflectionTestUtils.setField(client, "isConnected", true);
+        doThrow(new IllegalStateException("socket write failed")).when(client).send(anyString());
+
+        MessageSendResult result = client.sendMessageWithOutcome("buyer-1", "buyer-1", "hello");
+
+        assertThat(result).isEqualTo(MessageSendResult.UNKNOWN);
+    }
+
+    @Test
+    void failuresBeforeSendAreStillConfirmedFailed() throws Exception {
+        XianyuWebSocketClient client = new XianyuWebSocketClient(
+                new URI("ws://127.0.0.1"), Map.of(), "7", null);
+        ReflectionTestUtils.setField(client, "isConnected", true);
+
+        MessageSendResult result = client.sendMessageWithOutcome(null, "buyer-1", "hello");
 
         assertThat(result).isEqualTo(MessageSendResult.FAILED);
     }

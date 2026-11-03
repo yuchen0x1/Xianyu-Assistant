@@ -10,6 +10,7 @@ import com.feijimiao.xianyuassistant.mapper.XianyuGoodsAutoReplyRecordMapper;
 import com.feijimiao.xianyuassistant.mapper.XianyuGoodsConfigMapper;
 import com.feijimiao.xianyuassistant.mapper.XianyuGoodsOrderMapper;
 import com.feijimiao.xianyuassistant.mapper.XianyuKamiUsageRecordMapper;
+import com.feijimiao.xianyuassistant.monitor.AlertService;
 import com.feijimiao.xianyuassistant.service.ApiDeliveryResult;
 import com.feijimiao.xianyuassistant.service.DeliveryBlockDecision;
 import com.feijimiao.xianyuassistant.service.DeliveryBlockRuleService;
@@ -22,6 +23,7 @@ import com.feijimiao.xianyuassistant.service.WebSocketService;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryContext;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryOrderLease;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryOrderLeaseManager;
+import com.feijimiao.xianyuassistant.service.delivery.DeliveryOrderState;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryStrategyResolver;
 import com.feijimiao.xianyuassistant.service.delivery.KamiDeliveryStrategy;
 import com.feijimiao.xianyuassistant.service.delivery.OrderDetailFetcher;
@@ -30,6 +32,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -49,6 +52,7 @@ import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
@@ -90,6 +94,8 @@ class AutoDeliveryServiceImplTest {
     private KamiConfigService kamiConfigService;
     @Mock
     private XianyuKamiUsageRecordMapper kamiUsageRecordMapper;
+    @Mock
+    private AlertService alertService;
 
     private AutoDeliveryServiceImpl service;
 
@@ -110,8 +116,11 @@ class AutoDeliveryServiceImplTest {
         ReflectionTestUtils.setField(service, "orderDetailFetcher", orderDetailFetcher);
         ReflectionTestUtils.setField(service, "deliveryStrategyResolver", deliveryStrategyResolver);
         ReflectionTestUtils.setField(service, "deliveryBlockRuleService", deliveryBlockRuleService);
+        ReflectionTestUtils.setField(service, "alertService", alertService);
         lenient().when(deliveryBlockRuleService.evaluate(anyLong(), any(), any(), any()))
                 .thenReturn(DeliveryBlockDecision.allow());
+        lenient().when(orderMapper.updateStateContentAndFailReason(anyLong(), anyInt(), any(), any()))
+                .thenReturn(1);
     }
 
     @Test
@@ -304,6 +313,74 @@ class AutoDeliveryServiceImplTest {
                 "第1/1件消息发送结果未知（10秒未收到服务端响应），请人工核对；卡密已保留预占");
         verify(orderMapper, never()).updateStateContentAndFailReason(
                 eq(RECORD_ID), eq(1), any(), any());
+        verify(orderService, never()).confirmShipment(anyLong(), any());
+    }
+
+    @Test
+    void sendExceptionIsTreatedAsUnknownAndKeepsKamiReservation() {
+        XianyuGoodsAutoDeliveryConfig config = deliveryConfig(2);
+        config.setKamiConfigIds("66");
+        config.setAutoConfirmShipment(1);
+        arrangeOrder(config, 1);
+
+        XianyuKamiItem item = new XianyuKamiItem();
+        item.setId(77L);
+        item.setKamiConfigId(66L);
+        item.setKamiContent("secret-code");
+        when(kamiConfigService.acquireKami(eq(66L), any())).thenReturn(item);
+        when(kamiUsageRecordMapper.insert(any(XianyuKamiUsageRecord.class))).thenReturn(1);
+        installKamiStrategy();
+        when(webSocketService.sendMessageWithOutcome(
+                ACCOUNT_ID, "buyer-55", "buyer-55", "secret-code"))
+                .thenThrow(new IllegalStateException("socket write failed"));
+
+        service.executeDelivery(RECORD_ID, ACCOUNT_ID, GOODS_ID, SID, ORDER_ID, "buyer", false);
+
+        verify(kamiConfigService, never()).releaseKamiReservation(anyLong(), any(), any());
+        verify(orderMapper).updateStateContentAndFailReason(
+                RECORD_ID, DeliveryOrderState.PENDING, "secret-code",
+                "第1/1件消息发送结果未知（10秒未收到服务端响应），请人工核对；卡密已保留预占");
+        verify(orderMapper, never()).updateStateContentAndFailReason(
+                eq(RECORD_ID), eq(DeliveryOrderState.DELIVERED), any(), any());
+        verify(orderService, never()).confirmShipment(anyLong(), any());
+    }
+
+    @Test
+    void deliveredButStateSaveFailureKeepsKamiAndMarksManualReview() {
+        XianyuGoodsAutoDeliveryConfig config = deliveryConfig(2);
+        config.setKamiConfigIds("66");
+        config.setAutoConfirmShipment(1);
+        arrangeOrder(config, 1);
+
+        XianyuKamiItem item = new XianyuKamiItem();
+        item.setId(77L);
+        item.setKamiConfigId(66L);
+        item.setKamiContent("secret-code");
+        when(kamiConfigService.acquireKami(eq(66L), any())).thenReturn(item);
+        when(kamiUsageRecordMapper.insert(any(XianyuKamiUsageRecord.class))).thenReturn(1);
+        installKamiStrategy();
+        when(webSocketService.sendMessageWithOutcome(
+                ACCOUNT_ID, "buyer-55", "buyer-55", "secret-code"))
+                .thenReturn(MessageSendResult.SUCCESS);
+        // 第一次写 state=1 失败（0 行），第二次写“待人工核对”标记成功
+        when(orderMapper.updateStateContentAndFailReason(eq(RECORD_ID), anyInt(), any(), any()))
+                .thenReturn(0, 1);
+
+        service.executeDelivery(RECORD_ID, ACCOUNT_ID, GOODS_ID, SID, ORDER_ID, "buyer", false);
+
+        verify(kamiConfigService, never()).releaseKamiReservation(anyLong(), any(), any());
+        InOrder inOrder = inOrder(orderMapper);
+        inOrder.verify(orderMapper).updateStateContentAndFailReason(
+                RECORD_ID, DeliveryOrderState.DELIVERED, "secret-code", null);
+        inOrder.verify(orderMapper).updateStateContentAndFailReason(
+                RECORD_ID, DeliveryOrderState.PENDING, "secret-code",
+                DeliveryOrderState.STATE_SAVE_FAILED_REASON);
+        verify(alertService).alert(
+                eq("delivery_state_save_failed_" + ACCOUNT_ID),
+                eq("发货状态落库失败"),
+                any(),
+                eq("ERROR"),
+                eq(ACCOUNT_ID));
         verify(orderService, never()).confirmShipment(anyLong(), any());
     }
 
