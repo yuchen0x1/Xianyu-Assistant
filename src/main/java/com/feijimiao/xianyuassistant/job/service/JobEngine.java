@@ -38,6 +38,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.UUID;
 import java.util.function.BiFunction;
 
 /**
@@ -83,6 +84,8 @@ public class JobEngine {
     private ScheduledExecutorService scheduler;
     /** Worker 执行线程池 */
     private ExecutorService workerPool;
+    /** 独立租约续期线程池，避免轮询异常或数据库慢写阻塞续期。 */
+    private ScheduledExecutorService leaseScheduler;
     private final Set<Long> queuedJobIds = ConcurrentHashMap.newKeySet();
 
     private static final int POLL_INTERVAL_SECONDS = 5;
@@ -104,6 +107,11 @@ public class JobEngine {
             t.setDaemon(true);
             return t;
         });
+        leaseScheduler = Executors.newScheduledThreadPool(2, r -> {
+            Thread t = new Thread(r, "job-lease-renewer");
+            t.setDaemon(true);
+            return t;
+        });
         workerPool = new ThreadPoolExecutor(
                 WORKER_POOL_SIZE, WORKER_POOL_SIZE, 0L, TimeUnit.MILLISECONDS,
                 new ArrayBlockingQueue<>(WORKER_QUEUE_CAPACITY),
@@ -119,6 +127,7 @@ public class JobEngine {
     @PreDestroy
     public void shutdown() {
         if (scheduler != null) scheduler.shutdown();
+        if (leaseScheduler != null) leaseScheduler.shutdown();
         if (workerPool != null) workerPool.shutdown();
         log.info("任务引擎已关闭");
     }
@@ -232,6 +241,7 @@ public class JobEngine {
                 existing.setLastError(null);
                 existing.setNextRunTime(nextRunTime);
                 existing.setLeaseUntil(null);
+                existing.setLeaseToken(null);
                 existing.setMaxRetries(maxRetries);
                 existing.setPriority(priority);
                 existing.setUpdatedTime(LocalDateTime.now());
@@ -252,6 +262,7 @@ public class JobEngine {
         job.setRetryCount(0);
         job.setNextRunTime(nextRunTime);
         job.setLeaseUntil(null);
+        job.setLeaseToken(null);
         try {
             jobDefMapper.insert(job);
             log.info("任务已创建: type={}, key={}, nextRun={}", jobType, idempotencyKey, nextRunTime);
@@ -330,6 +341,7 @@ public class JobEngine {
                 .set("next_run_time", now)
                 .set("last_error", "Worker lease expired; task recovered")
                 .set("lease_until", null)
+                .set("lease_token", null)
                 .set("updated_time", now);
         int recovered = jobDefMapper.update(null, wrapper);
         if (recovered > 0) log.warn("已恢复过期 RUNNING 任务: count={}", recovered);
@@ -340,6 +352,7 @@ public class JobEngine {
         // 乐观锁：CAS 更新状态为 RUNNING，防止重复执行。
         // 同时以 updated_time 作为快照校验：轮询领取与实际执行之间若任务被
         // createJob 重排（新参数/新时间），本快照视为过期，放弃执行旧参数。
+        String leaseToken = UUID.randomUUID().toString();
         UpdateWrapper<JobDefinition> claimWrapper = new UpdateWrapper<JobDefinition>()
                 .eq("id", job.getId())
                 .in("status", "PENDING", "FAILED");
@@ -348,16 +361,18 @@ public class JobEngine {
         }
         claimWrapper.set("status", "RUNNING")
                 .set("lease_until", LocalDateTime.now().plusSeconds(RUNNING_LEASE_SECONDS))
+                .set("lease_token", leaseToken)
                 .set("updated_time", LocalDateTime.now());
         int updated = jobDefMapper.update(null, claimWrapper);
         if (updated == 0) {
             return; // 被其他 Worker 抢走，或快照已被重排失效
         }
         job.setStatus("RUNNING");
+        job.setLeaseToken(leaseToken);
 
         // 长任务租约续期：执行期间周期性续 lease_until，避免执行超过
         // STALE_RUNNING_AFTER_SECONDS 后被 recoverStaleRunningJobs 判死并二次派发。
-        ScheduledFuture<?> leaseRenewal = startLeaseRenewal(job.getId());
+        ScheduledFuture<?> leaseRenewal = startLeaseRenewal(job.getId(), leaseToken);
         try {
             runJob(job);
         } catch (Throwable e) {
@@ -369,8 +384,10 @@ public class JobEngine {
                         .eq("status", "RUNNING")
                         .set("status", "FAILED")
                         .set("next_run_time", LocalDateTime.now().plusSeconds(BACKOFF_BASE_SECONDS))
+                        .eq("lease_token", job.getLeaseToken())
                         .set("last_error", e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName())
                         .set("lease_until", null)
+                        .set("lease_token", null)
                         .set("updated_time", LocalDateTime.now());
                 jobDefMapper.update(null, failWrapper);
             } catch (Throwable fatal) {
@@ -383,18 +400,22 @@ public class JobEngine {
         }
     }
 
-    private ScheduledFuture<?> startLeaseRenewal(Long jobId) {
-        if (scheduler == null || scheduler.isShutdown()) {
+    private ScheduledFuture<?> startLeaseRenewal(Long jobId, String leaseToken) {
+        if (leaseScheduler == null || leaseScheduler.isShutdown()) {
             // 轻量调用路径（部分测试）未初始化调度器；无续期时退回租约自然过期语义
             return null;
         }
-        return scheduler.scheduleWithFixedDelay(() -> {
+        return leaseScheduler.scheduleWithFixedDelay(() -> {
             try {
-                jobDefMapper.update(null, new UpdateWrapper<JobDefinition>()
+                int renewed = jobDefMapper.update(null, new UpdateWrapper<JobDefinition>()
                         .eq("id", jobId)
                         .eq("status", "RUNNING")
+                        .eq("lease_token", leaseToken)
                         .set("lease_until", LocalDateTime.now().plusSeconds(RUNNING_LEASE_SECONDS))
                         .set("updated_time", LocalDateTime.now()));
+                if (renewed == 0) {
+                    log.debug("任务租约已失效，停止续期: jobId={}", jobId);
+                }
             } catch (Exception e) {
                 log.warn("租约续期失败: jobId={}, errorType={}", jobId, e.getClass().getSimpleName());
             }
@@ -416,6 +437,7 @@ public class JobEngine {
         jobExecMapper.insert(exec);
 
         boolean success = false;
+        boolean deadLetter = false;
         String errorMsg = null;
         try {
             BiFunction<JobDefinition, Map<String, Object>, Boolean> worker = workers.get(job.getJobType());
@@ -462,13 +484,36 @@ public class JobEngine {
                 // 超过最大重试，进死信
                 job.setStatus("DEAD_LETTER");
                 job.setNextRunTime(null);
-                moveToDeadLetter(job);
-                log.warn("任务超过最大重试次数，已转入死信: id={}, type={}, key={}",
+                deadLetter = true;
+                log.warn("任务超过最大重试次数，准备转入死信: id={}, type={}, key={}",
                         job.getId(), job.getJobType(), job.getIdempotencyKey());
             }
         }
         job.setUpdatedTime(LocalDateTime.now());
-        jobDefMapper.updateById(job);
+        UpdateWrapper<JobDefinition> terminalWrapper = new UpdateWrapper<JobDefinition>()
+                .eq("id", job.getId())
+                .eq("status", "RUNNING")
+                .eq("lease_token", job.getLeaseToken())
+                .set("status", job.getStatus())
+                .set("retry_count", job.getRetryCount())
+                .set("last_error", job.getLastError())
+                .set("next_run_time", job.getNextRunTime())
+                .set("lease_until", null)
+                .set("lease_token", null)
+                .set("updated_time", job.getUpdatedTime());
+        int terminalUpdated = jobDefMapper.update(null, terminalWrapper);
+        if (terminalUpdated == 0) {
+            log.warn("任务租约已失效，拒绝旧 Worker 的终态写回: jobId={}, deadLetter={}", job.getId(), deadLetter);
+        } else {
+            // 数据库已完成 fencing 终态写回；同步清除内存中的运行时租约，避免
+            // 调用方误以为该任务仍持有可续期的 token。更新失败时保留 token，
+            // 便于诊断旧 Worker 被拒绝写回的场景。
+            job.setLeaseUntil(null);
+            job.setLeaseToken(null);
+            if (deadLetter) {
+                moveToDeadLetter(job);
+            }
+        }
     }
 
     /** 将失败任务移入死信表（单条插入，SQLite 自动提交；本方法为内部调用，事务注解不会生效） */
@@ -542,6 +587,7 @@ public class JobEngine {
                 .in("status", "PENDING", "FAILED")
                 .set("status", "CANCELLED")
                 .set("lease_until", null)
+                .set("lease_token", null)
                 .set("updated_time", LocalDateTime.now());
         int updated = jobDefMapper.update(null, cancelWrapper);
         if (updated > 0) {
@@ -575,6 +621,7 @@ public class JobEngine {
         job.setLastError(null);
         job.setNextRunTime(LocalDateTime.now());
         job.setLeaseUntil(null);
+        job.setLeaseToken(null);
         job.setUpdatedTime(LocalDateTime.now());
         jobDefMapper.updateById(job);
         resolveDeadLetter(id, "人工重试", userId);

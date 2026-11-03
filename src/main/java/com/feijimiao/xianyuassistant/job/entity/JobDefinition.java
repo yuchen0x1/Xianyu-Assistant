@@ -22,6 +22,7 @@ public class JobDefinition {
     private String lastError;
     private LocalDateTime nextRunTime;
     private LocalDateTime leaseUntil;
+    private String leaseToken;
     private String scheduleCron;
     private Long createdBy;
     private LocalDateTime createdTime;

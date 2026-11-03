@@ -793,6 +793,7 @@ CREATE TABLE IF NOT EXISTS job_definition (
     last_error TEXT,
     next_run_time DATETIME,
     lease_until DATETIME,                       -- RUNNING lease（V3_16）
+    lease_token VARCHAR(100),                   -- fencing token（V3_26）
     schedule_cron VARCHAR(100),
     created_by BIGINT,
     created_time DATETIME DEFAULT (datetime('now', 'localtime')),

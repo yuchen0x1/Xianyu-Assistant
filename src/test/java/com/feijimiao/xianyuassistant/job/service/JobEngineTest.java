@@ -59,9 +59,15 @@ class JobEngineTest {
         ReflectionTestUtils.invokeMethod(jobEngine, "executeJob", job);
 
         ArgumentCaptor<UpdateWrapper<JobDefinition>> captor = ArgumentCaptor.forClass(UpdateWrapper.class);
-        verify(jobDefinitionMapper).update(isNull(), captor.capture());
-        assertThat(captor.getValue().getSqlSet()).contains("status");
+        verify(jobDefinitionMapper, org.mockito.Mockito.times(2)).update(isNull(), captor.capture());
+        assertThat(captor.getAllValues().get(0).getSqlSet())
+                .contains("status")
+                .contains("lease_token");
+        assertThat(captor.getAllValues().get(1).getSqlSet())
+                .contains("status")
+                .contains("lease_token");
         assertThat(job.getStatus()).isEqualTo("SUCCESS");
+        assertThat(job.getLeaseToken()).isNull();
         verify(jobExecutionMapper).insert(any(JobExecution.class));
     }
 
@@ -77,6 +83,34 @@ class JobEngineTest {
 
         verify(jobExecutionMapper, never()).insert(any(JobExecution.class));
         assertThat(job.getStatus()).isEqualTo("PENDING");
+    }
+
+    @Test
+    void doesNotWriteDeadLetterWhenTerminalFencingUpdateFails() {
+        JobDefinition job = pendingJob();
+        job.setMaxRetries(0);
+        when(jobDefinitionMapper.update(isNull(), any(UpdateWrapper.class))).thenReturn(1, 0);
+        jobEngine.registerWorker("TEST", (definition, params) -> false);
+
+        ReflectionTestUtils.invokeMethod(jobEngine, "executeJob", job);
+
+        verify(deadLetterMapper, never()).insert(any(JobDeadLetter.class));
+        assertThat(job.getStatus()).isEqualTo("DEAD_LETTER");
+        assertThat(job.getLeaseToken()).isNotBlank();
+    }
+
+    @Test
+    void writesDeadLetterOnlyAfterTerminalFencingUpdateSucceeds() {
+        JobDefinition job = pendingJob();
+        job.setMaxRetries(0);
+        when(jobDefinitionMapper.update(isNull(), any(UpdateWrapper.class))).thenReturn(1, 1);
+        jobEngine.registerWorker("TEST", (definition, params) -> false);
+
+        ReflectionTestUtils.invokeMethod(jobEngine, "executeJob", job);
+
+        verify(deadLetterMapper).insert(any(JobDeadLetter.class));
+        assertThat(job.getStatus()).isEqualTo("DEAD_LETTER");
+        assertThat(job.getLeaseToken()).isNull();
     }
 
     @Test
