@@ -4,8 +4,11 @@
 
 - **功能：服务器无人值守自动更新**：新增 `SelfUpdateAutoScheduler` 定时调度器，默认每 6 小时（启动 5 分钟后首检）检查官方 GitHub Release，发现新版本自动执行 下载 → SHA-256 + Ed25519 验签 → 原子替换（失败回滚）→ 按 `restart-mode` 重启；`exit` 模式（默认）配合 systemd `Restart=always` 即可实现"自动更新 + 更新后自动重启"闭环。可通过 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false` 关闭，检查间隔/首检延迟分别由 `XIANYU_ASSISTANT_AUTO_UPDATE_CHECK_INTERVAL_MS` / `XIANYU_ASSISTANT_AUTO_UPDATE_INITIAL_DELAY_MS` 控制。
 - **重构：更新检查逻辑抽取为 `UpdateCheckService`**：原 `SystemController` 内的在线更新检查（GitHub/Gitee 源解析、主机白名单、5 分钟缓存、版本比较）整体迁移为独立服务，`/api/system/checkUpdate` 端点行为不变，供控制器与自动更新调度器共用。
+- **修复：自动发货 UNKNOWN 发送结果转「待人工复核」**：WebSocket 发送结果为 UNKNOWN（帧可能已写出、成败未确认）时不再按失败处理，统一持久化为 PENDING 待人工复核，并在复核状态持久化失败时主动告警；新增 `DeliveryOrderState` 集中管理发货订单状态与待复核判定，替换裸 -1/0/1 字面量；`MessageSendResult` 语义澄清为「结果未确认，调用方不得假定失败」。
+- **安全：CI 供应链加固**：`ci.yml` 的 `subosito/flutter-action` 固定为完整 commit SHA；Dockerfile 构建镜像时实际运行后端测试（移除 `-DskipTests`）；前端 `minimatch` 覆盖升级至 `^11.0.1` 修复 npm audit 漏洞；新增 `SECURITY.md`（漏洞报告政策）与 `security-audit-report.md`（安全审计报告）。
+- **开发者**：`start-dev.ps1` 正确引用 JAR 路径，兼容含空格的项目目录。
 - **文档**：`docs/production-deployment.md` 补充 systemd 单元自动重启要求（`Restart=always`）与应用内自动更新说明；`README` 配置参考补齐 `XIANYU_ASSISTANT_SELF_UPDATE_*` 与 `XIANYU_ASSISTANT_AUTO_UPDATE_*` 环境变量。
-- **验证**：新增 `SelfUpdateAutoSchedulerTest`（13 项：开关/互斥/失败/超时/manual 模式等分支）与 `UpdateCheckServiceTest`（自原 controller 测试迁移）；`WebMvcUpdateAuthenticationTest` 适配服务注入，鉴权行为断言不变。
+- **验证**：新增 `SelfUpdateAutoSchedulerTest`（13 项：开关/互斥/失败/超时/manual 模式等分支）与 `UpdateCheckServiceTest`（自原 controller 测试迁移）；扩展 `AutoDeliveryServiceImplTest` 与 `XianyuWebSocketClientSendResultTest` 覆盖 UNKNOWN 结果分支；`WebMvcUpdateAuthenticationTest` 适配服务注入，鉴权行为断言不变。
 
 # 发布源迁移说明（2026-11-03）
 
