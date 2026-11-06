@@ -87,4 +87,10 @@ public interface ItemService {
 
     /** 创建本地商品资料草稿。 */
     ResultObject<XianyuGoodsInfo> createItemDraft(CreateItemDraftReqDTO reqDTO);
+
+    /** 擦亮单个商品。 */
+    ResultObject<PolishItemRespDTO> polishItem(PolishItemReqDTO reqDTO);
+
+    /** 批量擦亮商品（支持按列表或全量在售）。 */
+    ResultObject<PolishItemRespDTO> batchPolishItems(BatchPolishItemsReqDTO reqDTO);
 }

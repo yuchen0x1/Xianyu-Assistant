@@ -61,11 +61,11 @@
   min-height: 0;
   overflow: hidden;
   background: var(--glass-bg);
-  border: 1px solid var(--glass-border);
+  border: 1px solid var(--glass-border-strong);
   border-radius: var(--radius-lg);
-  box-shadow: var(--glass-shadow);
-  -webkit-backdrop-filter: var(--glass-blur-sm);
-  backdrop-filter: var(--glass-blur-sm);
+  box-shadow: var(--glass-shadow), 0 0 30px rgba(0, 242, 254, 0.05);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
 }
 
 .connection__accounts-pane {

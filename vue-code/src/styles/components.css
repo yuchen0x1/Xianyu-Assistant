@@ -118,8 +118,8 @@
   .ui-card:hover {
     background: var(--glass-bg-strong);
     border-color: var(--glass-border-strong);
-    box-shadow: var(--glass-shadow-float);
-    transform: translateY(-1px);
+    box-shadow: var(--glass-shadow-float), var(--glow-cyan);
+    transform: translateY(-2px);
   }
 }
 
@@ -162,13 +162,30 @@
 .ui-btn--primary {
   color: #fff;
   background: var(--gradient-brand);
-  border-color: color-mix(in srgb, var(--brand-500) 72%, var(--glass-highlight-strong));
-  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.22);
+  border-color: rgba(0, 242, 254, 0.4);
+  box-shadow: 0 4px 20px rgba(0, 242, 254, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.ui-btn--primary::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transition: all 0.5s var(--ease-emphasized);
+}
+
+.ui-btn--primary:hover:not(:disabled)::before {
+  left: 100%;
 }
 
 .ui-btn--primary:hover:not(:disabled) {
-  filter: brightness(1.05);
-  box-shadow: 0 14px 32px rgba(37, 99, 235, 0.34), inset 0 1px 0 rgba(255, 255, 255, 0.26);
+  filter: brightness(1.1);
+  box-shadow: 0 6px 28px rgba(0, 242, 254, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.4);
   transform: translateY(-1px);
 }
 

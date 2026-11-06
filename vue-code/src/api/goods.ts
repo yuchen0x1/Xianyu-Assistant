@@ -347,6 +347,43 @@ export function dismissAutoReplyRecord(data: {
   });
 }
 
+// 擦亮商品响应
+export interface PolishItemResponse {
+  total: number;
+  success: number;
+  failed: number;
+  details: Array<{
+    xyGoodsId: string;
+    success: boolean;
+    message: string;
+  }>;
+}
+
+// 擦亮单件商品
+export function polishGoods(data: {
+  xianyuAccountId: number;
+  xyGoodsId: string;
+}) {
+  return request<PolishItemResponse>({
+    url: '/items/polish',
+    method: 'POST',
+    data
+  });
+}
+
+// 批量擦亮商品（若 xyGoodsIds 为空则擦亮账号下全部在售商品）
+export function batchPolishGoods(data: {
+  xianyuAccountId: number;
+  xyGoodsIds?: string[];
+}) {
+  return request<PolishItemResponse>({
+    url: '/items/batchPolish',
+    method: 'POST',
+    data
+  });
+}
+
+
 export function getSyncProgress(syncId: string) {
   return request<SyncProgressResponse>({
     url: `/items/syncProgress/${syncId}`,

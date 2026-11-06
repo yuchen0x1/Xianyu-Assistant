@@ -36,7 +36,7 @@ const menuToggle = ref<HTMLButtonElement | null>(null)
 const drawerCloseButton = ref<HTMLButtonElement | null>(null)
 const headerContent = shallowRef<Component | null>(null)
 const updateDialog = ref<InstanceType<typeof UpdateDialog> | null>(null)
-const currentVersion = ref(__APP_VERSION__ || '3.4.10')
+const currentVersion = ref(__APP_VERSION__ || '3.5.18')
 const hasNewVersion = ref(false)
 const serviceStatus = ref<'checking' | 'available' | 'unavailable'>('checking')
 const commandPaletteOpen = ref(false)
@@ -520,18 +520,18 @@ onUnmounted(() => {
 }
 
 .sidebar__status-dot--available {
-  background: var(--success-500);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--success-500) 18%, transparent);
+  background: var(--teal-400);
+  box-shadow: 0 0 10px var(--teal-400), 0 0 0 3px color-mix(in srgb, var(--teal-400) 25%, transparent);
 }
 
 .sidebar__status-dot--unavailable {
   background: var(--danger-500);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--danger-500) 18%, transparent);
+  box-shadow: 0 0 10px var(--danger-500), 0 0 0 3px color-mix(in srgb, var(--danger-500) 25%, transparent);
 }
 
 .sidebar__status-dot--checking {
-  background: var(--warning-500);
-  box-shadow: 0 0 0 4px color-mix(in srgb, var(--warning-500) 18%, transparent);
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px var(--neon-cyan), 0 0 0 3px color-mix(in srgb, var(--neon-cyan) 25%, transparent);
   animation: pulse-dot 1.2s ease-in-out infinite;
 }
 

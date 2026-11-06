@@ -24,7 +24,7 @@ const form = ref({
   title: '', description: '', price: '', quantity: '1', postFee: '0', categoryId: '', images: '', itemIds: '', enabled: true
 })
 
-const typeLabel: Record<string, string> = { SYNC_GOODS: '同步商品', PUBLISH: '定时发布', OFF_SHELF: '定时下架' }
+const typeLabel: Record<string, string> = { SYNC_GOODS: '同步商品', PUBLISH: '定时发布', OFF_SHELF: '定时下架', POLISH_GOODS: '自动擦亮' }
 const currentType = computed(() => form.value.taskType)
 
 async function load() {
@@ -56,7 +56,7 @@ function resetForm(task?: ScheduleTask) {
 }
 
 function buildConfig() {
-  if (currentType.value === 'OFF_SHELF') return JSON.stringify({ itemIds: form.value.itemIds.split(/[,\n]/).map(v => v.trim()).filter(Boolean) })
+  if (currentType.value === 'OFF_SHELF' || currentType.value === 'POLISH_GOODS') return JSON.stringify({ itemIds: form.value.itemIds.split(/[,\n]/).map(v => v.trim()).filter(Boolean) })
   if (currentType.value === 'PUBLISH') return JSON.stringify({
     title: form.value.title.trim(), description: form.value.description.trim(), price: Number(form.value.price),
     quantity: Math.max(1, Number(form.value.quantity) || 1), postFee: Number(form.value.postFee) || 0,
@@ -103,13 +103,14 @@ onMounted(load)
     </div>
 
     <Teleport to="body"><div v-if="dialogOpen" class="overlay" @click.self="dialogOpen = false"><div class="dialog"><h2>{{ editingId ? '编辑计划任务' : '新建计划任务' }}</h2><div class="form-grid">
-      <label>任务名称<input v-model="form.taskName" placeholder="例如：每天发布新品" /></label>
-      <label>任务类型<select v-model="form.taskType"><option value="PUBLISH">定时发布</option><option value="OFF_SHELF">定时下架</option><option value="SYNC_GOODS">同步商品</option></select></label>
-      <label>Cron 表达式<input v-model="form.cronExpr" placeholder="秒 分 时 日 月 周" /><small>示例：0 0 9 * * *（每天 09:00）</small></label>
-      <label>账号<select v-model.number="form.accountId"><option :value="null">请选择账号</option><option v-for="a in accounts" :key="a.id" :value="a.id">{{ accountDisplayName(a) }}</option></select></label>
-      <template v-if="currentType === 'PUBLISH'"><label>商品标题<input v-model="form.title" /></label><label>价格<input v-model="form.price" type="number" min="0" step="0.01" /></label><label>数量<input v-model="form.quantity" type="number" min="1" /></label><label>运费<input v-model="form.postFee" type="number" min="0" step="0.01" /></label><label>类目 ID<input v-model="form.categoryId" /></label><label>图片 URL（逗号分隔）<input v-model="form.images" /></label><label class="wide">商品描述<textarea v-model="form.description" rows="3" /></label></template>
-      <label v-else-if="currentType === 'OFF_SHELF'" class="wide">商品 ID（逗号或换行分隔）<textarea v-model="form.itemIds" rows="3" placeholder="itemId-1,itemId-2" /></label>
-      <p v-else class="wide hint">同步商品会按账号刷新最近商品，无需额外配置。</p>
+	      <label>任务名称<input v-model="form.taskName" placeholder="例如：每天定时擦亮" /></label>
+	      <label>任务类型<select v-model="form.taskType"><option value="PUBLISH">定时发布</option><option value="OFF_SHELF">定时下架</option><option value="SYNC_GOODS">同步商品</option><option value="POLISH_GOODS">自动擦亮</option></select></label>
+	      <label>Cron 表达式<input v-model="form.cronExpr" placeholder="秒 分 时 日 月 周" /><small>示例：0 0 9 * * *（每天 09:00）</small></label>
+	      <label>账号<select v-model.number="form.accountId"><option :value="null">请选择账号</option><option v-for="a in accounts" :key="a.id" :value="a.id">{{ accountDisplayName(a) }}</option></select></label>
+	      <template v-if="currentType === 'PUBLISH'"><label>商品标题<input v-model="form.title" /></label><label>价格<input v-model="form.price" type="number" min="0" step="0.01" /></label><label>数量<input v-model="form.quantity" type="number" min="1" /></label><label>运费<input v-model="form.postFee" type="number" min="0" step="0.01" /></label><label>类目 ID<input v-model="form.categoryId" /></label><label>图片 URL（逗号分隔）<input v-model="form.images" /></label><label class="wide">商品描述<textarea v-model="form.description" rows="3" /></label></template>
+	      <label v-else-if="currentType === 'OFF_SHELF'" class="wide">商品 ID（逗号或换行分隔）<textarea v-model="form.itemIds" rows="3" placeholder="itemId-1,itemId-2" /></label>
+	      <label v-else-if="currentType === 'POLISH_GOODS'" class="wide">指定商品 ID（可选，逗号或换行分隔，留空则擦亮账号下所有在售商品）<textarea v-model="form.itemIds" rows="3" placeholder="留空默认擦亮账号下全部在售宝贝" /></label>
+	      <p v-else class="wide hint">同步商品会按账号刷新最近商品，无需额外配置。</p>
       <label class="check wide"><input v-model="form.enabled" type="checkbox" /> 创建后立即启用</label>
     </div><div class="dialog-actions"><UiButton variant="secondary" @click="dialogOpen = false">取消</UiButton><UiButton :loading="saving" @click="save">保存</UiButton></div></div></div></Teleport>
   </UiPageShell>

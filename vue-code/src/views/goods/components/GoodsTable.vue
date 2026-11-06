@@ -19,6 +19,7 @@ interface Emits {
   (e: 'view', xyGoodId: string): void
   (e: 'edit', item: GoodsItemWithConfig): void
   (e: 'sync', xyGoodId: string): void
+  (e: 'polish', xyGoodId: string): void
   (e: 'toggleAutoDelivery', item: GoodsItemWithConfig, value: boolean): void
   (e: 'toggleAutoReply', item: GoodsItemWithConfig, value: boolean): void
   (e: 'configAutoDelivery', item: GoodsItemWithConfig): void
@@ -228,6 +229,15 @@ const handleImgError = (e: Event) => {
             <button class="table__action table__action--sync" @click="emit('sync', item.item.xyGoodId)">
               <IconSparkle />
               <span>同步</span>
+            </button>
+            <button
+              v-if="item.item.status === 0"
+              class="table__action table__action--detail"
+              title="擦亮商品提升曝光"
+              @click="emit('polish', item.item.xyGoodId)"
+            >
+              <IconSparkle />
+              <span>擦亮</span>
             </button>
             <button class="table__action table__action--delete" @click="emit('delete', item.item.xyGoodId, item.item.title)">
               <IconTrash />
@@ -811,12 +821,19 @@ const handleImgError = (e: Event) => {
 }
 
 [data-theme="dark"] .table__th {
-  color: var(--text-1);
-  background: rgba(17, 24, 39, 0.72);
-  border-bottom-color: var(--border-1);
+  color: var(--neon-cyan);
+  background: rgba(13, 22, 38, 0.92);
+  border-bottom: 1px solid rgba(0, 242, 254, 0.22);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
 [data-theme="dark"] .table__tr:hover .table__td {
+  background: rgba(0, 242, 254, 0.04);
+}
+
+[data-theme="dark"] .goods-thumb {
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  box-shadow: 0 0 10px rgba(0, 242, 254, 0.08);
   background: rgba(255, 255, 255, 0.04);
 }
 

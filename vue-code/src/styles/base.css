@@ -36,6 +36,11 @@ body {
   line-height: var(--leading-normal);
   transition: color var(--duration-slow) var(--ease-standard),
     background-color var(--duration-slow) var(--ease-standard);
+  background-image: 
+    radial-gradient(var(--grid-line) 1px, transparent 1px),
+    radial-gradient(var(--grid-line) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: 0 0, 16px 16px;
 }
 
 button,
@@ -76,8 +81,8 @@ select {
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
@@ -85,16 +90,14 @@ select {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--text-3) 55%, transparent);
-  border: 2px solid transparent;
-  border-radius: 8px;
-  background-clip: padding-box;
+  background: color-mix(in srgb, var(--brand-500) 40%, var(--text-3));
+  border-radius: 999px;
+  box-shadow: 0 0 6px var(--glow-cyan);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, var(--text-2) 70%, transparent);
-  border: 2px solid transparent;
-  background-clip: padding-box;
+  background: var(--brand-500);
+  box-shadow: 0 0 10px var(--neon-cyan);
 }
 
 @media (prefers-reduced-motion: reduce) {

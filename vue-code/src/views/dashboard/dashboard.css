@@ -91,6 +91,8 @@
 .stat-card {
   position: relative;
   overflow: hidden;
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
 }
 
 .stat-card::before {
@@ -99,8 +101,14 @@
   inset: 0 0 auto;
   height: 2px;
   pointer-events: none;
-  background: linear-gradient(90deg, color-mix(in srgb, var(--stat-accent, var(--brand-600)) 78%, transparent), color-mix(in srgb, var(--stat-accent, var(--brand-600)) 24%, transparent), transparent);
-  opacity: 0.9;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--stat-accent, var(--brand-600)) 85%, transparent), color-mix(in srgb, var(--cyan-400) 70%, transparent), transparent);
+  box-shadow: 0 0 12px var(--stat-accent, var(--brand-600));
+  opacity: 0.95;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--glass-shadow-float), 0 0 20px color-mix(in srgb, var(--stat-accent, var(--brand-600)) 25%, transparent);
 }
 
 .stat-card__icon {

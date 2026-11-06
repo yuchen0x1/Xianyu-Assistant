@@ -860,6 +860,7 @@ public class WebSocketController {
     }
 
     @Data
+    @lombok.EqualsAndHashCode(callSuper = false)
     public static class CaptchaMouseReqDTO extends CaptchaSessionReqDTO {
         private String eventType;
         private double x;

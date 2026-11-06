@@ -1506,5 +1506,95 @@ public class ItemServiceImpl implements ItemService {
             return ResultObject.failed("创建商品草稿失败: " + e.getMessage());
         }
     }
+
+    @Override
+    public ResultObject<PolishItemRespDTO> polishItem(PolishItemReqDTO reqDTO) {
+        if (reqDTO == null || reqDTO.getXianyuAccountId() == null || reqDTO.getXyGoodsId() == null) {
+            return ResultObject.failed(400, "参数不能为空");
+        }
+        BatchPolishItemsReqDTO batchReq = new BatchPolishItemsReqDTO();
+        batchReq.setXianyuAccountId(reqDTO.getXianyuAccountId());
+        batchReq.setXyGoodsIds(List.of(reqDTO.getXyGoodsId()));
+        return batchPolishItems(batchReq);
+    }
+
+    @Override
+    public ResultObject<PolishItemRespDTO> batchPolishItems(BatchPolishItemsReqDTO reqDTO) {
+        if (reqDTO == null || reqDTO.getXianyuAccountId() == null) {
+            return ResultObject.failed(400, "账号ID不能为空");
+        }
+        Long accountId = reqDTO.getXianyuAccountId();
+        String cookie = accountService.getCookieByAccountId(accountId);
+        if (cookie == null || cookie.isBlank()) {
+            return ResultObject.failed(400, "账号Cookie不存在或未登录");
+        }
+
+        List<String> targetGoodsIds = reqDTO.getXyGoodsIds();
+        if (targetGoodsIds == null || targetGoodsIds.isEmpty()) {
+            // 为空时自动获取该账号下所有在售商品
+            targetGoodsIds = goodsInfoMapper.selectList(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<XianyuGoodsInfo>()
+                            .eq(XianyuGoodsInfo::getXianyuAccountId, accountId)
+                            .eq(XianyuGoodsInfo::getStatus, 0)
+            ).stream().map(XianyuGoodsInfo::getXyGoodId).filter(Objects::nonNull).toList();
+        }
+
+        if (targetGoodsIds.isEmpty()) {
+            return ResultObject.success(PolishItemRespDTO.builder()
+                    .total(0)
+                    .success(0)
+                    .failed(0)
+                    .details(Collections.emptyList())
+                    .build(), "没有找到待擦亮的在售商品");
+        }
+
+        int successCount = 0;
+        int failedCount = 0;
+        List<PolishItemRespDTO.ItemPolishResult> details = new ArrayList<>();
+
+        for (int i = 0; i < targetGoodsIds.size(); i++) {
+            String itemId = targetGoodsIds.get(i);
+            try {
+                Map<String, Object> data = new HashMap<>();
+                data.put("itemId", itemId);
+                com.feijimiao.xianyuassistant.utils.XianyuApiCallUtils.ApiCallResult callResult = xianyuAdapter.callApi(
+                        accountId,
+                        com.feijimiao.xianyuassistant.constants.XianyuProtocolProfile.ITEM_POLISH_API,
+                        data,
+                        cookie,
+                        com.feijimiao.xianyuassistant.constants.XianyuProtocolProfile.ITEM_POLISH_API_VERSION
+                );
+
+                boolean ok = callResult.isSuccess();
+                String msg = ok ? "擦亮成功" : (callResult.getErrorMessage() != null ? callResult.getErrorMessage() : "擦亮未成功");
+                if (ok) {
+                    successCount++;
+                } else {
+                    failedCount++;
+                }
+                details.add(new PolishItemRespDTO.ItemPolishResult(itemId, ok, msg));
+
+                // 批处理间歇 1 秒，防平台触发频控
+                if (i < targetGoodsIds.size() - 1) {
+                    Thread.sleep(1000);
+                }
+            } catch (InterruptedException ie) {
+                Thread.currentThread().interrupt();
+                break;
+            } catch (Exception e) {
+                failedCount++;
+                details.add(new PolishItemRespDTO.ItemPolishResult(itemId, false, "执行异常: " + e.getMessage()));
+            }
+        }
+
+        PolishItemRespDTO resp = PolishItemRespDTO.builder()
+                .total(targetGoodsIds.size())
+                .success(successCount)
+                .failed(failedCount)
+                .details(details)
+                .build();
+        return ResultObject.success(resp, String.format("擦亮完成: 共%d个, 成功%d个, 失败%d个",
+                targetGoodsIds.size(), successCount, failedCount));
+    }
 }
 

@@ -541,4 +541,40 @@ public class ItemController {
             return ResultObject.failed("检查同步状态失败");
         }
     }
+
+    /**
+     * 擦亮单个商品
+     */
+    @PostMapping("/polish")
+    @RequirePermission("goods:write")
+    public ResultObject<PolishItemRespDTO> polishItem(@Valid @RequestBody PolishItemReqDTO reqDTO) {
+        try {
+            rbacService.assertAccountVisible(com.feijimiao.xianyuassistant.context.UserContext.getUserId(), reqDTO.getXianyuAccountId());
+            log.info("擦亮商品请求: accountId={}, itemId={}", reqDTO.getXianyuAccountId(), reqDTO.getXyGoodsId());
+            return itemService.polishItem(reqDTO);
+        } catch (BusinessException e) {
+            return ResultObject.failed(e.getCode(), e.getMessage());
+        } catch (Exception e) {
+            log.error("擦亮商品失败", e);
+            return ResultObject.failed("擦亮商品失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 批量擦亮商品（若未指定商品列表则擦亮全部在售商品）
+     */
+    @PostMapping("/batchPolish")
+    @RequirePermission("goods:write")
+    public ResultObject<PolishItemRespDTO> batchPolishItems(@Valid @RequestBody BatchPolishItemsReqDTO reqDTO) {
+        try {
+            rbacService.assertAccountVisible(com.feijimiao.xianyuassistant.context.UserContext.getUserId(), reqDTO.getXianyuAccountId());
+            log.info("批量擦亮商品请求: accountId={}, itemIds={}", reqDTO.getXianyuAccountId(), reqDTO.getXyGoodsIds());
+            return itemService.batchPolishItems(reqDTO);
+        } catch (BusinessException e) {
+            return ResultObject.failed(e.getCode(), e.getMessage());
+        } catch (Exception e) {
+            log.error("批量擦亮商品失败", e);
+            return ResultObject.failed("批量擦亮商品失败: " + e.getMessage());
+        }
+    }
 }

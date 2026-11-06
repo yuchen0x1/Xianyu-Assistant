@@ -52,9 +52,20 @@ public final class XianyuProtocolProfile {
     public static final String ITEM_PUBLISH_API = "mtop.idle.pc.idleitem.publish";
     public static final String ITEM_PUBLISH_API_VERSION = "1.0";
 
+    /** 商品擦亮：mtop.taobao.idle.item.polish v2.0 */
+    public static final String ITEM_POLISH_API = "mtop.taobao.idle.item.polish";
+    public static final String ITEM_POLISH_API_VERSION = "2.0";
+
     /** 商品下架/删除：com.taobao.idle.item.delete v1.1 */
     public static final String ITEM_DELETE_API = "com.taobao.idle.item.delete";
     public static final String ITEM_DELETE_API_VERSION = "1.1";
+
+    /** 提交买家评价：mtop.taobao.idle.merchant.rate.create v1.0 */
+    public static final String RATE_CREATE_API = "mtop.taobao.idle.merchant.rate.create";
+    public static final String RATE_CREATE_API_VERSION = "1.0";
+
+    /** 索要小红花：mtop.taobao.idlemessage.red.flower */
+    public static final String RED_FLOWER_API = "mtop.taobao.idlemessage.red.flower";
 
     /** AI 类目识别：mtop.taobao.idle.kgraph.property.recommend v2.0 */
     public static final String CATEGORY_RECOMMEND_API = "mtop.taobao.idle.kgraph.property.recommend";

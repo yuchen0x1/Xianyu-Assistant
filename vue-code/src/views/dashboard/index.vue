@@ -2210,8 +2210,17 @@ const formatCompareAmount = (v: number): string => {
 
 .dp__revenue-inner {
   background: var(--dp-revenue-bg);
-  border-color: var(--dp-revenue-border);
-  border-left-color: var(--warning-600);
+  border: 1px solid var(--dp-revenue-border);
+  border-left: 4px solid var(--neon-cyan);
+  box-shadow: 0 0 25px rgba(0, 242, 254, 0.08);
+}
+
+.dp__revenue-num {
+  font-size: 36px;
+  font-weight: 800;
+  color: var(--dp-revenue-ink);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 0 16px rgba(245, 158, 11, 0.25);
 }
 
 .dp__revenue-label,
@@ -2277,13 +2286,13 @@ const formatCompareAmount = (v: number): string => {
 }
 
 .dp__bar--success {
-  background: linear-gradient(180deg, var(--success-500), var(--teal-600));
-  box-shadow: 0 8px 16px rgba(22, 163, 74, 0.2);
+  background: linear-gradient(180deg, var(--neon-cyan), var(--teal-500));
+  box-shadow: 0 0 16px rgba(0, 242, 254, 0.4);
 }
 
 .dp__bar--fail {
-  background: linear-gradient(180deg, var(--danger-500), var(--rose-600));
-  box-shadow: 0 8px 16px rgba(220, 38, 38, 0.18);
+  background: linear-gradient(180deg, var(--rose-400), var(--danger-600));
+  box-shadow: 0 0 16px rgba(244, 63, 94, 0.35);
 }
 
 .dp__ring-chart {

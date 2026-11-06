@@ -10,6 +10,8 @@ import {
   deleteItem,
   syncSingleItem,
   getSyncProgress,
+  polishGoods,
+  batchPolishGoods
 } from '@/api/goods'
 import { showSuccess, showError, showInfo } from '@/utils'
 import { getGoodsStatusText, formatPrice, formatTime } from '@/utils'
@@ -340,9 +342,60 @@ export function useGoodsManager() {
     }
   }
 
+  const polishing = ref(false)
+
+  // 擦亮单件商品
+  const handlePolishItem = async (xyGoodId: string) => {
+    if (!selectedAccountId.value) return
+    polishing.value = true
+    try {
+      const res = await polishGoods({
+        xianyuAccountId: selectedAccountId.value,
+        xyGoodsId: xyGoodId
+      })
+      if (res.code === 0 || res.code === 200) {
+        showSuccess(res.msg || '商品擦亮成功')
+      } else {
+        showError(res.msg || '商品擦亮失败')
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      showError('擦亮异常: ' + message)
+    } finally {
+      polishing.value = false
+    }
+  }
+
+  // 一键擦亮当前账号在售商品
+  const handleBatchPolish = async () => {
+    if (!selectedAccountId.value) {
+      showInfo('请先选择账号')
+      return
+    }
+    polishing.value = true
+    try {
+      const res = await batchPolishGoods({
+        xianyuAccountId: selectedAccountId.value
+      })
+      if (res.code === 0 || res.code === 200) {
+        showSuccess(res.msg || '批量擦亮完成')
+      } else {
+        showError(res.msg || '批量擦亮失败')
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      showError('批量擦亮异常: ' + message)
+    } finally {
+      polishing.value = false
+    }
+  }
+
   return {
     loading,
     refreshing,
+    polishing,
+    handlePolishItem,
+    handleBatchPolish,
     syncing,
     syncProgress,
     accounts,
