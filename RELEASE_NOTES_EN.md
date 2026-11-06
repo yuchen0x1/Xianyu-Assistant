@@ -1,79 +1,78 @@
-# Xianyu Assistant (Xianyu Seller Console) v3.5.17
+# Xianyu Assistant (Xianyu Seller Console) v3.5.18
 
-> Release: 2026-11-04
+> Release: 2026-11-06
 
-This release brings an **unattended auto-update** loop for server deployments, fixes how automatic delivery handles ambiguous send results, and hardens the CI supply chain.
+This release adds **item polishing** (single / batch / scheduled), delivers a full **deep-space cyber visual overhaul** of the web console, and hardens AI reply timing against platform risk control.
 
 ## ✨ Highlights
 
-- 🤖 **Unattended auto-update**: periodically checks the official GitHub Release and runs the full Download → Verify signature → Swap → Restart pipeline, so servers can run maintenance-free.
-- 📦 **Automatic delivery reliability fix**: an unknown WebSocket send result is no longer treated as a failure — the order moves to "pending manual review" with an alert instead of being mis-logged.
-- 🔐 **Supply chain hardening**: CI action pinned to a commit SHA, backend tests now run inside the Docker build, plus a vulnerability disclosure policy and security audit report.
-- 🏗️ **Update-check logic extracted** into a standalone `UpdateCheckService`, shared by the controller and the auto-update scheduler — endpoint behavior unchanged.
+- ✨ **Item polishing**: the platform's free exposure mechanism — polish one item, polish every on-sale item of an account, or schedule it with Cron.
+- 🛰️ **Deep-space cyber UI overhaul**: neon cyan / cyber blue / electric violet light system, deep-space surfaces with ultra-thin glass, matrix grid backdrop, shimmering buttons, radar pulse indicators.
+- 🛡️ **Humanized reply delay**: Gaussian-distributed jitter breaks the fixed-cadence automation fingerprint that platform risk control looks for.
+- 🐛 **Unified version fallbacks**: fixes possible version mis-detection in the self-update checker when `app.version` is not injected.
 
 ## New Features
 
-### 🤖 Unattended Auto-Update for Servers
+### ✨ Item Polishing
 
-A new `SelfUpdateAutoScheduler` (enabled **by default**):
+Polishing pushes an item back to the front of the platform's search and recommendation lists — a **free** source of public exposure. Three entry points are available:
 
-- Checks the official GitHub Release every **6 hours** (first check 5 minutes after startup).
-- On a new release it automatically performs: **download → SHA-256 + Ed25519 signature verification → atomic swap (rollback on failure) → restart per `restart-mode`**.
-- The `exit` mode (default) combined with systemd `Restart=always` closes the loop of "auto-update + automatic restart afterwards" — zero manual intervention.
-
-Related configuration (environment variables):
-
-| Variable | Default | Description |
+| Entry | Where | Description |
 |---|---|---|
-| `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED` | `true` | Master switch; set to `false` to disable |
-| `XIANYU_ASSISTANT_AUTO_UPDATE_CHECK_INTERVAL_MS` | `21600000` | Check interval in ms (default 6 h) |
-| `XIANYU_ASSISTANT_AUTO_UPDATE_INITIAL_DELAY_MS` | `300000` | First-check delay after startup in ms (default 5 min) |
+| Polish one item | Goods → row action button "擦亮" | Visible for on-sale items only, calls the platform H5 polish API |
+| Polish all on sale | Goods → header button "一键擦亮在售" | Polishes every on-sale item of the current account, 1s spacing between items to avoid rate limits |
+| Scheduled polishing | Schedule Tasks → task type "自动擦亮" | Cron-driven batch polishing, optionally restricted to specific item IDs |
 
-> The in-app manual online update (`XIANYU_ASSISTANT_SELF_UPDATE_*`) is unaffected. Auto-update is only available when running as a standalone JAR.
+Backend endpoints:
 
-## Bug Fixes
+- `POST /api/items/polish` — polish a single item, requires `goods:write`.
+- `POST /api/items/batchPolish` — batch polish, requires `goods:write`.
 
-### 📦 Automatic delivery: unknown send results no longer misjudged
+The protocol layer uses the Xianyu H5 endpoint `mtop.taobao.idle.item.polish` (version `2.0`) and reuses the existing per-account rate limiting, concurrency caps and risk-control circuit breaker. The platform caps daily polish counts per item; repeated calls return a business error, and the UI reports per-item success/failure details.
 
-- Added `DeliveryOrderState` to centralize delivery-order state constants and the "awaiting manual review" detection, replacing raw `-1/0/1` literals.
-- A WebSocket send result of **UNKNOWN** (the frame may have been written; success unconfirmed) is now persisted as **PENDING — awaiting manual review**, and an alert is raised if persisting that state fails. This prevents duplicate deliveries or lost delivery records for the same order.
-- `MessageSendResult` semantics clarified: UNKNOWN means the outcome is unconfirmed and callers must not assume failure.
+> Tip: the platform caps polish counts per day — a daily scheduled task is enough, no need to repeat manually.
 
-## Improvements
+### 🛰️ Deep-Space Cyber Visual Overhaul
 
-### 🏗️ Update-check logic extracted into `UpdateCheckService`
+The entire console was visually rebuilt, with both light and dark themes reworked:
 
-- The online-update check in `SystemController` (GitHub/Gitee source resolution, download host allowlist, 5-minute cache, version comparison) moved to a standalone service.
-- The `/api/system/checkUpdate` endpoint behaves exactly as before and is now shared by the controller and the auto-update scheduler.
-
-### 📖 Documentation
-
-- `docs/production-deployment.md` now documents the systemd unit restart requirement (`Restart=always`) and the in-app auto-update.
-- README configuration reference gained the `XIANYU_ASSISTANT_SELF_UPDATE_*` and `XIANYU_ASSISTANT_AUTO_UPDATE_*` variables.
-- Fixed a wrong repository slug in the migration note.
+- **Neon token system**: introduces neon cyan `#00f2fe`, cyber blue `#4facfe`, electric violet `#9d4edd` and pulse emerald `#10b981`, forming a consistent glow / halo / outline language.
+- **Deep-space surfaces & ultra-thin glass**: the dark theme base is upgraded to `#060a12`; panels use 24px ultra-thin frosted glass with neon-cyan outlines, layered edge lights and inner shadows for depth.
+- **Matrix grid backdrop**: a 32px geometric dot grid plus three radial light halos create a console atmosphere.
+- **Micro-interactions**: shimmer sweep on primary buttons, card lift with ambient glow, magnetic sidebar navigation with a neon energy rail, radar-style breathing status lights, glowing scrollbars, gradient-clipped headings.
+- **Accessibility respected**: fully honours `prefers-reduced-motion` and `prefers-reduced-transparency`, degrading to a static solid-color interface when those preferences are enabled.
 
 ## Performance & Security
 
-### 🔐 CI supply chain hardening
+### 🛡️ Humanized AI Reply Delay
 
-- `subosito/flutter-action` in `ci.yml` is pinned to a full commit SHA to protect against tag hijacking.
-- The Dockerfile now **actually runs the backend tests** during image build (no more `-DskipTests`).
-- Frontend `minimatch` overridden to `^11.0.1`, clearing npm audit findings.
-- Added [`SECURITY.md`](SECURITY.md) (vulnerability disclosure policy) and [`security-audit-report.md`](security-audit-report.md).
+- Previously AI replies fired at a strictly fixed configured interval — a classic automation signature.
+- `ReplyConfigProvider.getDelaySeconds()` now applies a **Gaussian** random factor (σ = 0.15, roughly 95% within ±25%, floor of 3 seconds) on top of the base delay, producing a natural human-like cadence.
+- Platform-side rate limits, concurrency caps and risk-control circuit breaking are unchanged.
+
+### 🐛 Unified Version Fallbacks
+
+- Stale fallback version values in `application.yaml`, `SystemController`, `McpServerController`, `SelfUpdateService`, `UpdateCheckService`, `AppLayout.vue`, `UpdateDialog.vue` and `AboutPanel.vue` are now aligned with the current release.
+- This fixes version info and the self-update check reporting an outdated version when `app.version` is not provided.
+
+### 🧹 Code Quality
+
+- `WebSocketController.CaptchaMouseReqDTO` now declares `@EqualsAndHashCode(callSuper = false)`, removing the Lombok subclass compiler warning.
+- Frontend `useGoodsManager.ts` replaces `catch (err: any)` with `catch (err: unknown)` and strict narrowing — ESLint reports zero warnings.
 
 ## Download & Install
 
-| Platform | File | Architecture | Notes |
+| Platform | Asset | Arch | Notes |
 |---|---|---|---|
-| Linux / Windows / macOS | [XianYuSellerConsole-3.5.17.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar) | x86_64 / arm64 | Full server JAR (~287 MB), frontend bundled |
-| Checksum | [XianYuSellerConsole-3.5.17.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sha256) | — | SHA-256 checksum |
-| Signature | [XianYuSellerConsole-3.5.17.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sig) | — | Official Ed25519 signature |
+| Linux / Windows / macOS | [XianYuSellerConsole-3.5.18.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar) | x86_64 / arm64 | Full server JAR (~287 MB), frontend bundled |
+| Checksum | [XianYuSellerConsole-3.5.18.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sha256) | — | SHA-256 checksum |
+| Signature | [XianYuSellerConsole-3.5.18.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sig) | — | Official Ed25519 signature |
 
-> 📦 No prebuilt Docker image is published: build the multi-stage image locally with the `Dockerfile` (see below).
+> 📦 No prebuilt Docker image is published: build locally with the multi-stage `Dockerfile` (see install notes below).
 >
-> 📱 The mobile app (Android) ships as Flutter source in the repository; no prebuilt APK is attached to this release.
+> 📱 The Android client ships as Flutter source with the repository; no prebuilt APK is attached to the Release.
 
-## Upgrade Instructions
+## Upgrade Notes
 
 **Fresh install (Linux one-liner)**
 
@@ -81,45 +80,37 @@ Related configuration (environment variables):
 bash install.sh
 ```
 
-The script installs JDK 21, downloads the latest JAR from GitHub Releases, and enforces SHA-256 + Ed25519 signature verification.
+The script installs JDK 21, downloads the latest JAR from the GitHub Release and verifies both SHA-256 and the Ed25519 signature.
 
-**Docker deployment**
+**Docker**
 
 ```bash
 docker build -t xianyu-seller-console:local .
 docker run -d -p 12400:12400 xianyu-seller-console:local
 ```
 
-**Upgrading from v3.5.16**
+**Upgrading from v3.5.17**
 
-- **Recommended: in-app online update or auto-update** — with v3.5.17 the auto-update scheduler is on by default, so your server keeps itself current from now on.
-- The `exit` restart mode (default) requires a process manager: make sure your systemd unit sets `Restart=always` (see `docs/production-deployment.md`); for bare `nohup java -jar` deployments use `XIANYU_ASSISTANT_SELF_UPDATE_RESTART_MODE=self`.
-- Alternatively re-run `bash install.sh` for a manual upgrade.
-- Data (SQLite database, configuration) lives in the app directory and is preserved; as always, back up the `dbdata/` directory before upgrading.
+- **Recommended: in-app online update or auto-update** — the auto-update scheduler is on by default, so your server keeps itself current from now on.
+- The `exit` restart mode (default) requires a process supervisor: make sure your systemd unit sets `Restart=always` (see `docs/production-deployment.md`); for bare `nohup java -jar` deployments use `XIANYU_ASSISTANT_SELF_UPDATE_RESTART_MODE=self`.
+- You can also re-run `bash install.sh` for a manual upgrade.
+- Data (SQLite database, settings) lives inside the application directory and is preserved across upgrades; back up `dbdata/` beforehand as usual.
 
 **Configuration migration**
 
-- No breaking configuration changes in v3.5.17. Set `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false` if you do not want automatic updates.
+- No breaking configuration changes in v3.5.18; no new Flyway migration was added and the database schema stays compatible.
+- Set `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false` if you do not want automatic updates.
 
 ## System Requirements
 
-- **Java 21** (required; `install.sh` can install it automatically)
-- **Docker 20.10+** (container deployment only)
-- SQLite is embedded — no external database needed
-- Deployment options: JAR / Docker / systemd + Nginx reverse proxy (see [docs/production-deployment.md](docs/production-deployment.md))
-- Default port `12400`; access the web console from your browser
+- **Java 21** (required; `install.sh` can install it for you)
+- **Docker 20.10+** (container deployments only)
+- SQLite is built in — no external database required
+- Deployment shapes: JAR / Docker / systemd + Nginx reverse proxy (see [docs/production-deployment.md](docs/production-deployment.md))
+- Default port `12400`; open the web console in a browser
 
 ## Changelog
 
-Full comparison: [v3.5.16...v3.5.17](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.16...v3.5.17)
+Full comparison: [v3.5.17...v3.5.18](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.17...v3.5.18)
 
-| Commit | Type | Summary |
-|---|---|---|
-| [`417e7cc`](https://github.com/yuchen0x1/Xianyu-Assistant/commit/417e7cc) | feat | Unattended auto-update scheduler + `UpdateCheckService` extraction |
-| [`df2d575`](https://github.com/yuchen0x1/Xianyu-Assistant/commit/df2d575) | fix | Auto-delivery: UNKNOWN send results go to "pending manual review" |
-| [`ebce71b`](https://github.com/yuchen0x1/Xianyu-Assistant/commit/ebce71b) | chore(security) | CI supply-chain hardening, SECURITY.md and audit report |
-| [`f736439`](https://github.com/yuchen0x1/Xianyu-Assistant/commit/f736439) | fix(dev) | `start-dev.ps1` handles project paths containing spaces |
-| [`64216ac`](https://github.com/yuchen0x1/Xianyu-Assistant/commit/64216ac) | docs | v3.5.16 doc wrap-up; fixed wrong repo slug in migration note |
-| [`56a05a2`](https://github.com/yuchen0x1/Xianyu-Assistant/commit/56a05a2) | chore(release) | Version alignment to 3.5.17 |
-
-**Verification**: added `SelfUpdateAutoSchedulerTest` (13 cases), migrated `UpdateCheckServiceTest`, extended `AutoDeliveryServiceImplTest` and `XianyuWebSocketClientSendResultTest`; the full backend suite, frontend type check and build all pass.
+**Verification**: all 651 backend unit tests pass (0 failures / 0 errors / 3 skipped); frontend ESLint, TypeScript type-check, 34 Vitest cases and the Vite production build pass; Flutter `analyze` and `flutter test` are green.

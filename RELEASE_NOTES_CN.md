@@ -1,73 +1,72 @@
-# 闲鱼卖家运营控制台 v3.5.17
+# 闲鱼卖家运营控制台 v3.5.18
 
-> Release: 2026-11-04
+> Release: 2026-11-06
 
-本次版本为服务器部署带来**无人值守自动更新**闭环，并修复自动发货在异常发送结果下的误判行为，同时完成一轮 CI 供应链安全加固。
+本次版本新增**商品擦亮**能力（单品 / 批量 / 定时），并对整套 Web 控制台完成**深空赛博视觉体系升级**，同时针对平台风控优化了 AI 回复延时策略。
 
 ## ✨ 版本亮点
 
-- 🤖 **无人值守自动更新**：定时检查官方 GitHub Release，自动完成 下载 → 验签 → 替换 → 重启 全流程，服务器可长期免维护运行。
-- 📦 **自动发货可靠性修复**：WebSocket 发送结果未知时不再误判为「发货失败」，转为「待人工复核」并告警，避免重复发货或漏记。
-- 🔐 **供应链安全加固**：CI Action 固定 commit SHA、Docker 镜像构建时运行后端测试、新增漏洞报告政策与安全审计报告。
-- 🏗️ **更新检查逻辑服务化**：抽出独立 `UpdateCheckService`，供控制器与自动更新调度器共用，端点行为不变。
+- ✨ **商品擦亮**：闲鱼平台提供的免费曝光手段，单品一键擦亮、账号在售批量擦亮，并可用 Cron 定时自动执行。
+- 🛰️ **深空赛博 UI 全面升级**：霓虹电光青 / 赛博蓝 / 电离紫三色光效体系，深空底色 + 高精悬浮磨砂玻璃，矩阵微光网格、流光按钮、雷达呼吸灯。
+- 🛡️ **AI 回复延时拟人化**：高斯分布随机抖动，打散固定时间回复的机器行为指纹，降低触发平台风控概率。
+- 🐛 **版本号回退值统一**：修复未注入 `app.version` 时自更新检查可能误判版本的问题。
 
 ## 新增功能
 
-### 🤖 服务器无人值守自动更新
+### ✨ 商品擦亮（Polishing）
 
-新增 `SelfUpdateAutoScheduler` 定时调度器（默认**开启**）：
+擦亮会把商品重新推回平台的搜索与推荐列表前列，是平台提供的**免费公域曝光**手段。本次新增三条入口：
 
-- 默认每 **6 小时**检查一次官方 GitHub Release（启动 5 分钟后首检）。
-- 发现新版本后自动执行：**下载 → SHA-256 + Ed25519 双重验签 → 原子替换（失败自动回滚）→ 按 `restart-mode` 重启**。
-- `exit` 模式（默认）配合 systemd `Restart=always`，即可实现「自动更新 + 更新后自动重启」闭环，全程无需人工干预。
-
-相关配置（环境变量）：
-
-| 环境变量 | 默认值 | 说明 |
+| 入口 | 位置 | 说明 |
 |---|---|---|
-| `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED` | `true` | 自动更新开关，设为 `false` 关闭 |
-| `XIANYU_ASSISTANT_AUTO_UPDATE_CHECK_INTERVAL_MS` | `21600000` | 检查间隔（毫秒），默认 6 小时 |
-| `XIANYU_ASSISTANT_AUTO_UPDATE_INITIAL_DELAY_MS` | `300000` | 启动后首检延迟（毫秒），默认 5 分钟 |
+| 单品擦亮 | 商品管理 → 操作列「擦亮」按钮 | 仅在售商品可见，调用平台 H5 端擦亮接口 |
+| 一键批量擦亮 | 商品管理 → 页头「一键擦亮在售」 | 擦亮当前账号下全部在售商品，逐件间隔 1 秒避免频控 |
+| 定时自动擦亮 | 计划任务 → 任务类型「自动擦亮」 | 支持 Cron 表达式，可指定商品 ID，留空则全量在售 |
 
-> 应用内「手动在线更新」（`XIANYU_ASSISTANT_SELF_UPDATE_*`）不受影响；自动更新仅在以独立 JAR 方式运行时可用。
+接口说明（后端）：
 
-## 问题修复
+- `POST /api/items/polish` —— 单品擦亮，需要 `goods:write` 权限。
+- `POST /api/items/batchPolish` —— 批量擦亮，需要 `goods:write` 权限。
 
-### 📦 自动发货：未知发送结果不再误判
+协议层使用闲鱼 H5 端 `mtop.taobao.idle.item.polish`（版本 `2.0`），并复用现有的账号级限速、并发上限与风控熔断保护。平台对每个商品每天的擦亮次数有上限，重复调用会返回业务错误，界面会逐条展示成功/失败明细。
 
-- 新增 `DeliveryOrderState`，集中管理发货订单状态与「待人工复核」判定，替换裸 `-1/0/1` 字面量。
-- WebSocket 发送结果为 **UNKNOWN**（帧可能已写出、成败未确认）时，此前可能被当作失败处理；现在统一持久化为 **PENDING 待人工复核**，并在复核状态持久化失败时主动告警，避免同一订单重复发货或漏记。
-- `MessageSendResult` 语义澄清：UNKNOWN 表示发送结果未确认，调用方不得假定失败。
+> 提示：擦亮次数由平台限制，建议使用「定时自动擦亮」每日执行一次即可，无需频繁重复操作。
 
-## 功能优化
+### 🛰️ 深空赛博视觉体系升级
 
-### 🏗️ 更新检查逻辑抽取为 `UpdateCheckService`
+整套控制台完成视觉重构，深浅两套主题同步优化：
 
-- 原 `SystemController` 内的在线更新检查（GitHub/Gitee 发布源解析、下载主机白名单、5 分钟缓存、版本比较）整体迁移为独立服务。
-- `/api/system/checkUpdate` 端点行为不变，供控制器与自动更新调度器共用。
-
-### 📖 文档完善
-
-- `docs/production-deployment.md` 补充 systemd 单元自动重启要求（`Restart=always`）与应用内自动更新说明。
-- README 配置参考补齐 `XIANYU_ASSISTANT_SELF_UPDATE_*` 与 `XIANYU_ASSISTANT_AUTO_UPDATE_*` 环境变量。
-- 修正迁移说明中错误的仓库 slug。
+- **光效令牌体系**：新增霓虹电光青 `#00f2fe`、赛博蓝 `#4facfe`、电离紫 `#9d4edd`、脉冲翡翠 `#10b981` 四色光效，构建统一的发光 / 辉光 / 描边语言。
+- **深空底色与高精玻璃**：深色模式底色升级为 `#060a12`，面板使用 24px 高精磨砂玻璃 + 青色霓虹描边，配合三层边缘光与内阴影形成纵深。
+- **矩阵微光网格**：全局背景叠加 32px 几何点阵，配合三处径向光晕，营造控制台氛围。
+- **交互微动效**：主按钮流光扫过、卡片悬浮升维辉光、侧边菜单磁吸位移与霓虹能量条、服务状态雷达呼吸灯、发光滚动条、渐变裁切标题。
+- **可访问性守护**：完整尊重 `prefers-reduced-motion`（减弱动效）与 `prefers-reduced-transparency`（减弱透明），系统开启对应偏好时自动降级为静态纯色界面。
 
 ## 性能与安全
 
-### 🔐 CI 供应链加固
+### 🛡️ AI 回复延时拟人化抖动
 
-- `ci.yml` 中 `subosito/flutter-action` 固定为完整 commit SHA，防止 Action 标签被劫持。
-- Dockerfile 构建镜像时**实际运行后端测试**（移除 `-DskipTests`），坏代码不再能进入镜像。
-- 前端 `minimatch` 覆盖升级至 `^11.0.1`，消除 npm audit 发现的漏洞。
-- 新增 [`SECURITY.md`](SECURITY.md)（漏洞报告政策）与 [`security-audit-report.md`](security-audit-report.md)（安全审计报告）。
+- 此前 AI 自动回复严格按配置的固定秒数触发，整点固定间隔是典型的自动化行为特征。
+- 现在 `ReplyConfigProvider.getDelaySeconds()` 在基础延时上叠加**高斯正态分布**随机因子（σ=0.15，约 95% 落在 ±25% 区间，最低保底 3 秒），形成接近真人的自然回复节奏。
+- 平台侧限速、并发上限与风控熔断策略保持不变。
+
+### 🐛 版本号回退值统一对齐
+
+- `application.yaml`、`SystemController`、`McpServerController`、`SelfUpdateService`、`UpdateCheckService` 以及前端 `AppLayout.vue`、`UpdateDialog.vue`、`AboutPanel.vue` 中残留的旧版本回退值统一更新为当前版本。
+- 修复未注入 `app.version` 环境变量时，版本信息与自更新检查可能显示旧版本号的问题。
+
+### 🧹 代码质量
+
+- `WebSocketController.CaptchaMouseReqDTO` 补充 `@EqualsAndHashCode(callSuper = false)`，消除 Lombok 子类编译告警。
+- 前端 `useGoodsManager.ts` 的 `catch (err: any)` 改为 `catch (err: unknown)` 并做严格类型收窄，ESLint 零告警。
 
 ## 下载与安装
 
 | 平台 | 文件名称 | 架构 | 说明 |
 |---|---|---|---|
-| Linux / Windows / macOS | [XianYuSellerConsole-3.5.17.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar) | x86_64 / arm64 | 完整服务端 JAR（约 287 MB），已内置前端页面 |
-| 校验文件 | [XianYuSellerConsole-3.5.17.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sha256) | — | SHA-256 校验值 |
-| 签名文件 | [XianYuSellerConsole-3.5.17.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sig) | — | Ed25519 官方签名 |
+| Linux / Windows / macOS | [XianYuSellerConsole-3.5.18.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar) | x86_64 / arm64 | 完整服务端 JAR（约 287 MB），已内置前端页面 |
+| 校验文件 | [XianYuSellerConsole-3.5.18.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sha256) | — | SHA-256 校验值 |
+| 签名文件 | [XianYuSellerConsole-3.5.18.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sig) | — | Ed25519 官方签名 |
 
 > 📦 Docker 无预构建镜像：按 `Dockerfile` 多阶段构建本地镜像（见下方安装说明）。
 >
@@ -90,16 +89,17 @@ docker build -t xianyu-seller-console:local .
 docker run -d -p 12400:12400 xianyu-seller-console:local
 ```
 
-**从 v3.5.16 升级**
+**从 v3.5.17 升级**
 
-- **推荐：应用内在线更新或自动更新**——本版本起自动更新调度器默认开启，升级到 v3.5.17 后服务器即可长期自动跟进新版本。
+- **推荐：应用内在线更新或自动更新**——自动更新调度器默认开启，升级后服务器即可长期自动跟进新版本。
 - `exit` 重启模式（默认）需进程管理器配合：systemd 单元请确认已配置 `Restart=always`（见 `docs/production-deployment.md`）；裸 `nohup java -jar` 部署请改用 `XIANYU_ASSISTANT_SELF_UPDATE_RESTART_MODE=self`。
 - 也可重新执行 `bash install.sh` 完成手动升级。
 - 数据（SQLite 库、配置）位于应用目录内，升级自动保留；升级前建议照常备份 `dbdata/` 目录。
 
 **配置迁移**
 
-- v3.5.17 无破坏性配置变更；如不希望服务器自动更新，设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false` 即可。
+- v3.5.18 无破坏性配置变更；本次未新增 Flyway 数据库迁移，升级后数据库结构保持兼容。
+- 如不希望服务器自动更新，设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false` 即可。
 
 ## 系统要求
 
@@ -111,15 +111,6 @@ docker run -d -p 12400:12400 xianyu-seller-console:local
 
 ## 更新日志
 
-完整提交对比：[v3.5.16...v3.5.17](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.16...v3.5.17)
+完整提交对比：[v3.5.17...v3.5.18](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.17...v3.5.18)
 
-| 提交 | 类型 | 内容 |
-|---|---|---|
-| [`417e7cc`](https://github.com/yuchen0x1/Xianyu-Assistant/commit/417e7cc) | feat | 无人值守自动更新调度器 + `UpdateCheckService` 抽取 |
-| [`df2d575`](https://github.com/yuchen0x1/Xianyu-Assistant/commit/df2d575) | fix | 自动发货 UNKNOWN 发送结果转「待人工复核」 |
-| [`ebce71b`](https://github.com/yuchen0x1/Xianyu-Assistant/commit/ebce71b) | chore(security) | CI 供应链加固、SECURITY.md 与安全审计报告 |
-| [`f736439`](https://github.com/yuchen0x1/Xianyu-Assistant/commit/f736439) | fix(dev) | `start-dev.ps1` 兼容含空格的项目路径 |
-| [`64216ac`](https://github.com/yuchen0x1/Xianyu-Assistant/commit/64216ac) | docs | v3.5.16 文档收尾、修正迁移说明仓库 slug |
-| [`56a05a2`](https://github.com/yuchen0x1/Xianyu-Assistant/commit/56a05a2) | chore(release) | 版本号对齐 3.5.17 |
-
-**验证情况**：新增 `SelfUpdateAutoSchedulerTest`（13 项）、`UpdateCheckServiceTest`（迁移）、扩展 `AutoDeliveryServiceImplTest` 与 `XianyuWebSocketClientSendResultTest`；后端全量测试、前端类型检查与构建通过。
+**验证情况**：后端 651 项单元测试全绿（0 失败 / 0 错误 / 3 跳过）；前端 ESLint、TypeScript 类型检查、34 项 Vitest 用例与 Vite 生产构建全部通过；Flutter `analyze` 与 `flutter test` 全绿。

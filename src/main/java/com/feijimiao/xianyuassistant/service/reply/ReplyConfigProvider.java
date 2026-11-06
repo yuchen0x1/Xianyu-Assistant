@@ -47,16 +47,22 @@ public class ReplyConfigProvider {
      * @return 延时秒数
      */
     public int getDelaySeconds(Long accountId, String xyGoodsId) {
+        int baseDelay = DEFAULT_DELAY_SECONDS;
         try {
-            if (accountId == null || xyGoodsId == null) return DEFAULT_DELAY_SECONDS;
-            XianyuGoodsAutoDeliveryConfig config = autoDeliveryConfigMapper.findByAccountIdAndGoodsIdNoSku(accountId, xyGoodsId);
-            if (config != null && config.getRagDelaySeconds() != null && config.getRagDelaySeconds() > 0) {
-                return config.getRagDelaySeconds();
+            if (accountId != null && xyGoodsId != null) {
+                XianyuGoodsAutoDeliveryConfig config = autoDeliveryConfigMapper.findByAccountIdAndGoodsIdNoSku(accountId, xyGoodsId);
+                if (config != null && config.getRagDelaySeconds() != null && config.getRagDelaySeconds() > 0) {
+                    baseDelay = config.getRagDelaySeconds();
+                }
             }
         } catch (Exception e) {
             log.warn("获取延时配置失败: {}", e.getMessage());
         }
-        return DEFAULT_DELAY_SECONDS;
+        // 高斯拟人化随机扰动：引入 +/- 25% 的正态分布波动（防固定时间指纹行为风控），最小保底 3 秒
+        java.util.concurrent.ThreadLocalRandom random = java.util.concurrent.ThreadLocalRandom.current();
+        double gaussianFactor = 1.0 + (random.nextGaussian() * 0.15); // ~95% 落在 [0.7, 1.3]
+        int jittered = (int) Math.round(baseDelay * gaussianFactor);
+        return Math.max(3, jittered);
     }
 
     /**

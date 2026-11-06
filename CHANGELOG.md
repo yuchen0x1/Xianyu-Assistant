@@ -1,3 +1,16 @@
+# Version 3.5.18
+
+> Release: 2026-11-06
+
+- **功能：商品擦亮（Polishing）**：新增单品擦亮 `POST /api/items/polish` 与批量擦亮 `POST /api/items/batchPolish`，基于闲鱼 H5 端 `mtop.taobao.idle.item.polish`（协议版本 2.0）实现；批量模式可显式指定商品列表，留空时自动取该账号下全部在售商品，逐件间隔 1 秒以规避平台频控，并返回逐件成功/失败明细。
+- **功能：定时自动擦亮**：计划任务新增 `POLISH_GOODS` 任务类型，支持用 Cron 表达式定时批量擦亮账号商品（可指定商品 ID，留空则全量在售），配合平台每日擦亮次数上限实现长期免费曝光维护。
+- **前端：商品管理接入擦亮 UI**：商品列表操作列新增「擦亮」按钮（仅在售商品可见），页头新增「一键擦亮在售」批量按钮（含 Loading 态与结果提示）；计划任务新建/编辑弹窗新增「自动擦亮」类型与商品 ID 输入项。
+- **UI：深空赛博视觉体系全面升级**：重塑全局设计令牌（`tokens.css`）——新增霓虹电光青/赛博蓝/电离紫三色光效体系，深色模式升级为深空底色 + 青色霓虹描边 + 24px 高精磨砂玻璃；矩阵微光点阵背景、流光扫过按钮、卡片悬浮升维辉光、雷达呼吸状态灯、霓虹能量条侧边导航、渐变裁切标题、发光图表柱与发光滚动条。
+- **安全/防封：AI 回复延时拟人化抖动**：`ReplyConfigProvider.getDelaySeconds()` 引入高斯正态分布随机因子（σ=0.15，约 ±25% 波动，最低保底 3 秒），打散固定时间回复的机器行为指纹，降低触发平台自动化风控的概率。
+- **修复：版本号回退值漂移**：`application.yaml`、`SystemController`、`McpServerController`、`SelfUpdateService`、`UpdateCheckService` 及前端 `AppLayout.vue`、`UpdateDialog.vue`、`AboutPanel.vue` 中残留的旧版本回退值统一对齐当前版本，避免未注入 `app.version` 时自更新检查误判版本。
+- **代码质量**：`WebSocketController.CaptchaMouseReqDTO` 补充 `@EqualsAndHashCode(callSuper = false)` 消除 Lombok 编译告警；前端 `useGoodsManager.ts` 的 `catch (err: any)` 改为 `unknown` 严格收窄，ESLint 零告警。
+- **验证**：后端 651 项单元测试全绿（0 失败 / 0 错误 / 3 跳过）；前端 ESLint、TypeScript 类型检查、34 项 Vitest 用例与 Vite 生产构建全部通过；Flutter `analyze` 与 `flutter test` 全绿。
+
 # Version 3.5.17
 
 > Release: 2026-11-04

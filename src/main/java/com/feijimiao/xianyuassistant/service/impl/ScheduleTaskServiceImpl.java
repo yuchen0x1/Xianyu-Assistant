@@ -274,8 +274,11 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
         if ("PUBLISH".equals(req.getTaskType()) && req.getAccountId() == null) {
             throw new BusinessException("定时发布任务必须指定账号");
         }
+        if ("POLISH_GOODS".equals(req.getTaskType()) && req.getAccountId() == null) {
+            throw new BusinessException("定时擦亮任务必须指定账号");
+        }
         if (!"SYNC_GOODS".equals(req.getTaskType()) && !"OFF_SHELF".equals(req.getTaskType())
-                && !"PUBLISH".equals(req.getTaskType())) {
+                && !"PUBLISH".equals(req.getTaskType()) && !"POLISH_GOODS".equals(req.getTaskType())) {
             throw new BusinessException("不支持的任务类型: " + req.getTaskType());
         }
     }
@@ -343,6 +346,7 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
                 case "SYNC_GOODS" -> success = executeSyncGoods(task);
                 case "OFF_SHELF" -> success = executeOffShelf(task);
                 case "PUBLISH" -> success = executePublish(task);
+                case "POLISH_GOODS" -> success = executePolishGoods(task);
                 default -> {
                     log.warn("未知任务类型: {}", task.getTaskType());
                     success = false;
@@ -451,6 +455,19 @@ public class ScheduleTaskServiceImpl implements ScheduleTaskService {
             log.warn("解析下架任务配置失败: {}", e.getMessage());
         }
         return itemIds;
+    }
+
+    private boolean executePolishGoods(XianyuScheduleTask task) {
+        if (task.getAccountId() == null) {
+            return false;
+        }
+        List<String> itemIds = parseItemIds(task.getConfigJson());
+        com.feijimiao.xianyuassistant.controller.dto.BatchPolishItemsReqDTO req =
+                new com.feijimiao.xianyuassistant.controller.dto.BatchPolishItemsReqDTO();
+        req.setXianyuAccountId(task.getAccountId());
+        req.setXyGoodsIds(itemIds.isEmpty() ? null : itemIds);
+        ResultObject<com.feijimiao.xianyuassistant.controller.dto.PolishItemRespDTO> result = itemService.batchPolishItems(req);
+        return result != null && result.getCode() != null && result.getCode() == 200;
     }
 
     private String truncate(String value, int maxLength) {

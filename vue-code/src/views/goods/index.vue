@@ -33,6 +33,9 @@ const {
   selectedGoodsId,
   editorGoods,
   deleteTarget,
+  polishing,
+  handlePolishItem,
+  handleBatchPolish,
   loadAccounts,
   loadGoods,
   handleRefresh,
@@ -282,6 +285,16 @@ const handleExportGoods = async () => {
 
         <button
           class="btn btn--secondary desktop-only"
+          :class="{ 'btn--loading': polishing }"
+          :disabled="polishing || !selectedAccountId"
+          title="一键擦亮当前账号的所有在售商品，获取平台曝光排位"
+          @click="handleBatchPolish"
+        >
+          <span>一键擦亮在售</span>
+        </button>
+
+        <button
+          class="btn btn--secondary desktop-only"
           :disabled="exportingGoods"
           title="导出当前商品列表为 Excel"
           @click="handleExportGoods"
@@ -353,6 +366,7 @@ const handleExportGoods = async () => {
           @view="viewDetail"
           @edit="editGoods"
           @sync="syncSingleGoods"
+          @polish="handlePolishItem"
           @toggle-auto-delivery="toggleAutoDelivery"
           @toggle-auto-reply="toggleAutoReply"
           @config-auto-delivery="configAutoDelivery"

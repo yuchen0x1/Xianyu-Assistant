@@ -162,13 +162,14 @@ onMounted(() => {
   box-shadow: var(--glass-edge-glow);
   -webkit-backdrop-filter: var(--glass-blur-sm);
   backdrop-filter: var(--glass-blur-sm);
+  transform: translateX(3px);
 }
 
 .nav-item--active {
   color: var(--text-brand);
   font-weight: 700;
-  background: linear-gradient(105deg, color-mix(in srgb, var(--brand-500) 18%, var(--glass-bg-strong)), color-mix(in srgb, var(--cyan-500) 10%, var(--glass-bg-strong)));
-  box-shadow: var(--glow-brand), inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  background: linear-gradient(105deg, color-mix(in srgb, var(--brand-500) 22%, var(--glass-bg-strong)), color-mix(in srgb, var(--cyan-500) 14%, var(--glass-bg-strong)));
+  box-shadow: var(--glow-brand), inset 0 1px 0 rgba(255, 255, 255, 0.15);
   -webkit-backdrop-filter: var(--glass-blur-sm);
   backdrop-filter: var(--glass-blur-sm);
 }
@@ -176,12 +177,13 @@ onMounted(() => {
 .nav-item--active::before {
   content: '';
   position: absolute;
-  top: 9px;
-  bottom: 9px;
+  top: 6px;
+  bottom: 6px;
   left: 0;
   width: 3px;
   border-radius: 999px;
-  background: var(--brand-600);
+  background: var(--gradient-neon);
+  box-shadow: 0 0 10px var(--neon-cyan);
 }
 
 .nav-item__icon {

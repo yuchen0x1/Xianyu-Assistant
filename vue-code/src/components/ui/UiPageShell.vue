@@ -56,8 +56,12 @@ withDefaults(defineProps<{
   color: var(--text-1);
   font-size: 22px;
   font-weight: 780;
-  letter-spacing: 0;
+  letter-spacing: -0.3px;
   line-height: 1.2;
+  background: var(--gradient-brand);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  display: inline-block;
 }
 
 .ui-page__subtitle {

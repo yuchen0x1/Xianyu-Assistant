@@ -33,7 +33,7 @@ public class McpServerController {
     private static final String JSONRPC = "2.0";
     private static final String PROTOCOL_VERSION = "2025-03-26";
     private static final String SERVER_NAME = "xianyu-assistant";
-    @Value("${app.version:3.4.10}")
+    @Value("${app.version:3.5.18}")
     private String serverVersion;
 
     private final CommandRegistry commandRegistry;
