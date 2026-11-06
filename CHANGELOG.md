@@ -1,3 +1,11 @@
+# Version 3.5.19
+
+> Release: 2026-11-07
+
+- **修复：Windows 独立 JAR 部署下在线自更新被误判为「IDE 开发模式」**：旧逻辑仅依赖 `ProcessHandle...arguments()` 从进程启动参数定位当前 JAR，而 Windows JVM 经常取不到自身启动参数（返回 empty），导致以 `java -jar` 方式运行的实例在「版本更新」弹窗中出现「未以独立 JAR 方式运行，在线更新不可用」的误报。现定位链扩展为：启动参数 → 环境变量 `XIANYU_ASSISTANT_JAR_PATH` → Spring Boot `ApplicationHome`（从类加载来源解析实际运行 JAR；IDE 模式解析出 classes 目录自动过滤不误判）。
+- **修复：自拉起命令的 java 可执行文件回退加固**：`restart-mode=self` 重启时若 `ProcessHandle...command()` 也不可得，回退目标从依赖 PATH 的裸 `java` 改为 `$JAVA_HOME/bin/java(.exe)`（即当前正在运行的这份 JVM），避免解析到错误版本的运行时。
+- **验证**：`SelfUpdateServiceTest` 新增 5 项（ApplicationHome 真实 JAR 兜底、classes 目录不误判、参数优先级、java 启动器回退），后端全量 655 项测试通过（0 失败 / 0 错误 / 3 跳过）；Windows 实机验证独立 JAR 启动日志出现「在线自更新已就绪: jarPath=...target\XianYuSellerConsole-3.5.19.jar」。
+
 # Version 3.5.18
 
 > Release: 2026-11-06

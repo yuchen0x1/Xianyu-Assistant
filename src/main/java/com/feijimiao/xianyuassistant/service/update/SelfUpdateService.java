@@ -6,6 +6,7 @@ import com.feijimiao.xianyuassistant.common.VersionUtils;
 import com.feijimiao.xianyuassistant.security.ReleaseSignatureVerifier;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.system.ApplicationHome;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PreDestroy;
@@ -94,7 +95,7 @@ public class SelfUpdateService {
     static final String OFFICIAL_RELEASE_PUBLIC_KEY =
             "MCowBQYDK2VwAyEAsstW68X2ZMRu5o2ZVHwBiV3m4YezlHuScQy3Jo/Lie4=";
 
-    @Value("${app.version:3.5.18}")
+    @Value("${app.version:3.5.19}")
     private String currentVersion;
 
     @Value("${app.self-update.enabled:true}")
@@ -145,8 +146,12 @@ public class SelfUpdateService {
 
     public SelfUpdateService() {
         String[] processArgs = ProcessHandle.current().info().arguments().orElse(new String[0]);
+        // Windows 上 JVM 常取不到自身启动参数（arguments() 返回 empty），
+        // 再叠加 ApplicationHome 从类加载来源解析实际运行的 JAR 作为最终兜底。
+        java.io.File homeFile = new ApplicationHome(SelfUpdateService.class).getSource();
+        Path homeSource = homeFile == null ? null : homeFile.toPath();
         Path detected = recoverFromBackupIfMissing(
-                detectCurrentJar(processArgs, System.getenv("XIANYU_ASSISTANT_JAR_PATH")));
+                detectCurrentJar(processArgs, System.getenv("XIANYU_ASSISTANT_JAR_PATH"), homeSource));
         this.currentJarPath = detected;
         this.unavailableReason = detected == null
                 ? "未以独立 JAR 方式运行（如 IDE 开发模式），在线更新不可用；请通过发布页手动下载"
@@ -174,6 +179,24 @@ public class SelfUpdateService {
         }
         if (envJarPath != null && !envJarPath.isBlank()) {
             return Path.of(envJarPath.trim());
+        }
+        return null;
+    }
+
+    /**
+     * 带 ApplicationHome 兜底的 JAR 定位：参数与环境变量均不可得时，
+     * 若 Spring Boot 解析出的运行来源是一个真实存在的 .jar 文件则采用之。
+     * IDE 开发模式下来源是 classes 目录（非 .jar 文件），不会误判为可更新。
+     */
+    static Path detectCurrentJar(String[] args, String envJarPath, Path applicationHomeSource) {
+        Path fromArgsOrEnv = detectCurrentJar(args, envJarPath);
+        if (fromArgsOrEnv != null) {
+            return fromArgsOrEnv;
+        }
+        if (applicationHomeSource != null
+                && Files.isRegularFile(applicationHomeSource)
+                && applicationHomeSource.getFileName().toString().toLowerCase(Locale.ROOT).endsWith(".jar")) {
+            return applicationHomeSource;
         }
         return null;
     }
@@ -283,7 +306,7 @@ public class SelfUpdateService {
      */
     private boolean spawnSelfRelaunch() {
         ProcessHandle.Info info = ProcessHandle.current().info();
-        String javaCommand = info.command().orElse("java");
+        String javaCommand = info.command().orElseGet(SelfUpdateService::currentJavaLauncher);
         String[] arguments = info.arguments().orElse(null);
         List<String> command = buildRelaunchCommand(javaCommand, arguments,
                 currentJarPath, ProcessHandle.current().pid());
@@ -329,6 +352,18 @@ public class SelfUpdateService {
             command.add(jarPath.toString());
         }
         return command;
+    }
+
+    /**
+     * 当前 JVM 自身的启动器绝对路径（{@code $JAVA_HOME/bin/java[.exe]}）。
+     * Windows 上 {@code ProcessHandle...command()} 也可能拿不到，
+     * 回退到裸 {@code "java"} 会依赖 PATH 且可能解析到另一个版本的 JVM，
+     * 用 java.home 拼接可保证拉起的就是当前正在运行的这份运行时。
+     */
+    static String currentJavaLauncher() {
+        boolean windows = System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
+        String executable = windows ? "java.exe" : "java";
+        return Path.of(System.getProperty("java.home"), "bin", executable).toString();
     }
 
     /**

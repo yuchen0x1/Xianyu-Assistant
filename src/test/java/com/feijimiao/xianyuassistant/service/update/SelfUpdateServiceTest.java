@@ -44,6 +44,44 @@ class SelfUpdateServiceTest {
         assertThat(SelfUpdateService.detectCurrentJar(new String[0], null)).isNull();
     }
 
+    @Test
+    void 参数与环境变量不可得时回退ApplicationHome来源(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        // Windows 上 JVM 常取不到自身启动参数：ApplicationHome 解析出的真实 JAR 文件应被采用
+        Path jar = dir.resolve("XianYuSellerConsole-3.5.18.jar");
+        java.nio.file.Files.write(jar, new byte[]{1});
+        assertThat(SelfUpdateService.detectCurrentJar(new String[0], null, jar)).isEqualTo(jar);
+        assertThat(SelfUpdateService.detectCurrentJar(null, null, jar)).isEqualTo(jar);
+    }
+
+    @Test
+    void ApplicationHome来源为目录或非jar文件时不误判(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        // IDE 开发模式：来源是 classes 目录 → 不可更新
+        assertThat(SelfUpdateService.detectCurrentJar(new String[0], null, dir)).isNull();
+        // 存在的其他非 jar 文件同样不采用
+        Path txt = dir.resolve("readme.txt");
+        java.nio.file.Files.write(txt, new byte[]{1});
+        assertThat(SelfUpdateService.detectCurrentJar(new String[0], null, txt)).isNull();
+        assertThat(SelfUpdateService.detectCurrentJar(new String[0], null, null)).isNull();
+    }
+
+    @Test
+    void 启动参数优先于ApplicationHome来源(@org.junit.jupiter.api.io.TempDir java.nio.file.Path dir) throws Exception {
+        Path homeJar = dir.resolve("from-home.jar");
+        java.nio.file.Files.write(homeJar, new byte[]{1});
+        String[] args = {"-jar", "/opt/app/console.jar"};
+        assertThat(SelfUpdateService.detectCurrentJar(args, null, homeJar))
+                .isEqualTo(Path.of("/opt/app/console.jar"));
+    }
+
+    @Test
+    void 自拉起java命令回退当前运行时() {
+        String launcher = SelfUpdateService.currentJavaLauncher();
+        assertThat(launcher).isNotBlank();
+        // 必须是 java.home/bin 下的 java 可执行文件，而非依赖 PATH 的裸 "java"
+        assertThat(launcher).endsWith(System.getProperty("os.name", "").toLowerCase().contains("win") ? "java.exe" : "java");
+        assertThat(launcher).contains("bin");
+    }
+
     // ============ restart-mode=self 自拉起 ============
 
     @Test
