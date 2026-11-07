@@ -36,6 +36,7 @@ const groups: NavGroup[] = [
   {
     label: '工作台',
     items: [
+      { path: '/todo', label: '待办中心', icon: markRaw(IconRocket), permission: 'dashboard:read' },
       { path: '/dashboard', label: '数据面板', icon: markRaw(IconChart), permission: 'dashboard:read' },
       { path: '/accounts', label: '闲鱼账号', icon: markRaw(IconAccount), permission: 'account:read' },
       { path: '/connection', label: '连接管理', icon: markRaw(IconLink), permission: 'account:read' },

@@ -13,6 +13,10 @@ import IconEdit from '@/components/icons/IconEdit.vue'
 interface Props {
   goodsList: GoodsItemWithConfig[]
   loading?: boolean
+  /** 已选中的商品ID（仅在售商品可被选中） */
+  selectedIds?: string[]
+  /** 当前页是否已全选在售商品 */
+  allSelected?: boolean
 }
 
 interface Emits {
@@ -24,10 +28,19 @@ interface Emits {
   (e: 'toggleAutoReply', item: GoodsItemWithConfig, value: boolean): void
   (e: 'configAutoDelivery', item: GoodsItemWithConfig): void
   (e: 'delete', xyGoodId: string, title: string): void
+  (e: 'toggleSelect', xyGoodId: string): void
+  (e: 'toggleSelectAll'): void
 }
 
-defineProps<Props>()
+const props = withDefaults(defineProps<Props>(), {
+  selectedIds: () => [],
+  allSelected: false
+})
 const emit = defineEmits<Emits>()
+
+/** 只有在售商品可以下架，因此只有它们可选 */
+const isSelectable = (item: GoodsItemWithConfig) => item.item.status === 0
+const isChecked = (xyGoodId: string) => props.selectedIds.includes(xyGoodId)
 
 const isMobile = ref(false)
 const checkScreenSize = () => {
@@ -81,6 +94,15 @@ const handleImgError = (e: Event) => {
     >
       <!-- 图片区域（含悬浮标题） -->
       <div class="goods-card__image-wrap">
+        <label v-if="isSelectable(item)" class="goods-card__select" @click.stop>
+          <input
+            type="checkbox"
+            class="goods-checkbox"
+            :checked="isChecked(item.item.xyGoodId)"
+            :aria-label="`选择商品 ${item.item.title}`"
+            @change="emit('toggleSelect', item.item.xyGoodId)"
+          />
+        </label>
         <img
           v-if="item.item.coverPic"
           :src="item.item.coverPic"
@@ -156,6 +178,16 @@ const handleImgError = (e: Event) => {
     <table class="table" v-if="goodsList.length > 0">
       <thead class="table__head">
         <tr>
+          <th class="table__th table__th--select">
+            <input
+              type="checkbox"
+              class="goods-checkbox goods-checkbox--all"
+              :checked="allSelected"
+              :indeterminate="!allSelected && selectedIds.length > 0"
+              aria-label="全选本页在售商品"
+              @change="emit('toggleSelectAll')"
+            />
+          </th>
           <th class="table__th table__th--image">图片</th>
           <th class="table__th">商品标题</th>
           <th class="table__th table__th--price">价格</th>
@@ -168,6 +200,17 @@ const handleImgError = (e: Event) => {
       </thead>
       <tbody class="table__body">
         <tr v-for="item in goodsList" :key="item.item.xyGoodId" class="table__tr">
+          <td class="table__td table__td--select">
+            <input
+              type="checkbox"
+              class="goods-checkbox"
+              :checked="isChecked(item.item.xyGoodId)"
+              :disabled="!isSelectable(item)"
+              :aria-label="`选择商品 ${item.item.title}`"
+              @click.stop
+              @change="isSelectable(item) && emit('toggleSelect', item.item.xyGoodId)"
+            />
+          </td>
           <td class="table__td table__td--image">
             <div class="goods-thumb">
               <img
@@ -548,12 +591,43 @@ const handleImgError = (e: Event) => {
   user-select: none;
 }
 
+.table__th--select { width: 40px; text-align: center; }
 .table__th--image { width: 64px; }
 .table__th--price { width: 100px; text-align: right; }
 .table__th--sku { width: 70px; text-align: center; }
 .table__th--status { width: 80px; }
 .table__th--switch { width: 90px; text-align: center; }
 .table__th--actions { width: 130px; text-align: center; }
+
+.table__td--select { text-align: center; }
+
+.goods-checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  accent-color: var(--brand-500);
+}
+
+.goods-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: .4;
+}
+
+.goods-card__select {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--bg-inverse, #0f172a) 42%, transparent);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+}
 
 /* Table Body */
 .table__tr {

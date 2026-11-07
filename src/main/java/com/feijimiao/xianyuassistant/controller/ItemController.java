@@ -3,6 +3,7 @@ import com.feijimiao.xianyuassistant.service.AutoReplyRecordService;
 import com.feijimiao.xianyuassistant.common.ResultObject;
 import com.feijimiao.xianyuassistant.exception.BusinessException;
 import com.feijimiao.xianyuassistant.rbac.annotation.RequirePermission;
+import com.feijimiao.xianyuassistant.annotation.RateLimit;
 import jakarta.validation.Valid;
 import com.feijimiao.xianyuassistant.controller.dto.*;
 import com.feijimiao.xianyuassistant.entity.XianyuGoodsAutoReplyRecord;
@@ -208,6 +209,27 @@ public class ItemController {
         } catch (Exception e) {
             log.error("更新商品资料失败", e);
             return ResultObject.failed("更新商品资料失败: " + e.getMessage());
+        }
+    }
+
+    /**
+     * 批量更新本地商品售价；不调用闲鱼远程改价接口。
+     */
+    @PostMapping("/batchUpdatePrice")
+    @RequirePermission("goods:write")
+    @RateLimit(bucket = "batch_update_price", limit = 3, message = "批量改价过于频繁")
+    public ResultObject<BatchUpdatePriceRespDTO> batchUpdatePrice(
+            @Valid @RequestBody BatchUpdatePriceReqDTO reqDTO) {
+        try {
+            rbacService.assertAccountVisible(
+                    com.feijimiao.xianyuassistant.context.UserContext.getUserId(),
+                    reqDTO.getXianyuAccountId());
+            return itemService.batchUpdatePrice(reqDTO);
+        } catch (BusinessException e) {
+            return ResultObject.failed(e.getCode(), e.getMessage());
+        } catch (Exception e) {
+            log.error("批量更新商品售价失败", e);
+            return ResultObject.failed("批量更新商品售价失败: " + e.getMessage());
         }
     }
 

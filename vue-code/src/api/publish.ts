@@ -86,6 +86,36 @@ export function offShelf(data: OffShelfReq) {
   });
 }
 
+// 批量下架请求
+export interface BatchOffShelfReq {
+  xianyuAccountId: number;
+  xyGoodsIds: string[];
+}
+
+// 批量下架结果明细
+export interface BatchOffShelfItemResult {
+  xyGoodsId: string;
+  success: boolean;
+  message: string;
+}
+
+// 批量下架响应
+export interface BatchOffShelfResp {
+  total: number;
+  success: number;
+  failed: number;
+  details: BatchOffShelfItemResult[];
+}
+
+// 批量下架商品
+export function batchOffShelf(data: BatchOffShelfReq) {
+  return request<BatchOffShelfResp>({
+    url: '/publish/batchOffShelf',
+    method: 'POST',
+    data
+  });
+}
+
 // 发布历史
 export function getPublishHistory(accountId?: number, limit = 50) {
   return request<PublishHistory[]>({

@@ -7,6 +7,8 @@ import com.feijimiao.xianyuassistant.rbac.annotation.RequirePermission;
 import com.feijimiao.xianyuassistant.rbac.service.RbacService;
 import com.feijimiao.xianyuassistant.context.UserContext;
 import com.feijimiao.xianyuassistant.constants.OperationConstants;
+import com.feijimiao.xianyuassistant.controller.dto.BatchOffShelfItemsReqDTO;
+import com.feijimiao.xianyuassistant.controller.dto.BatchOffShelfItemsRespDTO;
 import com.feijimiao.xianyuassistant.controller.dto.OffShelfReqDTO;
 import com.feijimiao.xianyuassistant.controller.dto.PublishItemReqDTO;
 import com.feijimiao.xianyuassistant.controller.dto.PublishItemRespDTO;
@@ -146,6 +148,45 @@ public class PublishController {
                     OperationConstants.TargetType.GOODS,
                     String.valueOf(req.getItemId()),
                     null, null, e.getMessage(), null);
+            throw e;
+        }
+    }
+
+    /**
+     * 批量下架商品（写操作，独立限流桶）
+     *
+     * <p>逐件调用闲鱼下架接口并返回成功/失败明细；单件失败不影响其余商品。</p>
+     */
+    @PostMapping("/batchOffShelf")
+    @RequirePermission("publish:write")
+    @RateLimit(bucket = "batch_off_shelf", limit = 3, message = "批量下架过于频繁")
+    public ResultObject<BatchOffShelfItemsRespDTO> batchOffShelf(
+            @Valid @RequestBody BatchOffShelfItemsReqDTO req) {
+        try {
+            Long accountId = req.getXianyuAccountId();
+            rbacService.assertAccountVisible(UserContext.getUserId(), accountId);
+
+            BatchOffShelfItemsRespDTO resp = publishService.batchOffShelf(accountId, req.getXyGoodsIds());
+
+            operationLogService.log(accountId,
+                    OperationConstants.Type.OFF_SHELF,
+                    OperationConstants.Module.GOODS,
+                    "批量下架商品: accountId=" + accountId
+                            + ", total=" + resp.getTotal()
+                            + ", success=" + resp.getSuccess()
+                            + ", failed=" + resp.getFailed(),
+                    resp.getFailed() == null || resp.getFailed() == 0
+                            ? OperationConstants.Status.SUCCESS
+                            : OperationConstants.Status.FAIL,
+                    OperationConstants.TargetType.GOODS,
+                    null,
+                    null, null,
+                    resp.getFailed() != null && resp.getFailed() > 0 ? "部分商品下架失败" : null,
+                    null);
+
+            return ResultObject.success(resp);
+        } catch (Exception e) {
+            log.error("批量下架商品异常: accountId={}", req.getXianyuAccountId(), e);
             throw e;
         }
     }

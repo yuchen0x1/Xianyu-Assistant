@@ -5,6 +5,8 @@ import com.feijimiao.xianyuassistant.controller.dto.ItemDTO;
 import com.feijimiao.xianyuassistant.controller.dto.CreateItemDraftReqDTO;
 import com.feijimiao.xianyuassistant.controller.dto.UpdateItemInfoReqDTO;
 
+import java.math.BigDecimal;
+
 import java.util.List;
 import java.util.Set;
 
@@ -144,6 +146,11 @@ public interface GoodsInfoService {
      * 更新指定账号下的本地商品资料。
      */
     XianyuGoodsInfo updateItemInfo(UpdateItemInfoReqDTO reqDTO);
+
+    /**
+     * 更新指定账号下的本地商品售价。
+     */
+    XianyuGoodsInfo updateItemPrice(Long xianyuAccountId, String xyGoodId, BigDecimal soldPrice);
 
     /**
      * 创建本地商品资料草稿。草稿不会直接发布到闲鱼。

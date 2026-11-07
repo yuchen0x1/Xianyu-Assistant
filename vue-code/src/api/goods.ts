@@ -214,6 +214,31 @@ export function updateGoodsInfo(data: {
   });
 }
 
+export interface BatchUpdatePriceResult {
+  total: number
+  success: number
+  failed: number
+  details: {
+    xyGoodsId: string
+    success: boolean
+    soldPrice: string
+    message: string
+  }[]
+}
+
+// 批量更新助手本地商品售价。远程闲鱼商品需在官方页面确认。
+export function batchUpdatePrice(data: {
+  xianyuAccountId: number
+  xyGoodsIds: string[]
+  soldPrice: string
+}) {
+  return request<BatchUpdatePriceResult>({
+    url: '/items/batchUpdatePrice',
+    method: 'POST',
+    data
+  })
+}
+
 // 创建助手本地商品资料草稿。
 export function createGoodsDraft(data: {
   xianyuAccountId: number;

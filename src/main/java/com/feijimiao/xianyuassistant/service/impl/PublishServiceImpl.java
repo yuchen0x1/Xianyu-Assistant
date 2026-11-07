@@ -3,6 +3,7 @@ package com.feijimiao.xianyuassistant.service.impl;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.feijimiao.xianyuassistant.constants.XianyuProtocolProfile;
+import com.feijimiao.xianyuassistant.controller.dto.BatchOffShelfItemsRespDTO;
 import com.feijimiao.xianyuassistant.controller.dto.PublishItemReqDTO;
 import com.feijimiao.xianyuassistant.controller.dto.PublishItemRespDTO;
 import com.feijimiao.xianyuassistant.entity.XianyuAccount;
@@ -182,6 +183,46 @@ public class PublishServiceImpl implements PublishService {
         saveOffShelfHistory(accountId, itemId, success,
                 success ? null : result.getErrorMessage(), result.getResponse());
         return success;
+    }
+
+    @Override
+    public BatchOffShelfItemsRespDTO batchOffShelf(Long accountId, List<String> itemIds) {
+        List<BatchOffShelfItemsRespDTO.ItemOffShelfResult> details = new ArrayList<>();
+        if (itemIds == null || itemIds.isEmpty()) {
+            return new BatchOffShelfItemsRespDTO(0, 0, 0, details);
+        }
+
+        int successCount = 0;
+        int failedCount = 0;
+        for (int i = 0; i < itemIds.size(); i++) {
+            String itemId = itemIds.get(i);
+            try {
+                boolean ok = offShelf(accountId, itemId);
+                if (ok) {
+                    successCount++;
+                } else {
+                    failedCount++;
+                }
+                details.add(new BatchOffShelfItemsRespDTO.ItemOffShelfResult(
+                        itemId, ok, ok ? "下架成功" : "下架失败，请查看发布历史确认原因"));
+            } catch (Exception e) {
+                failedCount++;
+                details.add(new BatchOffShelfItemsRespDTO.ItemOffShelfResult(
+                        itemId, false, "执行异常: " + e.getMessage()));
+            }
+
+            // 批处理间歇 1 秒，防平台触发频控
+            if (i < itemIds.size() - 1) {
+                try {
+                    Thread.sleep(1000);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+            }
+        }
+
+        return new BatchOffShelfItemsRespDTO(itemIds.size(), successCount, failedCount, details);
     }
 
     // ==================== 私有方法 ====================

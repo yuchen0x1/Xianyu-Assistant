@@ -5,7 +5,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/yuchen0x1/Xianyu-Assistant?display_name=tag&sort=semver)](https://github.com/yuchen0x1/Xianyu-Assistant/releases)
 
-当前版本：**v3.5.19** · [GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
+当前版本：**v3.5.20** · [GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
 
 ## 项目简介
 
@@ -21,7 +21,7 @@
 | --- | --- |
 | 后端 | Java 21、Spring Boot 3.5、MyBatis-Plus、SQLite、WebSocket、Playwright、OkHttp、JJWT、EasyExcel |
 | Web 前端 | Vue 3.5、TypeScript、Vite、Pinia、Vitest |
-| 移动端 | Flutter 工程，当前版本 `3.5.19+3519` |
+| 移动端 | Flutter 工程，当前版本 `3.5.20+3520` |
 | AI | Spring AI，支持 OpenAI 兼容接口；默认配置指向 DashScope 兼容接口 |
 | 可观测性 | Spring Boot Actuator、Micrometer、Prometheus |
 | 部署 | 官方 Release JAR、源码构建 JAR、Docker、本机开发、systemd + Nginx |
@@ -114,11 +114,11 @@ bash install.sh
 
 安装脚本从 GitHub Release 获取最新 JAR，并校验 SHA-256 与官方 Ed25519 签名。默认安装目录为 `~/xianyu-seller-console`，端口可通过 `PORT` 环境变量覆盖。
 
-当前 v3.5.19 资产：
+当前 v3.5.20 资产：
 
-- [XianYuSellerConsole-3.5.19.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar)
-- [XianYuSellerConsole-3.5.19.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar.sha256)
-- [XianYuSellerConsole-3.5.19.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar.sig)
+- [XianYuSellerConsole-3.5.20.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar)
+- [XianYuSellerConsole-3.5.20.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sha256)
+- [XianYuSellerConsole-3.5.20.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sig)
 
 移动端目前随仓库提供 Flutter 源码，Release 不提供预构建 APK。
 
@@ -237,12 +237,12 @@ export XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false
 
 自动更新与手动在线更新共用更新状态机，同一时间只允许一个更新流程执行。完整配置见下方环境变量表和 `docs/production-deployment.md`。
 
-### 从 v3.5.18 升级
+### 从 v3.5.19 升级
 
 - 推荐使用应用内在线更新、自动更新或重新执行 `bash install.sh`。
 - 升级前备份 `dbdata/`，尤其是 SQLite 数据库、JWT 密钥和凭据密钥文件。
 - 使用默认 `exit` 模式时，确认 systemd / Docker / 守护循环具备自动重启能力。
-- v3.5.19 没有已知的破坏性配置变更；不需要自动更新时设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false`。
+- v3.5.20 没有已知的破坏性配置变更；不需要自动更新时设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false`。
 
 ## 配置参考
 
