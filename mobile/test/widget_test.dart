@@ -22,6 +22,8 @@ void main() {
     await tester.pumpWidget(const XianyuSellerApp(enableWebView: false));
 
     expect(find.text('闲鱼卖家运营控制台'), findsOneWidget);
+    expect(find.text('移动工作台'), findsOneWidget);
+    expect(find.text('待办中心'), findsOneWidget);
     expect(find.byTooltip('服务设置'), findsOneWidget);
   });
 }

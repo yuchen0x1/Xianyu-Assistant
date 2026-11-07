@@ -1495,6 +1495,47 @@ public class ItemServiceImpl implements ItemService {
     }
 
     @Override
+    public ResultObject<BatchUpdatePriceRespDTO> batchUpdatePrice(BatchUpdatePriceReqDTO reqDTO) {
+        if (reqDTO == null || reqDTO.getXianyuAccountId() == null) {
+            return ResultObject.failed(400, "账号ID不能为空");
+        }
+        if (reqDTO.getXyGoodsIds() == null || reqDTO.getXyGoodsIds().isEmpty()) {
+            return ResultObject.failed(400, "商品ID列表不能为空");
+        }
+        if (reqDTO.getXyGoodsIds().size() > 50) {
+            return ResultObject.failed(400, "单次最多操作50个商品");
+        }
+        if (reqDTO.getSoldPrice() == null) {
+            return ResultObject.failed(400, "商品价格不能为空");
+        }
+
+        BatchUpdatePriceRespDTO response = new BatchUpdatePriceRespDTO();
+        response.setTotal(reqDTO.getXyGoodsIds().size());
+        String requestedPrice = reqDTO.getSoldPrice().toPlainString();
+        for (String xyGoodsId : reqDTO.getXyGoodsIds()) {
+            BatchUpdatePriceRespDTO.ItemPriceResult detail = new BatchUpdatePriceRespDTO.ItemPriceResult();
+            detail.setXyGoodsId(xyGoodsId);
+            try {
+                XianyuGoodsInfo goods = goodsInfoService.updateItemPrice(
+                        reqDTO.getXianyuAccountId(), xyGoodsId, reqDTO.getSoldPrice());
+                detail.setSuccess(true);
+                detail.setSoldPrice(goods.getSoldPrice());
+                detail.setMessage("本地售价已更新；闲鱼远程商品请在官方页面确认");
+                response.setSuccess(response.getSuccess() + 1);
+            } catch (Exception e) {
+                detail.setSuccess(false);
+                detail.setSoldPrice(requestedPrice);
+                detail.setMessage(e.getMessage() != null ? e.getMessage() : "更新失败");
+                response.setFailed(response.getFailed() + 1);
+                log.warn("批量更新本地商品售价失败: accountId={}, xyGoodsId={}, errorType={}",
+                        reqDTO.getXianyuAccountId(), xyGoodsId, e.getClass().getSimpleName());
+            }
+            response.getDetails().add(detail);
+        }
+        return ResultObject.success(response, "批量更新本地售价完成；闲鱼远程商品请在官方页面确认");
+    }
+
+    @Override
     public ResultObject<XianyuGoodsInfo> createItemDraft(CreateItemDraftReqDTO reqDTO) {
         try {
             XianyuGoodsInfo goods = goodsInfoService.createItemDraft(reqDTO);

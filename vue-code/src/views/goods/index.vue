@@ -36,6 +36,18 @@ const {
   polishing,
   handlePolishItem,
   handleBatchPolish,
+  selectedGoodsIds,
+  batchOffShelving,
+  batchPrice,
+  batchUpdatingPrice,
+  isAllSelected,
+  toggleSelect,
+  toggleSelectAll,
+  clearSelection,
+  handleBatchOffShelf,
+  openBatchPriceDialog,
+  closeBatchPriceDialog,
+  handleBatchUpdatePrice,
   loadAccounts,
   loadGoods,
   handleRefresh,
@@ -293,6 +305,35 @@ const handleExportGoods = async () => {
           <span>一键擦亮在售</span>
         </button>
 
+        <div v-if="selectedGoodsIds.length > 0" class="goods__batch-bar">
+          <span class="goods__batch-count">已选 {{ selectedGoodsIds.length }} 件</span>
+          <button
+            class="btn btn--secondary"
+            :disabled="batchOffShelving || batchUpdatingPrice || !selectedAccountId"
+            title="统一更新已选商品的本地售价"
+            @click="openBatchPriceDialog"
+          >
+            <span>批量改价</span>
+          </button>
+          <button
+            class="btn btn--danger"
+            :class="{ 'btn--loading': batchOffShelving }"
+            :disabled="batchOffShelving || batchUpdatingPrice || !selectedAccountId"
+            title="批量下架已选商品"
+            @click="handleBatchOffShelf"
+          >
+            <span>批量下架</span>
+          </button>
+          <button
+            class="btn btn--ghost"
+            :disabled="batchOffShelving || batchUpdatingPrice"
+            title="取消选择"
+            @click="clearSelection"
+          >
+            <span>取消</span>
+          </button>
+        </div>
+
         <button
           class="btn btn--secondary desktop-only"
           :disabled="exportingGoods"
@@ -363,6 +404,8 @@ const handleExportGoods = async () => {
         <GoodsTable
           :goods-list="goodsList"
           :loading="loading"
+          :selected-ids="selectedGoodsIds"
+          :all-selected="isAllSelected"
           @view="viewDetail"
           @edit="editGoods"
           @sync="syncSingleGoods"
@@ -371,6 +414,8 @@ const handleExportGoods = async () => {
           @toggle-auto-reply="toggleAutoReply"
           @config-auto-delivery="configAutoDelivery"
           @delete="confirmDelete"
+          @toggle-select="toggleSelect"
+          @toggle-select-all="toggleSelectAll"
         />
       </div>
 
@@ -420,6 +465,38 @@ const handleExportGoods = async () => {
       :goods="editorGoods"
       @saved="loadGoods"
     />
+
+    <Transition name="overlay-fade">
+      <div v-if="dialogs.batchPrice" class="goods__dialog-overlay" @click.self="closeBatchPriceDialog">
+        <div class="goods__dialog goods__batch-price-dialog" role="dialog" aria-modal="true" aria-labelledby="batch-price-title">
+          <div class="goods__dialog-header">
+            <h3 id="batch-price-title" class="goods__dialog-title">批量改价</h3>
+          </div>
+          <div class="goods__dialog-body goods__batch-price-body">
+            <p class="goods__dialog-text">将已选 {{ selectedGoodsIds.length }} 个商品统一更新为新的本地售价。</p>
+            <label class="goods__batch-price-field">
+              <span>新售价（元）</span>
+              <input
+                v-model="batchPrice"
+                type="text"
+                inputmode="decimal"
+                autocomplete="off"
+                placeholder="例如：9.90"
+                :disabled="batchUpdatingPrice"
+                @keyup.enter="handleBatchUpdatePrice"
+              />
+            </label>
+            <p class="goods__batch-price-notice">仅更新助手本地商品资料，不代表闲鱼远程商品已改价；完成后请到官方页面核对。</p>
+          </div>
+          <div class="goods__dialog-footer">
+            <button class="goods__dialog-btn goods__dialog-btn--cancel" :disabled="batchUpdatingPrice" @click="closeBatchPriceDialog">取消</button>
+            <button class="goods__dialog-btn goods__dialog-btn--primary" :disabled="batchUpdatingPrice" @click="handleBatchUpdatePrice">
+              {{ batchUpdatingPrice ? '保存中...' : '确认改价' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </Transition>
 
     <!-- Delete Confirm -->
     <Transition name="overlay-fade">

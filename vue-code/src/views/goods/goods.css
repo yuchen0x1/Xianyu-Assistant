@@ -171,6 +171,35 @@
   }
 }
 
+.goods .btn--danger {
+  color: var(--danger-500);
+  background: var(--danger-50);
+  border-color: color-mix(in srgb, var(--danger-500) 32%, transparent);
+}
+
+@media (hover: hover) {
+  .goods .btn--danger:hover {
+    background: color-mix(in srgb, var(--danger-500) 16%, transparent);
+  }
+}
+
+.goods__batch-bar {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid color-mix(in srgb, var(--brand-500) 38%, transparent);
+  background: color-mix(in srgb, var(--brand-500) 10%, var(--d-surface));
+}
+
+.goods__batch-count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--d-accent);
+  white-space: nowrap;
+}
+
 .goods .btn--loading {
   opacity: 0.6;
   pointer-events: none;
@@ -500,6 +529,45 @@
   line-height: 1.5;
 }
 
+.goods__batch-price-body {
+  text-align: left;
+}
+
+.goods__batch-price-field {
+  display: grid;
+  gap: 8px;
+  margin-top: var(--d-space-4);
+  color: var(--d-text-primary);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.goods__batch-price-field input {
+  width: 100%;
+  box-sizing: border-box;
+  height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--d-border-strong);
+  border-radius: var(--d-radius-sm);
+  background: var(--d-surface);
+  color: var(--d-text-primary);
+  font: inherit;
+  font-weight: 400;
+  outline: none;
+}
+
+.goods__batch-price-field input:focus {
+  border-color: var(--d-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--d-accent) 18%, transparent);
+}
+
+.goods__batch-price-notice {
+  margin: 12px 0 0;
+  color: var(--d-text-tertiary);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
 .goods__dialog-footer {
   display: flex;
   border-top: 1px solid var(--d-border);
@@ -532,6 +600,16 @@
 .goods__dialog-btn--danger {
   color: var(--d-danger);
   font-weight: 600;
+}
+
+.goods__dialog-btn--primary {
+  color: var(--d-accent);
+  font-weight: 600;
+}
+
+.goods__dialog-btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
 }
 
 @media (hover: hover) {

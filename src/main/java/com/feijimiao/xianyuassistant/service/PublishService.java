@@ -1,5 +1,6 @@
 package com.feijimiao.xianyuassistant.service;
 
+import com.feijimiao.xianyuassistant.controller.dto.BatchOffShelfItemsRespDTO;
 import com.feijimiao.xianyuassistant.controller.dto.PublishItemReqDTO;
 import com.feijimiao.xianyuassistant.controller.dto.PublishItemRespDTO;
 
@@ -35,4 +36,15 @@ public interface PublishService {
      * @return 是否成功
      */
     boolean offShelf(Long accountId, String itemId);
+
+    /**
+     * 批量下架商品：逐件调用闲鱼下架接口，件间间隔以规避平台频控。
+     *
+     * <p>单件失败不影响其余商品，最终返回逐件成功/失败明细。</p>
+     *
+     * @param accountId 账号ID
+     * @param itemIds 商品ID列表
+     * @return 批量下架结果
+     */
+    BatchOffShelfItemsRespDTO batchOffShelf(Long accountId, List<String> itemIds);
 }

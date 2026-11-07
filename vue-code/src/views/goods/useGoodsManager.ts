@@ -11,12 +11,20 @@ import {
   syncSingleItem,
   getSyncProgress,
   polishGoods,
-  batchPolishGoods
+  batchPolishGoods,
+  batchUpdatePrice
 } from '@/api/goods'
+import { batchOffShelf } from '@/api/publish'
 import { showSuccess, showError, showInfo } from '@/utils'
+import { showConfirm } from '@/utils/confirm'
 import { getGoodsStatusText, formatPrice, formatTime } from '@/utils'
 import type { Account } from '@/types'
 import type { GoodsItemWithConfig, SyncProgressResponse } from '@/api/goods'
+
+/** 只有在售商品可以下架 */
+const SELLABLE_STATUS = 0
+/** 单次批量下架上限，与后端校验保持一致 */
+const BATCH_OFF_SHELF_LIMIT = 50
 
 export function useGoodsManager() {
   const router = useRouter()
@@ -36,7 +44,8 @@ export function useGoodsManager() {
     detail: false,
     deleteConfirm: false,
     filter: false,
-    editor: false
+    editor: false,
+    batchPrice: false
   })
 
   const selectedGoodsId = ref<string>('')
@@ -211,18 +220,21 @@ export function useGoodsManager() {
   // 账号变更
   const handleAccountChange = () => {
     currentPage.value = 1
+    clearSelection()
     loadGoods()
   }
 
   // 状态筛选
   const handleStatusFilter = () => {
     currentPage.value = 1
+    clearSelection()
     loadGoods()
   }
 
   // 分页
   const handlePageChange = (page: number) => {
     currentPage.value = page
+    clearSelection()
     loadGoods()
   }
 
@@ -390,6 +402,179 @@ export function useGoodsManager() {
     }
   }
 
+  // ==================== 批量选择与批量下架 ====================
+
+  const selectedGoodsIds = ref<string[]>([])
+  const batchOffShelving = ref(false)
+  const batchPrice = ref('')
+  const batchUpdatingPrice = ref(false)
+
+  /** 当前页可被选中（在售）的商品 */
+  const selectableGoods = computed(() =>
+    goodsList.value.filter(item => item.item.status === SELLABLE_STATUS)
+  )
+
+  const isAllSelected = computed(
+    () =>
+      selectableGoods.value.length > 0 &&
+      selectableGoods.value.every(item => selectedGoodsIds.value.includes(item.item.xyGoodId))
+  )
+
+  const toggleSelect = (xyGoodId: string) => {
+    const index = selectedGoodsIds.value.indexOf(xyGoodId)
+    if (index >= 0) {
+      selectedGoodsIds.value.splice(index, 1)
+    } else {
+      selectedGoodsIds.value.push(xyGoodId)
+    }
+  }
+
+  const toggleSelectAll = () => {
+    if (isAllSelected.value) {
+      selectedGoodsIds.value = []
+      return
+    }
+    selectedGoodsIds.value = selectableGoods.value.map(item => item.item.xyGoodId)
+  }
+
+  const clearSelection = () => {
+    selectedGoodsIds.value = []
+  }
+
+  const handleBatchOffShelf = async () => {
+    if (!selectedAccountId.value) {
+      showInfo('请先选择账号')
+      return
+    }
+    const ids = [...selectedGoodsIds.value]
+    if (ids.length === 0) {
+      showInfo('请先选择要下架的商品')
+      return
+    }
+    if (ids.length > BATCH_OFF_SHELF_LIMIT) {
+      showError(`单次最多批量下架${BATCH_OFF_SHELF_LIMIT}个商品，当前已选${ids.length}个`)
+      return
+    }
+
+    try {
+      await showConfirm(
+        `即将下架 ${ids.length} 个商品。下架后商品在闲鱼端不再展示，此操作不可撤销。`,
+        '确认批量下架',
+        { variant: 'danger' }
+      )
+    } catch {
+      return
+    }
+
+    batchOffShelving.value = true
+    try {
+      const res = await batchOffShelf({
+        xianyuAccountId: selectedAccountId.value,
+        xyGoodsIds: ids
+      })
+      if (res.code === 0 || res.code === 200) {
+        const data = res.data
+        if (data) {
+          if (data.failed > 0) {
+            showError(`批量下架完成：成功${data.success}个，失败${data.failed}个`)
+            const failedItems = data.details.filter(d => !d.success).slice(0, 3)
+            if (failedItems.length > 0) {
+              console.error('批量下架失败明细:', failedItems)
+            }
+          } else {
+            showSuccess(`批量下架成功：共${data.success}个商品`)
+          }
+        } else {
+          showSuccess(res.msg || '批量下架成功')
+        }
+        clearSelection()
+        await loadGoods()
+      } else {
+        showError(res.msg || '批量下架失败')
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      showError('批量下架异常: ' + message)
+    } finally {
+      batchOffShelving.value = false
+    }
+  }
+
+  const openBatchPriceDialog = () => {
+    if (!selectedAccountId.value) {
+      showInfo('请先选择账号')
+      return
+    }
+    if (selectedGoodsIds.value.length === 0) {
+      showInfo('请先选择要改价的商品')
+      return
+    }
+    batchPrice.value = ''
+    dialogs.batchPrice = true
+  }
+
+  const closeBatchPriceDialog = () => {
+    if (!batchUpdatingPrice.value) dialogs.batchPrice = false
+  }
+
+  const handleBatchUpdatePrice = async () => {
+    if (!selectedAccountId.value) {
+      showInfo('请先选择账号')
+      return
+    }
+    const ids = [...selectedGoodsIds.value]
+    const price = batchPrice.value.trim()
+    if (ids.length === 0) {
+      showInfo('请先选择要改价的商品')
+      return
+    }
+    if (ids.length > BATCH_OFF_SHELF_LIMIT) {
+      showError(`单次最多批量改价${BATCH_OFF_SHELF_LIMIT}个商品，当前已选${ids.length}个`)
+      return
+    }
+    if (!/^\d+(\.\d{1,2})?$/.test(price) || Number(price) <= 0 || Number(price) > 100000000) {
+      showError('请输入大于0且最多两位小数、最高100000000元的价格')
+      return
+    }
+
+    try {
+      await showConfirm(
+        `将 ${ids.length} 个商品的本地售价统一改为 ¥${price}。闲鱼远程商品需在官方页面确认。`,
+        '确认批量改价'
+      )
+    } catch {
+      return
+    }
+
+    batchUpdatingPrice.value = true
+    try {
+      const res = await batchUpdatePrice({
+        xianyuAccountId: selectedAccountId.value,
+        xyGoodsIds: ids,
+        soldPrice: price
+      })
+      if (res.code === 0 || res.code === 200) {
+        const data = res.data
+        if (data && data.failed > 0) {
+          showError(`批量改价完成：成功${data.success}个，失败${data.failed}个`)
+          console.error('批量改价失败明细:', data.details.filter(item => !item.success))
+        } else {
+          showSuccess(`批量改价成功：${data?.success ?? ids.length}个商品已更新本地售价`)
+        }
+        dialogs.batchPrice = false
+        clearSelection()
+        await loadGoods()
+      } else {
+        showError(res.msg || '批量改价失败')
+      }
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err)
+      showError('批量改价异常: ' + message)
+    } finally {
+      batchUpdatingPrice.value = false
+    }
+  }
+
   return {
     loading,
     refreshing,
@@ -429,6 +614,19 @@ export function useGoodsManager() {
     getGoodsStatusText,
     formatPrice,
     formatTime,
-    syncSingleGoods
+    syncSingleGoods,
+    selectedGoodsIds,
+    batchOffShelving,
+    batchPrice,
+    batchUpdatingPrice,
+    selectableGoods,
+    isAllSelected,
+    toggleSelect,
+    toggleSelectAll,
+    clearSelection,
+    handleBatchOffShelf,
+    openBatchPriceDialog,
+    closeBatchPriceDialog,
+    handleBatchUpdatePrice
   }
 }

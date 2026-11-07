@@ -22,6 +22,12 @@ const router = createRouter({
       meta: { title: '数据面板', permissions: ['dashboard:read'] }
     },
     {
+      path: '/todo',
+      name: 'todo',
+      component: () => import('@/views/todo/index.vue'),
+      meta: { title: '待办中心', permissions: ['dashboard:read'] }
+    },
+    {
       path: '/accounts',
       name: 'accounts',
       component: () => import('@/views/accounts/index.vue'),

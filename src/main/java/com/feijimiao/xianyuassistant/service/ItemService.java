@@ -88,6 +88,9 @@ public interface ItemService {
     /** 创建本地商品资料草稿。 */
     ResultObject<XianyuGoodsInfo> createItemDraft(CreateItemDraftReqDTO reqDTO);
 
+    /** 批量更新本地商品售价。 */
+    ResultObject<BatchUpdatePriceRespDTO> batchUpdatePrice(BatchUpdatePriceReqDTO reqDTO);
+
     /** 擦亮单个商品。 */
     ResultObject<PolishItemRespDTO> polishItem(PolishItemReqDTO reqDTO);
 

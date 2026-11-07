@@ -495,6 +495,28 @@ public class GoodsInfoServiceImpl implements GoodsInfoService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
+    public XianyuGoodsInfo updateItemPrice(Long xianyuAccountId, String xyGoodId, BigDecimal soldPrice) {
+        if (xianyuAccountId == null || xyGoodId == null || xyGoodId.isBlank()) {
+            throw new IllegalArgumentException("账号ID和商品ID不能为空");
+        }
+
+        LambdaQueryWrapper<XianyuGoodsInfo> query = new LambdaQueryWrapper<>();
+        query.eq(XianyuGoodsInfo::getXianyuAccountId, xianyuAccountId)
+                .eq(XianyuGoodsInfo::getXyGoodId, xyGoodId);
+        XianyuGoodsInfo goods = goodsInfoMapper.selectOne(query);
+        if (goods == null) {
+            throw new IllegalArgumentException("商品不存在或不属于当前账号");
+        }
+
+        goods.setSoldPrice(normalizePrice(soldPrice));
+        goods.setUpdatedTime(getCurrentTimeString());
+        goodsInfoMapper.updateById(goods);
+        log.info("更新本地商品售价成功: accountId={}, xyGoodId={}", xianyuAccountId, xyGoodId);
+        return goods;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public XianyuGoodsInfo createItemDraft(CreateItemDraftReqDTO reqDTO) {
         if (reqDTO == null || reqDTO.getXianyuAccountId() == null) {
             throw new IllegalArgumentException("账号ID不能为空");
