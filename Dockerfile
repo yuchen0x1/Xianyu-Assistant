@@ -1,7 +1,7 @@
 # ===== 多阶段构建 =====
 
 # 阶段1: 构建前端
-FROM node:22-alpine AS frontend-build
+FROM node:25-alpine AS frontend-build
 
 WORKDIR /app/vue-code
 
