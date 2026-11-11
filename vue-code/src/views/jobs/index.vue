@@ -24,8 +24,8 @@ const statusLabels: Record<string, string> = {
   FAILED: '失败', CANCELLED: '已取消', DEAD_LETTER: '死信'
 }
 const statusColors: Record<string, string> = {
-  PENDING: '#ff9800', RUNNING: '#2196f3', SUCCESS: '#4caf50',
-  FAILED: '#f44336', CANCELLED: '#9e9e9e', DEAD_LETTER: '#e91e63'
+  PENDING: 'var(--warning-500)', RUNNING: 'var(--info-500)', SUCCESS: 'var(--success-500)',
+  FAILED: 'var(--danger-500)', CANCELLED: 'var(--text-3)', DEAD_LETTER: 'var(--danger-600)'
 }
 
 const loadJobs = async () => {
@@ -125,10 +125,10 @@ onMounted(() => { loadJobs() })
       <div v-if="loading" class="loading">加载中...</div>
       <div v-else-if="jobs.length === 0" class="empty">暂无任务</div>
       <div v-else class="job-list">
-        <div v-for="job in jobs" :key="job.id" class="job-card" @click="viewExecutions(job)">
+        <button v-for="job in jobs" :key="job.id" type="button" class="job-card" @click="viewExecutions(job)">
           <div class="job-header">
             <span class="job-type">{{ job.jobType }}</span>
-            <span class="job-status" :style="{ color: statusColors[job.status] || '#888' }">
+            <span class="job-status" :style="{ color: statusColors[job.status] || 'var(--text-3)' }">
               {{ statusLabels[job.status] || job.status }}
             </span>
           </div>
@@ -139,7 +139,7 @@ onMounted(() => { loadJobs() })
             <span>创建: {{ formatTime(job.createdTime) }}</span>
           </div>
           <div v-if="job.lastError" class="job-error">{{ job.lastError }}</div>
-        </div>
+        </button>
       </div>
     </div>
 
@@ -176,7 +176,7 @@ onMounted(() => { loadJobs() })
             <div v-for="exec in executions" :key="exec.id" class="exec-item">
               <div class="exec-header">
                 <span class="exec-attempt">#{{ exec.attempt }}</span>
-                <span :style="{ color: statusColors[exec.status] || '#888' }">{{ statusLabels[exec.status] || exec.status }}</span>
+                <span :style="{ color: statusColors[exec.status] || 'var(--text-3)' }">{{ statusLabels[exec.status] || exec.status }}</span>
                 <span class="exec-worker">{{ exec.workerId }}</span>
               </div>
               <div class="exec-time">
@@ -282,6 +282,12 @@ onMounted(() => { loadJobs() })
 }
 
 .job-card {
+  appearance: none;
+  width: 100%;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  display: block;
   position: relative;
   overflow: hidden;
   padding: var(--space-4);

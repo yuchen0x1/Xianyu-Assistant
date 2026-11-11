@@ -7,15 +7,16 @@ server:
 info:
   app:
     name: ${spring.application.name}
-    version: ${app.version:3.5.20}
+    version: ${app.version:3.5.21}
     description: "XianYu Seller Console"
 
 management:
   endpoints:
     web:
       exposure:
-        # 固定开放健康检查与版本信息，不接受环境变量扩面（metrics/prometheus 含业务指标）。
-        include: health,info
+        # 默认只开放健康检查与版本信息。metrics/prometheus 含业务指标且无需登录即可访问，
+        # 需要时设置 XIANYU_ASSISTANT_ACTUATOR_EXPOSED_ENDPOINTS=health,info,prometheus 显式打开。
+        include: ${XIANYU_ASSISTANT_ACTUATOR_EXPOSED_ENDPOINTS:health,info}
   endpoint:
     health:
       show-details: ${XIANYU_ASSISTANT_HEALTH_SHOW_DETAILS:never}

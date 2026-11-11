@@ -27,6 +27,9 @@ import java.util.*;
 @Service
 public class ItemServiceImpl implements ItemService {
 
+    /** 单次批量擦亮上限，与批量下架/批量改价保持一致。 */
+    private static final int MAX_BATCH_POLISH_ITEMS = 50;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
     
     @Autowired
@@ -1572,7 +1575,7 @@ public class ItemServiceImpl implements ItemService {
 
         List<String> targetGoodsIds = reqDTO.getXyGoodsIds();
         if (targetGoodsIds == null || targetGoodsIds.isEmpty()) {
-            // 为空时自动获取该账号下所有在售商品
+            // 为空时自动获取该账号下所有在售商品（按件数上限截断，避免单次请求过久）
             targetGoodsIds = goodsInfoMapper.selectList(
                     new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<XianyuGoodsInfo>()
                             .eq(XianyuGoodsInfo::getXianyuAccountId, accountId)
@@ -1587,6 +1590,15 @@ public class ItemServiceImpl implements ItemService {
                     .failed(0)
                     .details(Collections.emptyList())
                     .build(), "没有找到待擦亮的在售商品");
+        }
+
+        // 接口在请求线程内逐件调用平台 API 且件间 sleep 1 秒，不设上限会让单次请求
+        // 阻塞数分钟并撞上前端 30 秒超时（服务端仍在跑，用户重试会重复擦亮）。
+        // DTO 的 @Size 只约束显式传入的列表，这里的全量分支同样必须收敛。
+        if (targetGoodsIds.size() > MAX_BATCH_POLISH_ITEMS) {
+            return ResultObject.failed(400,
+                    "单次最多批量擦亮" + MAX_BATCH_POLISH_ITEMS + "个商品，当前待处理 "
+                            + targetGoodsIds.size() + " 个，请分批执行");
         }
 
         int successCount = 0;

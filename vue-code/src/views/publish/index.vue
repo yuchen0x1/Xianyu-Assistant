@@ -973,7 +973,7 @@ const fillPublishFromTemplate = (t: GoodsTemplate) => {
 }
 .publish__card-subtitle {
   font-size: 12px;
-  color: var(--text-2, #8e8e93);
+  color: var(--text-2, var(--text-3));
   margin: 4px 0 12px;
 }
 
@@ -994,7 +994,7 @@ const fillPublishFromTemplate = (t: GoodsTemplate) => {
 
 .publish__template-hint {
   font-size: 12px;
-  color: var(--text-2, #8e8e93);
+  color: var(--text-2, var(--text-3));
 }
 
 .publish__template-row-actions {
@@ -1004,7 +1004,7 @@ const fillPublishFromTemplate = (t: GoodsTemplate) => {
 }
 
 .publish__refill--danger {
-  color: #ff3b30;
+  color: var(--danger-500);
 }
 
 .publish__pagination {
@@ -1014,7 +1014,7 @@ const fillPublishFromTemplate = (t: GoodsTemplate) => {
   justify-content: center;
   margin-top: 12px;
   font-size: 12px;
-  color: var(--text-2, #8e8e93);
+  color: var(--text-2, var(--text-3));
 }
 
 .publish__batch-result {
@@ -1072,7 +1072,7 @@ const fillPublishFromTemplate = (t: GoodsTemplate) => {
 
 .publish__modal-label {
   font-size: 12px;
-  color: var(--text-2, #8e8e93);
+  color: var(--text-2, var(--text-3));
   margin-top: 8px;
 }
 
@@ -1083,13 +1083,13 @@ const fillPublishFromTemplate = (t: GoodsTemplate) => {
   border-radius: 8px;
   font-size: 13px;
   background: var(--surface, #fff);
-  color: var(--text-1, #1c1c1e);
+  color: var(--text-1, var(--text-1));
   outline: none;
 }
 
 .publish__modal-input:focus,
 .publish__modal-textarea:focus {
-  border-color: var(--brand-500, #007aff);
+  border-color: var(--brand-500, var(--brand-500));
 }
 
 .publish__modal-textarea {
@@ -1099,7 +1099,7 @@ const fillPublishFromTemplate = (t: GoodsTemplate) => {
   border-radius: 8px;
   font-size: 13px;
   background: var(--surface, #fff);
-  color: var(--text-1, #1c1c1e);
+  color: var(--text-1, var(--text-1));
   outline: none;
   resize: vertical;
   font-family: inherit;
@@ -1114,7 +1114,7 @@ const fillPublishFromTemplate = (t: GoodsTemplate) => {
 
 .publish__modal-hint {
   font-size: 12px;
-  color: var(--text-2, #8e8e93);
+  color: var(--text-2, var(--text-3));
   margin-bottom: 8px;
 }
 </style>

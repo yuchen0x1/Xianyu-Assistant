@@ -132,7 +132,7 @@
   color: #fff;
   background: var(--brand-600);
   border: 1px solid var(--border-1);
-  box-shadow: 0 4px 16px rgba(10,132,255,0.35);
+  box-shadow: 0 4px 16px var(--brand-500);
 }
 
 @media (hover: hover) {

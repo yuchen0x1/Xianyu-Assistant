@@ -33,7 +33,7 @@ public class McpServerController {
     private static final String JSONRPC = "2.0";
     private static final String PROTOCOL_VERSION = "2025-03-26";
     private static final String SERVER_NAME = "xianyu-assistant";
-    @Value("${app.version:3.5.20}")
+    @Value("${app.version:3.5.21}")
     private String serverVersion;
 
     private final CommandRegistry commandRegistry;
@@ -73,6 +73,10 @@ public class McpServerController {
         }
         try {
             JsonNode id = request.get("id");
+            if (!"2.0".equals(request.path("jsonrpc").asText())
+                    || !request.path("method").isTextual()) {
+                return errorResponse(id, -32600, "Invalid Request");
+            }
             String method = request.path("method").asText("");
             switch (method) {
                 case "initialize" -> {

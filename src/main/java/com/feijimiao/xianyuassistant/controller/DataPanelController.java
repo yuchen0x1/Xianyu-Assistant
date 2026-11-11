@@ -124,8 +124,8 @@ public class DataPanelController {
             respDTO.setOrderCount(orderQueryService.countOrdersByDate(date, scope));
             respDTO.setDeliverySuccessCount(orderQueryService.countDeliverySuccessByDate(date, scope));
             respDTO.setDeliveryFailCount(orderQueryService.countDeliveryFailByDate(date, scope));
-            respDTO.setAiReplyCount(autoReplyRecordService.countAiRepliesByDate(date, scope));
-            respDTO.setHasData(orderQueryService.countAllOrders(scope) > 0 || autoReplyRecordService.countAllReplies(scope) > 0);
+            respDTO.setAiReplyCount(autoReplyRecordService.countAiRepliesByDateScoped(date, scope));
+            respDTO.setHasData(orderQueryService.countAllOrders(scope) > 0 || autoReplyRecordService.countAllRepliesScoped(scope) > 0);
 
             if (!isToday) {
                 cacheService.put(cacheKey, respDTO, CACHE_TTL_MINUTES, TimeUnit.MINUTES);
@@ -163,7 +163,7 @@ public class DataPanelController {
                 dates.add(d.getMonthValue() + "/" + d.getDayOfMonth());
                 deliverySuccess.add(orderQueryService.countDeliverySuccessByDate(dateStr, scope));
                 deliveryFail.add(orderQueryService.countDeliveryFailByDate(dateStr, scope));
-                aiReplies.add(autoReplyRecordService.countAiRepliesByDate(dateStr, scope));
+                aiReplies.add(autoReplyRecordService.countAiRepliesByDateScoped(dateStr, scope));
             }
 
             respDTO.setDates(dates);
@@ -352,7 +352,7 @@ public class DataPanelController {
 
             // 咨询排行
             List<com.feijimiao.xianyuassistant.controller.dto.GoodsRankRespDTO.RankItem> inquiryRank = new ArrayList<>();
-            List<java.util.Map<String, Object>> msgRows = chatMessageMapper.selectTopGoodsByMessages(limit, scope);
+            List<java.util.Map<String, Object>> msgRows = chatMessageMapper.selectTopGoodsByMessagesScoped(limit, scope);
             for (java.util.Map<String, Object> row : msgRows) {
                 com.feijimiao.xianyuassistant.controller.dto.GoodsRankRespDTO.RankItem item =
                         new com.feijimiao.xianyuassistant.controller.dto.GoodsRankRespDTO.RankItem();
@@ -443,7 +443,7 @@ public class DataPanelController {
             }
 
             // AI回复统计
-            List<java.util.Map<String, Object>> replyRows = autoReplyRecordService.getAccountRepliesByDate(date, scope);
+            List<java.util.Map<String, Object>> replyRows = autoReplyRecordService.getAccountRepliesByDateScoped(date, scope);
             if (replyRows != null) {
                 Map<Long, Integer> replyMap = new HashMap<>();
                 for (java.util.Map<String, Object> row : replyRows) {
@@ -527,7 +527,7 @@ public class DataPanelController {
                     new com.feijimiao.xianyuassistant.controller.dto.KeywordRankRespDTO();
             List<com.feijimiao.xianyuassistant.controller.dto.KeywordRankRespDTO.RankItem> items = new ArrayList<>();
             long totalHits = 0;
-            List<Map<String, Object>> rows = autoReplyRecordMapper.selectKeywordRankByDate(date, limit, scope);
+            List<Map<String, Object>> rows = autoReplyRecordMapper.selectKeywordRankByDateScoped(date, limit, scope);
             if (rows != null) {
                 for (Map<String, Object> row : rows) {
                     com.feijimiao.xianyuassistant.controller.dto.KeywordRankRespDTO.RankItem item =
@@ -594,7 +594,7 @@ public class DataPanelController {
             List<com.feijimiao.xianyuassistant.controller.dto.OperationStatsRespDTO.TypeStat> types = new ArrayList<>();
             long totalOps = 0, totalSuccess = 0, totalFail = 0, totalPartial = 0;
 
-            List<Map<String, Object>> rows = operationLogMapper.selectOperationStatsByDate(date, limit, scope);
+            List<Map<String, Object>> rows = operationLogMapper.selectOperationStatsByDateScoped(date, limit, scope);
             if (rows != null) {
                 for (Map<String, Object> row : rows) {
                     com.feijimiao.xianyuassistant.controller.dto.OperationStatsRespDTO.TypeStat stat =
@@ -677,7 +677,7 @@ public class DataPanelController {
             List<com.feijimiao.xianyuassistant.controller.dto.FailureRankRespDTO.FailItem> items = new ArrayList<>();
             long totalFailures = 0;
 
-            List<Map<String, Object>> rows = operationLogMapper.selectFailureRankByDate(date, limit, scope);
+            List<Map<String, Object>> rows = operationLogMapper.selectFailureRankByDateScoped(date, limit, scope);
             if (rows != null) {
                 for (Map<String, Object> row : rows) {
                     com.feijimiao.xianyuassistant.controller.dto.FailureRankRespDTO.FailItem item =

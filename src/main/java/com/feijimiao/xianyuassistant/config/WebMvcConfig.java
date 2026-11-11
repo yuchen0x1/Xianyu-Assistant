@@ -45,8 +45,10 @@ public class WebMvcConfig implements WebMvcConfigurer {
                             return requestedResource;
                         }
                         
-                        // 如果是 API 请求，返回 null 让 Controller 处理
-                        if (resourcePath.startsWith("api/")) {
+                        // API 与 actuator 端点必须交给 Spring 处理，不能回退成 index.html。
+                        // 否则 /actuator/prometheus 之类的端点会被前端 SPA 兜底伪装成
+                        // HTTP 200 + HTML，调用方以为指标抓取成功，实际拿到的是页面。
+                        if (resourcePath.startsWith("api/") || isActuatorPath(resourcePath)) {
                             return null;
                         }
                         
@@ -54,5 +56,9 @@ public class WebMvcConfig implements WebMvcConfigurer {
                         return new ClassPathResource("/static/index.html");
                     }
                 });
+    }
+
+    private static boolean isActuatorPath(String resourcePath) {
+        return resourcePath.startsWith("actuator/") || resourcePath.equals("actuator");
     }
 }

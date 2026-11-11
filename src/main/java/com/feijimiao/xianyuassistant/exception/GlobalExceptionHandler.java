@@ -125,6 +125,22 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * 处理未匹配到任何静态资源或接口的请求。
+     *
+     * <p>WebMvcConfig 的 SPA 回退对非 {@code /api/} 路径返回 index.html，但 {@code /api/} 开头的
+     * 未知路径会落到这里。此前由 {@link #handleException(Exception)} 统一兜底成 HTTP 200 +
+     * {@code code=500}「系统繁忙」并打完整堆栈，既误导调用方（404 被判成服务端故障），
+     * 也会用误配置请求淹没真实 500 日志。现在明确返回 404。</p>
+     */
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.NOT_FOUND)
+    public ResultObject<Void> handleNoResourceFound(
+            org.springframework.web.servlet.resource.NoResourceFoundException e) {
+        log.warn("[NotFound] {} {}", e.getHttpMethod(), e.getResourcePath());
+        return ResultObject.failed(404, "接口不存在: " + e.getResourcePath());
+    }
+
+    /**
      * 处理所有未捕获的异常
      */
     @ExceptionHandler(Exception.class)

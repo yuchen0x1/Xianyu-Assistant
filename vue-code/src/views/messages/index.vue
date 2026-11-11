@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, inject, defineComponent, h, type Component } from 'vue'
+import { useVisibilityPolling } from '@/composables/useVisibilityPolling'
 import { accountDisplayName } from '@/utils'
 import { useMessageManager } from './useMessageManager'
 import './messages.css'
@@ -184,7 +185,13 @@ const HeaderSelectors = defineComponent({
   }
 })
 
-let refreshTimer: ReturnType<typeof setInterval> | null = null
+const autoRefreshEnabled = ref(true)
+const autoRefreshInterval = ref(3000)
+useVisibilityPolling({
+  enabled: autoRefreshEnabled,
+  intervalMs: autoRefreshInterval,
+  tick: () => { if (selectedAccountId.value) loadMessages(true) }
+})
 
 onMounted(async () => {
   checkScreenSize()
@@ -201,19 +208,10 @@ onMounted(async () => {
   if (setHeaderContent) {
     setHeaderContent(HeaderSelectors)
   }
-  refreshTimer = setInterval(() => {
-    if (selectedAccountId.value) {
-      loadMessages(true)
-    }
-  }, 3000)
 })
 
 onBeforeUnmount(() => {
   window.removeEventListener('resize', checkScreenSize)
-  if (refreshTimer) {
-    clearInterval(refreshTimer)
-    refreshTimer = null
-  }
 })
 
 const checkScreenSize = () => {

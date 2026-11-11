@@ -379,21 +379,86 @@ export function useGoodsManager() {
   }
 
   // 一键擦亮当前账号在售商品
+  // 后端单次上限 50 件（请求线程内逐件调用平台接口、件间间隔 1 秒），
+  // 在售商品超过上限时按 50 件一批串行提交，避免大账号直接收到 400。
+  const POLISH_BATCH_SIZE = 50
+
+  /** 拉取该账号全部在售商品 ID（goodsList 是分页视图，不能直接当作全集）。 */
+  const fetchAllSellingGoodsIds = async (accountId: number): Promise<string[]> => {
+    const ids: string[] = []
+    let pageNum = 1
+    for (;;) {
+      const response = await getGoodsList({
+        xianyuAccountId: accountId,
+        onlyOnSale: true,
+        status: SELLABLE_STATUS,
+        pageNum,
+        pageSize: 100
+      })
+      if (response.code !== 0 && response.code !== 200) {
+        throw new Error(response.msg || '拉取在售商品列表失败')
+      }
+      const items = response.data?.itemsWithConfig || []
+      for (const item of items) {
+        const id = item.item?.xyGoodId
+        if (id) ids.push(id)
+      }
+      const total = response.data?.totalCount ?? 0
+      if (items.length === 0 || pageNum * 100 >= total) break
+      pageNum += 1
+    }
+    return ids
+  }
+
   const handleBatchPolish = async () => {
     if (!selectedAccountId.value) {
       showInfo('请先选择账号')
       return
     }
+    const accountId = selectedAccountId.value
     polishing.value = true
     try {
-      const res = await batchPolishGoods({
-        xianyuAccountId: selectedAccountId.value
-      })
-      if (res.code === 0 || res.code === 200) {
-        showSuccess(res.msg || '批量擦亮完成')
-      } else {
-        showError(res.msg || '批量擦亮失败')
+      // 全量拉取在售商品：不能只用当前页 goodsList，否则分页时会漏擦商品。
+      const sellingIds = await fetchAllSellingGoodsIds(accountId)
+
+      if (sellingIds.length === 0) {
+        showInfo('该账号当前没有在售商品')
+        return
       }
+
+      const batches: string[][] = []
+      for (let i = 0; i < sellingIds.length; i += POLISH_BATCH_SIZE) {
+        batches.push(sellingIds.slice(i, i + POLISH_BATCH_SIZE))
+      }
+
+      let totalSuccess = 0
+      let totalFailed = 0
+      const failures: string[] = []
+      for (let index = 0; index < batches.length; index++) {
+        const res = await batchPolishGoods({
+          xianyuAccountId: accountId,
+          xyGoodsIds: batches[index]
+        })
+        if (res.code !== 0 && res.code !== 200) {
+          throw new Error(res.msg || '批量擦亮失败')
+        }
+        const data = res.data
+        totalSuccess += data?.success ?? 0
+        totalFailed += data?.failed ?? 0
+        data?.details?.forEach(detail => {
+          if (!detail.success) failures.push(`${detail.xyGoodsId}: ${detail.message}`)
+        })
+        if (batches.length > 1 && index < batches.length - 1) {
+          showInfo(`已完成第 ${index + 1}/${batches.length} 批，继续擦亮…`)
+        }
+      }
+
+      if (totalFailed === 0) {
+        showSuccess(`批量擦亮完成，成功 ${totalSuccess} 件`)
+      } else {
+        showError(`擦亮完成：成功 ${totalSuccess} 件，失败 ${totalFailed} 件（${failures.slice(0, 3).join('；')}）`)
+      }
+      await loadGoods()
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : String(err)
       showError('批量擦亮异常: ' + message)

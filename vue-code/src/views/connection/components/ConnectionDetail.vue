@@ -913,8 +913,8 @@ onBeforeUnmount(() => {
 .log-section__title svg { width: 16px; height: 16px; }
 
 .log-container {
-  background: #2c3e50;
-  color: #ecf0f1;
+  background: var(--bg-inverse);
+  color: var(--text-inverse);
   border-radius: 8px;
   padding: 12px;
   font-family: 'Courier New', Consolas, monospace;
@@ -933,19 +933,19 @@ onBeforeUnmount(() => {
 .log-entry:last-child { margin-bottom: 0; }
 
 .log-entry__time {
-  color: #95a5a6;
+  color: var(--text-3);
   font-size: 11px;
   flex-shrink: 0;
 }
 
 .log-entry__module {
-  color: #3498db;
+  color: var(--brand-500);
   flex-shrink: 0;
   font-weight: 500;
 }
 
 .log-entry__desc {
-  color: #ecf0f1;
+  color: var(--text-inverse);
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -960,7 +960,7 @@ onBeforeUnmount(() => {
 
 .log-empty {
   text-align: center;
-  color: #95a5a6;
+  color: var(--text-3);
   padding: 16px;
   font-size: 12px;
 }
@@ -1115,8 +1115,8 @@ onBeforeUnmount(() => {
 }
 
 .btn--stop {
-  color: #b91c1c;
-  background: #fef2f2;
+  color: var(--danger-600);
+  background: var(--danger-50);
   border: 1px solid #fecaca;
 }
 

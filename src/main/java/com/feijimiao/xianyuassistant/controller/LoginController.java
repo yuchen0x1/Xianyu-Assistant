@@ -31,8 +31,14 @@ import java.util.stream.Collectors;
 @NoAuth
 public class LoginController {
 
-    /** 注册口令最小长度：初始管理员账号是整个系统的第一道门，设定最低口令强度底线 */
-    private static final int MIN_PASSWORD_LENGTH = 8;
+    /**
+     * 注册口令最小长度：初始管理员账号是整个系统的第一道门，设定最低口令强度底线。
+     *
+     * <p>实际口径以 {@link com.feijimiao.xianyuassistant.utils.PasswordPolicy} 为准，
+     * 这里保留常量仅用于注册接口的提示文案。</p>
+     */
+    private static final int MIN_PASSWORD_LENGTH =
+            com.feijimiao.xianyuassistant.utils.PasswordPolicy.MIN_LENGTH;
 
     @Autowired
     private AuthService authService;
@@ -89,7 +95,6 @@ public class LoginController {
             if (reqDTO.getPassword().length() < MIN_PASSWORD_LENGTH || reqDTO.getPassword().length() > 50) {
                 return ResultObject.validateFailed("密码长度需在" + MIN_PASSWORD_LENGTH + "-50之间");
             }
-
             RegisterReqBO reqBO = new RegisterReqBO();
             reqBO.setUsername(reqDTO.getUsername().trim());
             reqBO.setPassword(reqDTO.getPassword());

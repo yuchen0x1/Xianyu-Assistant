@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { useVisibilityPolling } from '@/composables/useVisibilityPolling'
 import { getAccountList } from '@/api/account'
 import { accountDisplayName } from '@/utils'
 import { getPendingOrders, deliverPendingOrders, consignDummyDelivery, type PendingOrder } from '@/api/order'
@@ -22,7 +23,12 @@ let orderLoadSequence = 0
 const autoRefresh = ref(false)
 const refreshInterval = ref(10)
 const refreshOptions = [5, 10, 15, 30, 60]
-let refreshTimer: ReturnType<typeof setInterval> | null = null
+const autoRefreshIntervalMs = computed(() => refreshInterval.value * 1000)
+const { restart: startAutoRefresh, stop: stopAutoRefresh } = useVisibilityPolling({
+  enabled: autoRefresh,
+  intervalMs: autoRefreshIntervalMs,
+  tick: () => { if (!loading.value) void loadOrders() }
+})
 
 const autoDeliver = ref(false)
 const autoDeliverAccountId = ref<number | null>(null)
@@ -90,11 +96,6 @@ const onAccountChange = () => {
   void loadOrders()
 }
 
-const startAutoRefresh = () => {
-  stopAutoRefresh()
-  if (autoRefresh.value) { refreshTimer = setInterval(() => { if (!loading.value) void loadOrders() }, refreshInterval.value * 1000) }
-}
-const stopAutoRefresh = () => { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null } }
 const toggleAutoRefresh = () => { if (autoRefresh.value) { startAutoRefresh() } else { stopAutoRefresh() } }
 const onIntervalChange = () => {
   if (autoRefresh.value) startAutoRefresh()

@@ -587,6 +587,7 @@ public class ItemController {
      */
     @PostMapping("/batchPolish")
     @RequirePermission("goods:write")
+    @RateLimit(bucket = "batch_polish", limit = 3, message = "批量擦亮过于频繁")
     public ResultObject<PolishItemRespDTO> batchPolishItems(@Valid @RequestBody BatchPolishItemsReqDTO reqDTO) {
         try {
             rbacService.assertAccountVisible(com.feijimiao.xianyuassistant.context.UserContext.getUserId(), reqDTO.getXianyuAccountId());

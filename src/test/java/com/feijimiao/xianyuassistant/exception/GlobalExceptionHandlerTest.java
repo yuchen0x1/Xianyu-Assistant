@@ -137,6 +137,20 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    @DisplayName("未知接口路径返回 404，不伪装成 500")
+    void handleNoResourceFoundReturns404() {
+        org.springframework.web.servlet.resource.NoResourceFoundException ex =
+                org.mockito.Mockito.mock(org.springframework.web.servlet.resource.NoResourceFoundException.class);
+        when(ex.getResourcePath()).thenReturn("api/definitely-not-exist");
+        when(ex.getHttpMethod()).thenReturn(org.springframework.http.HttpMethod.GET);
+
+        ResultObject<Void> result = handler.handleNoResourceFound(ex);
+
+        assertEquals(404, result.getCode());
+        assertTrue(result.getMsg().contains("接口不存在"));
+    }
+
+    @Test
     @DisplayName("ConstraintViolation 返回 400 + 拼接消息")
     void handleConstraintViolationJoinsMessages() {
         @SuppressWarnings("unchecked")

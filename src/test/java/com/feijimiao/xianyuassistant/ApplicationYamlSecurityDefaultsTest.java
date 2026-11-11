@@ -39,6 +39,11 @@ class ApplicationYamlSecurityDefaultsTest {
                 .isEqualTo("${XIANYU_ASSISTANT_SCHEDULING_POOL_SIZE:4}");
         assertThat(properties.getProperty("spring.datasource.url"))
                 .isEqualTo("jdbc:sqlite:dbdata/xianyu_assistant.db?" + SQLITE_OPTIONS);
+
+        // actuator 默认只暴露 health/info：metrics/prometheus 无需登录即可访问，
+        // 必须显式设置 XIANYU_ASSISTANT_ACTUATOR_EXPOSED_ENDPOINTS 才开放。
+        assertThat(properties.getProperty("management.endpoints.web.exposure.include"))
+                .isEqualTo("${XIANYU_ASSISTANT_ACTUATOR_EXPOSED_ENDPOINTS:health,info}");
     }
 
     @Test

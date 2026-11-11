@@ -20,29 +20,19 @@ public interface AutoReplyRecordService {
     int countByAccountIdAndGoodsId(Long accountId, String xyGoodsId);
 
     /**
-     * 按日期统计AI回复数
+     * 按日期统计AI回复数（按账号范围过滤；调用方必须显式传入范围，避免跨账号统计）。
      */
-    int countAiRepliesByDate(String date);
-
-    int countAiRepliesByDate(String date, DataPanelAccountScope scope);
+    int countAiRepliesByDateScoped(String date, DataPanelAccountScope scope);
 
     /**
-     * 按账号分组的AI回复统计（指定日期）
+     * 按账号分组的AI回复统计（指定日期，按账号范围过滤）。
      */
-    List<java.util.Map<String, Object>> getAccountRepliesByDate(String date);
-
-    List<java.util.Map<String, Object>> getAccountRepliesByDate(String date, DataPanelAccountScope scope);
+    List<java.util.Map<String, Object>> getAccountRepliesByDateScoped(String date, DataPanelAccountScope scope);
 
     /**
-     * 统计所有回复记录数
+     * 统计所有回复记录数（按账号范围过滤）。
      */
-
-    /**
-     * 统计所有回复记录数
-     */
-    int countAllReplies();
-
-    int countAllReplies(DataPanelAccountScope scope);
+    int countAllRepliesScoped(DataPanelAccountScope scope);
 
     /**
      * 分页查询待人工确认的记录（state=2）（state=2）

@@ -117,11 +117,11 @@
 
 .btn--primary {
   color: #fff;
-  background: rgba(10,132,255,0.85);
+  background: var(--brand-500);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  border: 1px solid rgba(255,255,255,0.35);
-  box-shadow: 0 4px 16px rgba(10,132,255,0.35), 0 8px 32px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
+  border: 1px solid var(--glass-highlight);
+  box-shadow: 0 4px 16px var(--brand-500), 0 8px 32px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
 }
 
 @media (hover: hover) {
@@ -132,11 +132,11 @@
 }
 
 .btn--secondary {
-  color: #0A84FF;
-  background: rgba(255,255,255,0.70);
+  color: var(--brand-500);
+  background: var(--glass-bg-soft);
   backdrop-filter: blur(16px) saturate(1.6);
   -webkit-backdrop-filter: blur(16px) saturate(1.6);
-  border: 1px solid rgba(255,255,255,0.85);
+  border: 1px solid var(--glass-highlight-strong);
   box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
 }
 
@@ -147,7 +147,7 @@
 }
 
 .btn--ghost {
-  color: #0A84FF;
+  color: var(--brand-500);
   background: transparent;
   border: none;
 }
@@ -397,7 +397,7 @@
 
 .ad__only-on-sale-btn--active {
   background: var(--d-text-primary);
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   border-color: var(--d-text-primary);
 }
 
@@ -549,7 +549,7 @@
   content: '';
   width: 7px;
   height: 2px;
-  background: #fff;
+  background: var(--bg-elevated);
   border-radius: 1px;
 }
 
@@ -587,7 +587,7 @@
 }
 
 .ad__goods-list::-webkit-scrollbar-thumb {
-  background: rgba(60,60,67,.12);
+  background: var(--border-1);
   border-radius: 3px;
 }
 
@@ -722,7 +722,7 @@
   font-size: 10px;
   font-weight: 500;
   border-radius: 3px;
-  color: #FF9F0A;
+  color: var(--warning-500);
   background: rgba(255, 149, 0, 0.1);
   white-space: nowrap;
 }
@@ -796,7 +796,7 @@
 }
 
 .ad__config-scroll::-webkit-scrollbar-thumb {
-  background: rgba(60,60,67,.12);
+  background: var(--border-1);
   border-radius: 3px;
 }
 
@@ -961,7 +961,7 @@
 }
 
 .ad__switch input:checked + .ad__switch-track {
-  background: rgba(48,209,88,0.85);
+  background: var(--success-500);
   border-color: rgba(255,255,255,.4);
 }
 
@@ -971,7 +971,7 @@
   left: 2px;
   width: 27px;
   height: 27px;
-  background: #fff;
+  background: var(--bg-elevated);
   border-radius: 50%;
   box-shadow: 0 2px 8px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.8);
   transition: transform .22s cubic-bezier(.34,1.56,.64,1);
@@ -1536,7 +1536,7 @@
 .ad__record-fail-reason {
   display: block;
   font-size: 11px;
-  color: #FF453A;
+  color: var(--danger-500);
   margin-top: 2px;
   max-width: 120px;
   overflow: hidden;
@@ -1667,7 +1667,7 @@
 }
 
 .ad__page-btn--active {
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   background: var(--d-text-primary);
   border-color: var(--d-text-primary);
 }
@@ -1823,7 +1823,7 @@
 }
 
 .ad__dialog-text--danger {
-  color: #FF453A;
+  color: var(--danger-500);
 }
 
 .ad__copy-label {
@@ -2095,7 +2095,7 @@
   padding: 16px;
   border: 1px solid rgba(28, 28, 30, .1);
   border-radius: 8px;
-  background: #fff;
+  background: var(--bg-elevated);
 }
 
 .ad__risk-rule + .ad__risk-rule { margin-top: 12px; }
@@ -2123,7 +2123,7 @@
   padding: 0 10px;
   border: 1px solid rgba(28, 28, 30, .14);
   border-radius: 6px;
-  background: #fafafa;
+  background: var(--bg-hover);
   color: var(--d-text-primary);
   font: inherit;
   letter-spacing: 0;
@@ -2131,7 +2131,7 @@
 }
 
 .ad__risk-field input:focus,
-.ad__risk-reason input:focus { border-color: rgba(10, 132, 255, .65); background: #fff; }
+.ad__risk-reason input:focus { border-color: rgba(10, 132, 255, .65); background: var(--bg-elevated); }
 
 .ad__risk-scope {
   height: 34px;
@@ -2177,7 +2177,7 @@
   gap: 7px;
   border: 1px solid rgba(28, 28, 30, .08);
   border-radius: 6px;
-  background: #fafafa;
+  background: var(--bg-hover);
   font-size: 11px;
 }
 

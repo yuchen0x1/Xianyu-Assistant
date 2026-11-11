@@ -59,6 +59,10 @@ jobs:
       - name: Run frontend tests
         run: npm test
 
+      - name: Lint frontend
+        # 之前只在本地跑 lint，CI 不校验，导致 lint 规则实际可被长期违反
+        run: npm run lint:check
+
       - name: Type-check frontend
         run: npm run type-check
 

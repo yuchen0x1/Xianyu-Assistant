@@ -5,7 +5,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/yuchen0x1/Xianyu-Assistant?display_name=tag&sort=semver)](https://github.com/yuchen0x1/Xianyu-Assistant/releases)
 
-当前版本：**v3.5.20** · [GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
+当前版本：**v3.5.21** · [GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
 
 ## 项目简介
 
@@ -15,13 +15,24 @@
 
 > **使用边界**：请仅用于你有权管理的账号和数据，并遵守闲鱼及相关第三方服务的用户协议、隐私政策和适用法律。本项目不鼓励绕过平台安全机制或实施滥发、欺诈等违规行为。
 
+## 最新更新
+
+### v3.5.21（2026-11-12）
+
+- 修复数据面板账号范围过滤失效，非管理员只能看到授权账号的数据。
+- 加固批量擦亮、批量下架和批量改价的数量限制、限流与超时处理。
+- 修复 Windows / macOS 浏览器探测、未知 API 返回码和 Actuator 路由回退问题。
+- 统一注册与改密口令策略，并在 `/actuator/info` 提供构建版本与时间。
+
+完整说明见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`docs/releases/release-notes.md`](docs/releases/release-notes.md)。
+
 ## 技术栈与部署形态
 
 | 组件 | 技术 / 说明 |
 | --- | --- |
 | 后端 | Java 21、Spring Boot 3.5、MyBatis-Plus、SQLite、WebSocket、Playwright、OkHttp、JJWT、EasyExcel |
-| Web 前端 | Vue 3.5、TypeScript、Vite、Pinia、Vitest |
-| 移动端 | Flutter 工程，当前版本 `3.5.20+3520` |
+| Web 前端 | Vue 3.5、TypeScript、Vite、Vitest |
+| 移动端 | Flutter 工程，当前版本 `3.5.21+3521` |
 | AI | Spring AI，支持 OpenAI 兼容接口；默认配置指向 DashScope 兼容接口 |
 | 可观测性 | Spring Boot Actuator、Micrometer、Prometheus |
 | 部署 | 官方 Release JAR、源码构建 JAR、Docker、本机开发、systemd + Nginx |
@@ -114,11 +125,11 @@ bash install.sh
 
 安装脚本从 GitHub Release 获取最新 JAR，并校验 SHA-256 与官方 Ed25519 签名。默认安装目录为 `~/xianyu-seller-console`，端口可通过 `PORT` 环境变量覆盖。
 
-当前 v3.5.20 资产：
+当前 v3.5.21 资产：
 
-- [XianYuSellerConsole-3.5.20.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar)
-- [XianYuSellerConsole-3.5.20.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sha256)
-- [XianYuSellerConsole-3.5.20.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sig)
+- [XianYuSellerConsole-3.5.21.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar)
+- [XianYuSellerConsole-3.5.21.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar.sha256)
+- [XianYuSellerConsole-3.5.21.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar.sig)
 
 移动端目前随仓库提供 Flutter 源码，Release 不提供预构建 APK。
 
@@ -237,12 +248,12 @@ export XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false
 
 自动更新与手动在线更新共用更新状态机，同一时间只允许一个更新流程执行。完整配置见下方环境变量表和 `docs/production-deployment.md`。
 
-### 从 v3.5.19 升级
+### 从 v3.5.20 升级
 
 - 推荐使用应用内在线更新、自动更新或重新执行 `bash install.sh`。
 - 升级前备份 `dbdata/`，尤其是 SQLite 数据库、JWT 密钥和凭据密钥文件。
 - 使用默认 `exit` 模式时，确认 systemd / Docker / 守护循环具备自动重启能力。
-- v3.5.20 没有已知的破坏性配置变更；不需要自动更新时设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false`。
+- v3.5.21 没有数据库迁移或破坏性配置变更；不需要自动更新时设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false`。
 
 ## 配置参考
 
@@ -386,6 +397,15 @@ LICENSE                                       # Apache-2.0 许可证
 - 操作日志审计、监控告警和在线更新
 
 使用和再分发时请保留上游版权声明、本说明和 [`LICENSE`](LICENSE)。
+
+## Star History
+
+<a href="https://star-history.com/#yuchen0x1/Xianyu-Assistant&Date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=yuchen0x1/Xianyu-Assistant&type=Date&theme=dark">
+    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=yuchen0x1/Xianyu-Assistant&type=Date&theme=light">
+  </picture>
+</a>
 
 ## 反馈与交流
 

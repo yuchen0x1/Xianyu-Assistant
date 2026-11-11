@@ -117,11 +117,11 @@
 
 .btn--primary {
   color: #fff;
-  background: rgba(10,132,255,0.85);
+  background: var(--brand-500);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  border: 1px solid rgba(255,255,255,0.35);
-  box-shadow: 0 4px 16px rgba(10,132,255,0.35), 0 8px 32px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
+  border: 1px solid var(--glass-highlight);
+  box-shadow: 0 4px 16px var(--brand-500), 0 8px 32px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
 }
 
 @media (hover: hover) {
@@ -132,11 +132,11 @@
 }
 
 .btn--secondary {
-  color: #0A84FF;
-  background: rgba(255,255,255,0.70);
+  color: var(--brand-500);
+  background: var(--glass-bg-soft);
   backdrop-filter: blur(16px) saturate(1.6);
   -webkit-backdrop-filter: blur(16px) saturate(1.6);
-  border: 1px solid rgba(255,255,255,0.85);
+  border: 1px solid var(--glass-highlight-strong);
   box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 1.5px 4px rgba(0,0,0,0.04);
 }
 
@@ -147,7 +147,7 @@
 }
 
 .btn--ghost {
-  color: #0A84FF;
+  color: var(--brand-500);
   background: transparent;
   border: none;
 }
@@ -382,7 +382,7 @@
 
 .ar__only-on-sale-btn--active {
   background: var(--d-text-primary);
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   border-color: var(--d-text-primary);
 }
 
@@ -408,7 +408,7 @@
 }
 
 .ar__goods-list::-webkit-scrollbar-thumb {
-  background: rgba(60,60,67,.12);
+  background: var(--border-1);
   border-radius: 3px;
 }
 
@@ -695,7 +695,7 @@
 }
 
 .ar__config-scroll::-webkit-scrollbar-thumb {
-  background: rgba(60,60,67,.12);
+  background: var(--border-1);
   border-radius: 3px;
 }
 
@@ -824,7 +824,7 @@
 }
 
 .ar__switch input:checked + .ar__switch-track {
-  background: rgba(48,209,88,0.85);
+  background: var(--success-500);
   border-color: rgba(255,255,255,.4);
 }
 
@@ -834,7 +834,7 @@
   left: 2px;
   width: 27px;
   height: 27px;
-  background: #fff;
+  background: var(--bg-elevated);
   border-radius: 50%;
   box-shadow: 0 2px 8px rgba(0,0,0,.22), inset 0 1px 0 rgba(255,255,255,.8);
   transition: transform .22s cubic-bezier(.34,1.56,.64,1);
@@ -1172,7 +1172,7 @@
 }
 
 .ar__chat-list::-webkit-scrollbar-thumb {
-  background: rgba(60,60,67,.12);
+  background: var(--border-1);
   border-radius: 3px;
 }
 
@@ -1205,7 +1205,7 @@
 
 .ar__chat-msg--user .ar__chat-bubble {
   background: var(--d-accent);
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   border-bottom-right-radius: 4px;
 }
 
@@ -1291,7 +1291,7 @@
   height: 38px;
   border-radius: var(--d-radius-sm);
   background: var(--d-accent);
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   border: none;
   cursor: pointer;
   transition: all var(--d-transition);
@@ -1738,14 +1738,14 @@
   font-size: 12px;
   font-weight: 590;
   color: #fff;
-  background: rgba(10,132,255,0.85);
+  background: var(--brand-500);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
-  border: 1px solid rgba(255,255,255,0.35);
+  border: 1px solid var(--glass-highlight);
   border-radius: 100px;
   cursor: pointer;
   transition: opacity .15s, transform .12s, box-shadow .15s;
-  box-shadow: 0 4px 16px rgba(10,132,255,0.35);
+  box-shadow: 0 4px 16px var(--brand-500);
 }
 
 @media (hover: hover) {
@@ -2195,7 +2195,7 @@
 .ar__detail-hit-doc {
   font-size: 11px;
   font-weight: 500;
-  color: #af52de;
+  color: var(--purple-500);
 }
 
 .ar__detail-hit-score {
@@ -2246,11 +2246,11 @@
 }
 
 .ar__detail-context-line--user {
-  color: #0A84FF;
+  color: var(--brand-500);
 }
 
 .ar__detail-context-line--assistant {
-  color: #30D158;
+  color: var(--success-500);
 }
 
 /* ============================================================
@@ -2274,17 +2274,17 @@
 .ar__kw-toolbar-btn {
   height: 32px;
   padding: 0 14px;
-  background: rgba(10,132,255,0.85);
+  background: var(--brand-500);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
   color: #fff;
-  border: 1px solid rgba(255,255,255,0.35);
+  border: 1px solid var(--glass-highlight);
   border-radius: 100px;
   font-size: 13px;
   font-weight: 590;
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: 0 4px 16px rgba(10,132,255,0.35);
+  box-shadow: 0 4px 16px var(--brand-500);
   transition: opacity .15s, transform .12s, box-shadow .15s;
 }
 
@@ -2343,7 +2343,7 @@
   height: 36px;
   padding: 0 14px;
   background: var(--d-accent);
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   border: none;
   border-radius: var(--d-radius-sm);
   font-size: 13px;
@@ -2390,7 +2390,7 @@
   border: none;
   border-radius: 4px;
   background: rgba(0, 122, 255, 0.1);
-  color: #0A84FF;
+  color: var(--brand-500);
   font-size: 11px;
   font-weight: 500;
   cursor: pointer;
@@ -2477,7 +2477,7 @@
   height: 22px;
   border-radius: 8px;
   background: var(--d-accent);
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   flex-shrink: 0;
   transition: transform 0.2s, background 0.15s;
 }
@@ -2552,7 +2552,7 @@
   width: 18px;
   height: 18px;
   background: rgba(0, 0, 0, 0.5);
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   border: none;
   border-radius: 0 6px 0 4px;
   font-size: 12px;
@@ -2589,18 +2589,18 @@
 .ar__kw-fallback-save {
   height: 32px;
   padding: 0 16px;
-  background: rgba(10,132,255,0.85);
+  background: var(--brand-500);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
   color: #fff;
-  border: 1px solid rgba(255,255,255,0.35);
+  border: 1px solid var(--glass-highlight);
   border-radius: 100px;
   font-size: 13px;
   font-weight: 590;
   cursor: pointer;
   white-space: nowrap;
   align-self: flex-end;
-  box-shadow: 0 4px 16px rgba(10,132,255,0.35);
+  box-shadow: 0 4px 16px var(--brand-500);
   transition: opacity .15s, transform .12s, box-shadow .15s;
 }
 
@@ -2631,18 +2631,18 @@
 .ar__kw-add-reply-btn {
   height: 28px;
   padding: 0 12px;
-  background: rgba(10,132,255,0.85);
+  background: var(--brand-500);
   backdrop-filter: blur(20px) saturate(1.8);
   -webkit-backdrop-filter: blur(20px) saturate(1.8);
   color: #fff;
-  border: 1px solid rgba(255,255,255,0.35);
+  border: 1px solid var(--glass-highlight);
   border-radius: 100px;
   font-size: 12px;
   font-weight: 590;
   cursor: pointer;
   white-space: nowrap;
   flex-shrink: 0;
-  box-shadow: 0 4px 16px rgba(10,132,255,0.35);
+  box-shadow: 0 4px 16px var(--brand-500);
   transition: opacity .15s, transform .12s, box-shadow .15s;
 }
 
@@ -2665,7 +2665,7 @@
   height: 28px;
   padding: 0 10px;
   background: rgba(255, 59, 48, 0.08);
-  color: #FF453A;
+  color: var(--danger-500);
   border: none;
   border-radius: 8px;
   font-size: 13px;
@@ -2718,7 +2718,7 @@
 
 .ar__kw-mode-btn--active {
   background: var(--d-accent);
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   font-weight: 500;
 }
 
@@ -2730,7 +2730,7 @@
   height: 30px;
   padding: 0 12px;
   background: var(--d-accent);
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   border: none;
   border-radius: 8px;
   font-size: 12px;
@@ -2765,7 +2765,7 @@
 }
 
 .ar__kw-replies::-webkit-scrollbar-thumb {
-  background: rgba(60,60,67,.12);
+  background: var(--border-1);
   border-radius: 2px;
 }
 
@@ -2829,7 +2829,7 @@
   border-radius: var(--d-radius-sm);
   max-height: 100px;
   object-fit: contain;
-  background: #fafafa;
+  background: var(--bg-hover);
 }
 
 .ar__kw-reply-img-del {
@@ -2841,7 +2841,7 @@
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.45);
   border: none;
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   font-size: 13px;
   cursor: pointer;
   display: flex;
@@ -2954,7 +2954,7 @@
   align-items: center;
   justify-content: center;
   background: var(--d-accent);
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   border: none;
   border-radius: 50%;
   font-size: 15px;
@@ -3073,7 +3073,7 @@
   width: 18px;
   height: 18px;
   background: rgba(0, 0, 0, 0.5);
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   border: none;
   border-radius: 0 6px 0 4px;
   font-size: 12px;
@@ -3244,7 +3244,7 @@
   font-family: inherit;
   font-size: 13px;
   font-weight: 600;
-  color: rgba(28,28,30,.55);
+  color: var(--text-3);
   cursor: pointer;
   transition: all .2s ease;
   white-space: nowrap;
@@ -3268,13 +3268,13 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #d4d4d4;
+  background: var(--border-2);
   flex-shrink: 0;
   transition: background 0.2s;
 }
 
 .ar__reply-mode-dot--on {
-  background: #30D158;
+  background: var(--success-500);
 }
 
 /* ============================================================
@@ -3349,7 +3349,7 @@
 }
 
 .ar__record-state--confirm {
-  color: #007aff;
+  color: var(--brand-500);
   background: rgba(0, 122, 255, 0.12);
 }
 
@@ -3474,7 +3474,7 @@
 
 .ar__bargain-input:focus {
   outline: none;
-  border-color: rgba(10, 132, 255, 0.85);
+  border-color: var(--brand-500);
 }
 
 .ar__bargain-actions {
@@ -3493,7 +3493,7 @@
 .ar__bargain-save {
   height: 30px;
   padding: 0 14px;
-  background: rgba(10, 132, 255, 0.85);
+  background: var(--brand-500);
   color: #fff;
   border: 1px solid rgba(255, 255, 255, 0.35);
   border-radius: 100px;

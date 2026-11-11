@@ -797,7 +797,7 @@ const handleImgError = (e: Event) => {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--bg-elevated);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
   position: absolute;
   top: 2px;

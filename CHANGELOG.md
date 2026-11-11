@@ -1,3 +1,21 @@
+# Version 3.5.21
+
+> Release: 2026-11-12
+
+- **安全：修复数据面板账号范围过滤静默失效（高）**：`XianyuChatMessageMapper`、`XianyuGoodsAutoReplyRecordMapper`、`XianyuOperationLogMapper` 中 7 个查询存在同名重载，其中带 `DataPanelAccountScope` 的版本声明在后。MyBatis 的语句 ID 只由「接口全名 + 方法名」构成，后注册的带范围版本被静默丢弃（启动日志 7 条 `is ignored, because it exists`），导致非 ADMIN 用户在数据面板看到全部账号的统计、趋势、咨询排行、关键词排行、操作统计与失败原因排行，且不报错。现统一改名为 `...Scoped` 后缀消除重载，并在调用点同步；启动日志冲突告警降为 0。
+- **测试：Mapper 重载防腐 + 装配级范围回归**：新增 `MapperOverloadGuardTest`（反射扫描全部 Mapper 接口，禁止同名方法）与 `DataPanelMapperSqlScopeTest`（真实装配 MyBatis + SQLite 双账号数据，对 7 个查询分别断言 ADMIN 全量 / 空范围拒绝全部 / 单账号只见自身）。两个测试均已用「注入旧重载」反向验证会失败，不是空测试。
+- **修复：批量擦亮缺少上限与限流**：`BatchPolishItemsReqDTO` 补 `@Size(max = 50)`，接口补 `@RateLimit(bucket = "batch_polish", limit = 3)`；「商品列表留空 = 擦亮全部在售」的服务层分支同样受 50 件上限约束（该分支原可绕过 DTO 校验）。
+- **修复：批量操作必然前端超时**：批量下架/批量擦亮/批量改价在请求线程内逐件调用平台接口且件间 `Thread.sleep(1000)`，而前端全局超时为 30 秒——约 30 件以上必定 `ECONNABORTED`，但服务端继续执行，用户重试会造成重复操作。现三个批量接口显式设置 120 秒超时；「一键擦亮在售」在前端按 50 件一批串行提交，大账号不再直接收到 400。
+- **修复：未知接口路径返回 200 + `code=500`**：`WebMvcConfig` 的 SPA 回退把未知 `/api/` 路径交给全局兜底，包装成 HTTP 200 +「系统繁忙」并打完整堆栈，既误导调用方也淹没真实 500。新增 `NoResourceFoundException` 处理，明确返回 HTTP 404 + `code=404`。
+- **修复：actuator 端点被 SPA 吞成 HTML**：`/actuator/prometheus` 未从 SPA 回退中排除，实测返回 `index.html`（`Content-Type: text/html`），调用方以为指标抓取成功。`WebMvcConfig` 现将 `actuator/` 路径同样排除；`management.endpoints.web.exposure.include` 改为可通过 `XIANYU_ASSISTANT_ACTUATOR_EXPOSED_ENDPOINTS` 配置，默认仍只开放 health/info，需要指标采集时显式设置。
+- **修复：Windows 上浏览器兜底必然失效**：`PlaywrightManager.findSystemChromium()` 此前只探测 Linux 的 `/usr/bin/*`，缓存回退路径硬编码 `chrome-linux/chrome`，Windows/macOS 上即使装了浏览器也永远找不到，Cookie 兜底刷新静默降级为「只能重新扫码」。现按平台枚举系统浏览器（Chrome/Edge）、`PLAYWRIGHT_BROWSERS_PATH` 与用户级 Playwright 缓存（`%LOCALAPPDATA%\ms-playwright` 等），并按平台匹配 `chrome-win64/chrome.exe` 等相对路径；启动时做一次只读探测，找不到则明确告警并给出安装指引，新增 `isBrowserAvailable()` / `getDetectedBrowserPath()` 供健康检查使用。
+- **修复：改密口令策略弱于注册**：注册要求 8 位而改密仅要求 6 位，弱口令可从改密入口绕过。新增 `PasswordPolicy` 作为单一来源，注册与改密共用。
+- **修复：构建元数据白打进包**：`version.json` 由 Maven 过滤生成却无任何读取方。新增 `BuildInfoContributor` 把它输出到 `/actuator/info`（`build.version` / `build.time`），运维排查「跑的是哪次构建」不再只能看版本号。
+- **清理**：移除未使用的 Pinia 依赖与 `createPinia()` 注册（全仓 0 个 `defineStore`）、死代码 `BusinessMetricsService`（0 引用）、10 个无引用的 Vue 组件与其过时测试；`RefreshCookieDialog.vue` 因被前端安全回归测试作为把关目标引用而保留。
+- **CI**：前端任务新增 `npm run lint:check` 关卡（此前 lint 只在本地跑，规则可被长期违反）。
+- **测试**：新增 `VersionConsistencyTest`（pom 版本与 5 处 Java `@Value` 兜底、`application.yaml`、3 处前端 `__APP_VERSION__` 兜底逐一比对，防止 3.5.18 那类版本漂移复发）、`PasswordPolicyTest`、`GlobalExceptionHandlerTest` 增补 404 用例、`PlaywrightManagerTest` 增补跨平台路径断言。
+- **验证**：后端 688 项测试全绿（0 失败 / 0 错误 / 3 跳过）；前端 40 项 Vitest、type-check、ESLint、生产构建全部通过；Flutter 单测、Dart 静态分析和 Android debug APK 构建通过；临时端口实机启动确认启动日志 0 条 mapper 冲突、浏览器自动定位到本机 Chrome、未知 API 返回 404、`/actuator/info` 输出构建信息、prometheus 默认 404 且显式开启后返回 `text/plain` 指标、SPA 路由回退不受影响；现有 12400 实例未被触碰。
+
 # Version 3.5.20
 
 > Release: 2026-11-08

@@ -552,14 +552,14 @@ onMounted(() => {
                     {{ opt.aliasName || `配置#${opt.id}` }}
                   </option>
                 </select>
-                <div v-if="kamiConfigOptions.length === 0" style="color: rgba(28,28,30,.55); font-size: 13px; margin-top: 8px;">
+                <div v-if="kamiConfigOptions.length === 0" style="color: var(--text-3); font-size: 13px; margin-top: 8px;">
                   暂无卡密配置，请先在「卡密配置」页面创建
                 </div>
               </div>
 
               <div style="margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
-                  <span style="font-size: 13px; color: rgba(28,28,30,.55);">发货文案</span>
+                  <span style="font-size: 13px; color: var(--text-3);">发货文案</span>
                   <span class="tag tag--info" style="font-size: 11px;">占位符 {kmKey}</span>
                 </div>
                 <textarea
@@ -898,7 +898,7 @@ onMounted(() => {
 }
 .kami-option__name {
   font-size: 14px;
-  color: #1c1c1e;
+  color: var(--text-1);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -912,18 +912,18 @@ onMounted(() => {
   flex-shrink: 0;
 }
 .kami-option__avail {
-  color: #30D158;
+  color: var(--success-500);
   font-weight: 600;
 }
 .kami-option__divider {
-  color: #c0c4cc;
+  color: var(--text-3);
 }
 .kami-option__total {
-  color: #909399;
+  color: var(--text-3);
 }
 .ad__record-action-btn--manual {
-  color: #FF9F0A;
-  border-color: rgba(255, 149, 0, 0.2);
+  color: var(--warning-500);
+  border-color: var(--warning-500);
   margin-left: 4px;
 }
 @media (hover: hover) {
@@ -947,10 +947,10 @@ onMounted(() => {
   width: 100%;
   max-width: 480px;
   max-height: 80vh;
-  background: rgba(255,255,255,0.72);
+  background: var(--glass-bg);
   backdrop-filter: blur(40px) saturate(2);
   -webkit-backdrop-filter: blur(40px) saturate(2);
-  border: 1px solid rgba(255,255,255,0.75);
+  border: 1px solid var(--glass-bg-strong);
   border-radius: 20px;
   box-shadow: 0 16px 48px rgba(0,0,0,0.16), 0 2px 8px rgba(0,0,0,0.08);
   display: flex;
@@ -965,48 +965,48 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(60,60,67,.12);
+  border-bottom: 1px solid var(--border-1);
 }
-.ad__dialog-title { font-size: 16px; font-weight: 600; color: #1c1c1e; margin: 0; }
+.ad__dialog-title { font-size: 16px; font-weight: 600; color: var(--text-1); margin: 0; }
 .ad__dialog-close {
   width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
-  font-size: 20px; color: rgba(28,28,30,.55); background: none; border: none; cursor: pointer; border-radius: 6px;
+  font-size: 20px; color: var(--text-3); background: none; border: none; cursor: pointer; border-radius: 6px;
 }
 .ad__dialog-close:hover { background: rgba(0,0,0,0.04); }
 .ad__dialog-body { flex: 1; overflow-y: auto; padding: 16px 20px; text-align: left; }
 .ad__dialog-rows { display: flex; flex-direction: column; gap: 10px; }
 .ad__dialog-row { display: flex; align-items: flex-start; gap: 12px; font-size: 13px; }
-.ad__dialog-label { color: rgba(28,28,30,.55); min-width: 60px; flex-shrink: 0; line-height: 1.5; }
-.ad__dialog-value { color: #1c1c1e; word-break: break-all; line-height: 1.5; }
+.ad__dialog-label { color: var(--text-3); min-width: 60px; flex-shrink: 0; line-height: 1.5; }
+.ad__dialog-value { color: var(--text-1); word-break: break-all; line-height: 1.5; }
 .ad__manual-textarea {
   width: 100%; padding: 10px 12px; font-size: 13px; line-height: 1.5;
-  border: 1px solid rgba(60,60,67,.12); border-radius: 8px; resize: vertical;
-  font-family: inherit; color: #1c1c1e; background: transparent; box-sizing: border-box;
+  border: 1px solid var(--border-1); border-radius: 8px; resize: vertical;
+  font-family: inherit; color: var(--text-1); background: transparent; box-sizing: border-box;
 }
-.ad__manual-textarea:focus { outline: none; border-color: #0A84FF; background: rgba(255,255,255,0.55); }
+.ad__manual-textarea:focus { outline: none; border-color: var(--brand-500); background: var(--glass-bg-soft); }
 .ad__manual-btn {
   height: 32px; padding: 0 16px; font-size: 13px; font-weight: 500;
   border-radius: 8px; border: none; cursor: pointer; transition: all 0.2s ease;
 }
-.ad__manual-btn--cancel { background: rgba(60,60,67,.12); color: rgba(28,28,30,.55); }
-.ad__manual-btn--confirm { background: #0A84FF; color: rgba(255,255,255,0.55); }
+.ad__manual-btn--cancel { background: var(--border-1); color: var(--text-3); }
+.ad__manual-btn--confirm { background: var(--brand-500); color: var(--glass-bg-soft); }
 .ad__manual-btn--confirm:disabled { opacity: 0.5; cursor: not-allowed; }
 
 .btn-glass { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border-radius: 100px; font-size: 13px; font-weight: 590; cursor: pointer; transition: opacity .15s, transform .12s; border: none; font-family: inherit; user-select: none; white-space: nowrap; }
 .btn-glass:active { opacity: .80; transform: scale(.96); }
-.btn-glass--primary { background: rgba(10,132,255,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.35); box-shadow: 0 4px 16px rgba(10,132,255,0.35), 0 8px 32px rgba(0,0,0,0.08); }
-.btn-glass--default { background: rgba(255,255,255,0.70); color: #0A84FF; border: 1px solid rgba(255,255,255,0.85); box-shadow: 0 8px 32px rgba(0,0,0,0.08); }
-.btn-glass--success { background: rgba(48,209,88,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.35); }
-.btn-glass--warning { background: rgba(255,159,10,0.85); color: #fff; border: 1px solid rgba(255,255,255,0.35); }
-.btn-glass--danger { color: #FF453A; background: rgba(255,69,58,0.15); border: 1px solid rgba(255,69,58,0.2); }
+.btn-glass--primary { background: var(--brand-500); color: #fff; border: 1px solid var(--glass-highlight); box-shadow: 0 4px 16px var(--brand-500), 0 8px 32px rgba(0,0,0,0.08); }
+.btn-glass--default { background: var(--glass-bg-soft); color: var(--brand-500); border: 1px solid var(--glass-highlight-strong); box-shadow: 0 8px 32px rgba(0,0,0,0.08); }
+.btn-glass--success { background: var(--success-500); color: #fff; border: 1px solid var(--glass-highlight); }
+.btn-glass--warning { background: var(--warning-500); color: #fff; border: 1px solid var(--glass-highlight); }
+.btn-glass--danger { color: var(--danger-500); background: var(--danger-50); border: 1px solid var(--danger-500); }
 .tag { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: 100px; font-size: 12px; font-weight: 500; }
-.tag--success { background: rgba(48,209,88,0.12); color: #30D158; }
-.tag--warning { background: rgba(255,159,10,0.12); color: #FF9F0A; }
-.tag--info { background: rgba(120,120,128,0.12); color: rgba(28,28,30,.55); }
-.tag--danger { background: rgba(255,69,58,0.12); color: #FF453A; }
-.native-select { padding: 8px 12px; border: 1px solid rgba(60,60,67,.12); border-radius: 8px; background: rgba(255,255,255,0.55); color: #1c1c1e; font-size: 13px; outline: none; cursor: pointer; font-family: inherit; }
-.native-select:focus { border-color: #0A84FF; }
-.native-input { padding: 8px 12px; border: 1px solid rgba(60,60,67,.12); border-radius: 8px; background: rgba(255,255,255,0.55); color: #1c1c1e; font-size: 13px; outline: none; font-family: inherit; box-sizing: border-box; width: 100%; resize: vertical; line-height: 1.5; }
-.native-input:focus { border-color: #0A84FF; }
+.tag--success { background: var(--success-50); color: var(--success-500); }
+.tag--warning { background: var(--warning-50); color: var(--warning-500); }
+.tag--info { background: var(--bg-muted); color: var(--text-3); }
+.tag--danger { background: var(--danger-50); color: var(--danger-500); }
+.native-select { padding: 8px 12px; border: 1px solid var(--border-1); border-radius: 8px; background: var(--glass-bg-soft); color: var(--text-1); font-size: 13px; outline: none; cursor: pointer; font-family: inherit; }
+.native-select:focus { border-color: var(--brand-500); }
+.native-input { padding: 8px 12px; border: 1px solid var(--border-1); border-radius: 8px; background: var(--glass-bg-soft); color: var(--text-1); font-size: 13px; outline: none; font-family: inherit; box-sizing: border-box; width: 100%; resize: vertical; line-height: 1.5; }
+.native-input:focus { border-color: var(--brand-500); }
 
 </style>

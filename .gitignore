@@ -53,7 +53,16 @@ build/
 
 # local test artifacts
 gui-test-screenshots/
+.screenshots/
 .mimosa/
+
+# 工具与测试缓存（构建期再生成，不应入库）
+vue-code/.vitest/
+mobile/android/.kotlin/
+mobile/android/.gradle/
+
+# 自主升级会话状态（本地产物，非项目内容）
+/.autonomous-upgrade/
 
 # WorkBuddy session data and local dependencies
 /.workbuddy/

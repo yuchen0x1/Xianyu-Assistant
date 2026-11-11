@@ -30,7 +30,7 @@ import java.util.Map;
 @RequestMapping("/api/system")
 public class SystemController {
 
-    @Value("${app.version:3.5.20}")
+    @Value("${app.version:3.5.21}")
     private String currentVersion;
 
     @Autowired
@@ -136,8 +136,11 @@ public class SystemController {
             if (reqDTO.getNewPassword() == null || reqDTO.getNewPassword().trim().isEmpty()) {
                 return ResultObject.validateFailed("新密码不能为空");
             }
-            if (reqDTO.getNewPassword().length() < 6 || reqDTO.getNewPassword().length() > 50) {
-                return ResultObject.validateFailed("新密码长度需在6-50之间");
+            // 与注册共用同一口令策略，避免「注册被拒的弱口令从改密入口设进去」
+            String passwordPolicyError =
+                    com.feijimiao.xianyuassistant.utils.PasswordPolicy.validateLength(reqDTO.getNewPassword());
+            if (passwordPolicyError != null) {
+                return ResultObject.validateFailed("新密码" + passwordPolicyError);
             }
             if (!reqDTO.getNewPassword().equals(reqDTO.getConfirmPassword())) {
                 return ResultObject.validateFailed("两次密码不一致");

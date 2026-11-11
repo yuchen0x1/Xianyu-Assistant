@@ -182,7 +182,7 @@ const handleClose = () => {
 
 .alert-text {
   font-size: 13px;
-  color: #0071e3;
+  color: var(--brand-600);
   margin: 0;
 }
 
@@ -203,7 +203,7 @@ const handleClose = () => {
   border: 1px solid var(--border-1);
   border-radius: 8px;
   font-size: 13px;
-  background: #f5f5f7;
+  background: var(--bg-muted);
   color: var(--text-2);
 }
 
@@ -223,11 +223,11 @@ const handleClose = () => {
 
 .form-textarea:focus {
   outline: none;
-  border-color: #0071e3;
+  border-color: var(--brand-600);
 }
 
 .form-textarea:disabled {
-  background: #f5f5f7;
+  background: var(--bg-muted);
   color: var(--text-2);
 }
 
@@ -257,12 +257,12 @@ const handleClose = () => {
 }
 
 .btn-primary {
-  background: #0071e3;
+  background: var(--brand-600);
   color: var(--bg-elevated);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #0077ed;
+  background: var(--brand-500);
 }
 
 .btn-primary:disabled {

@@ -70,6 +70,27 @@ public class PlaywrightManager {
     @PostConstruct
     public void init() {
         log.info("PlaywrightManager初始化，浏览器缓存目录: {}", BROWSER_CACHE_DIR);
+        // 启动自检：只探测"能不能找到可执行文件"，不真正启动浏览器（启动成本高且会污染启动日志）。
+        // 找不到时明确告警，避免运行期到 Cookie 兜底刷新时才静默失败。
+        Path detected = findSystemChromium();
+        if (detected != null) {
+            log.info("Playwright浏览器可执行文件已定位: {}", detected);
+        } else {
+            log.warn("未找到可用的 Chromium，浏览器兜底能力不可用（扫码登录/Cookie 兜底刷新将降级）。"
+                    + "请执行 `npx playwright install chromium`，或安装 Chrome，"
+                    + "或通过 PLAYWRIGHT_BROWSERS_PATH 指向已有的浏览器缓存目录。"
+                    + "已搜索目录: {} + {}", BROWSER_CACHE_DIR, defaultPlaywrightCacheDir());
+        }
+    }
+
+    /** 浏览器兜底能力是否可用（供健康检查/前端提示使用）。 */
+    public boolean isBrowserAvailable() {
+        return findSystemChromium() != null;
+    }
+
+    /** 已定位到的浏览器可执行文件路径，未找到返回 null。 */
+    public Path getDetectedBrowserPath() {
+        return findSystemChromium();
     }
 
     public BrowserContext createContext() {
@@ -136,34 +157,137 @@ public class PlaywrightManager {
         }
     }
 
+    /**
+     * 按平台探测可用的 Chromium 可执行文件。
+     *
+     * <p>历史实现只认 Linux 的 {@code /usr/bin/*}，且缓存目录的回退路径硬编码
+     * {@code chrome-linux/chrome}，导致 Windows/macOS 上即使浏览器已安装也永远找不到，
+     * Cookie 兜底刷新静默失效（只能重新扫码）。这里按平台枚举目录与可执行文件名。</p>
+     */
     private static Path findSystemChromium() {
-        for (String candidate : List.of(
-                "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable",
-                "/usr/bin/chromium", "/usr/bin/chromium-browser")) {
+        // 1) 系统安装的浏览器
+        for (String candidate : systemBrowserCandidates()) {
             Path path = Paths.get(candidate);
             if (Files.isRegularFile(path) && Files.isExecutable(path)) {
                 return path;
             }
         }
 
-        Path browsersPath = Paths.get(BROWSER_CACHE_DIR);
-        if (Files.isDirectory(browsersPath)) {
-            try (var browserDirs = Files.list(browsersPath)) {
-                Path chromium = browserDirs
-                        .filter(path -> path.getFileName().toString().startsWith("chromium-"))
-                        .sorted()
-                        .map(path -> path.resolve("chrome-linux/chrome"))
-                        .filter(Files::isRegularFile)
-                        .findFirst()
-                        .orElse(null);
-                if (chromium != null && Files.isExecutable(chromium)) {
-                    return chromium;
-                }
-            } catch (Exception e) {
-                log.debug("查找Playwright缓存Chromium失败: {}", browsersPath, e);
+        // 2) Playwright 浏览器缓存（可能是自定义目录，也可能是 Playwright 默认用户缓存）
+        for (Path browsersPath : browserCacheCandidates()) {
+            Path chromium = findChromiumInCache(browsersPath);
+            if (chromium != null) {
+                return chromium;
             }
         }
         return null;
+    }
+
+    private static List<String> systemBrowserCandidates() {
+        if (isWindows()) {
+            return List.of(
+                    System.getenv().getOrDefault("PROGRAMFILES", "C:\\Program Files")
+                            + "\\Google\\Chrome\\Application\\chrome.exe",
+                    System.getenv().getOrDefault("PROGRAMFILES(X86)", "C:\\Program Files (x86)")
+                            + "\\Google\\Chrome\\Application\\chrome.exe",
+                    System.getenv().getOrDefault("LOCALAPPDATA", "")
+                            + "\\Google\\Chrome\\Application\\chrome.exe",
+                    System.getenv().getOrDefault("PROGRAMFILES", "C:\\Program Files")
+                            + "\\Microsoft\\Edge\\Application\\msedge.exe");
+        }
+        if (isMac()) {
+            return List.of(
+                    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+                    "/Applications/Chromium.app/Contents/MacOS/Chromium");
+        }
+        return List.of(
+                "/usr/bin/google-chrome", "/usr/bin/google-chrome-stable",
+                "/usr/bin/chromium", "/usr/bin/chromium-browser");
+    }
+
+    /** 待搜索的浏览器缓存目录：显式配置优先，其次 Playwright 默认位置。 */
+    private static List<Path> browserCacheCandidates() {
+        List<Path> candidates = new java.util.ArrayList<>();
+        candidates.add(Paths.get(BROWSER_CACHE_DIR));
+        Path defaultCache = defaultPlaywrightCacheDir();
+        if (defaultCache != null && !candidates.contains(defaultCache)) {
+            candidates.add(defaultCache);
+        }
+        return candidates;
+    }
+
+    /**
+     * Playwright 的默认浏览器缓存目录（用户级）。
+     *
+     * <p>本项目默认把 {@code PLAYWRIGHT_BROWSERS_PATH} 指向 JAR 同级目录，但用户很可能用
+     * {@code npx playwright install chromium} 装到了默认位置；两者都要能找到。</p>
+     */
+    static Path defaultPlaywrightCacheDir() {
+        if (isWindows()) {
+            String localAppData = System.getenv("LOCALAPPDATA");
+            return localAppData == null || localAppData.isBlank()
+                    ? null
+                    : Paths.get(localAppData, "ms-playwright");
+        }
+        if (isMac()) {
+            return Paths.get(System.getProperty("user.home"), "Library", "Caches", "ms-playwright");
+        }
+        String xdgCache = System.getenv("XDG_CACHE_HOME");
+        return xdgCache == null || xdgCache.isBlank()
+                ? Paths.get(System.getProperty("user.home"), ".cache", "ms-playwright")
+                : Paths.get(xdgCache, "ms-playwright");
+    }
+
+    /** 平台对应的 Chromium 相对路径（Playwright 各版本目录名不同，逐个探测）。 */
+    static List<String> chromiumRelativePaths() {
+        if (isWindows()) {
+            return List.of("chrome-win64/chrome.exe", "chrome-win/chrome.exe");
+        }
+        if (isMac()) {
+            return List.of(
+                    "chrome-mac/Chromium.app/Contents/MacOS/Chromium",
+                    "chrome-mac-arm64/Chromium.app/Contents/MacOS/Chromium",
+                    "chrome-mac-x64/Chromium.app/Contents/MacOS/Chromium");
+        }
+        return List.of("chrome-linux/chrome", "chrome-linux64/chrome");
+    }
+
+    private static Path findChromiumInCache(Path browsersPath) {
+        if (browsersPath == null || !Files.isDirectory(browsersPath)) {
+            return null;
+        }
+        try (var browserDirs = Files.list(browsersPath)) {
+            // 新版 Playwright 可能只装 chromium_headless_shell，两种前缀都要认
+            return browserDirs
+                    .filter(path -> {
+                        String name = path.getFileName().toString();
+                        return name.startsWith("chromium-") || name.startsWith("chromium_headless_shell-");
+                    })
+                    .sorted(java.util.Comparator.reverseOrder())
+                    .map(dir -> {
+                        for (String relative : chromiumRelativePaths()) {
+                            Path executable = dir.resolve(relative);
+                            if (Files.isRegularFile(executable)) {
+                                return executable;
+                            }
+                        }
+                        return null;
+                    })
+                    .filter(java.util.Objects::nonNull)
+                    .findFirst()
+                    .orElse(null);
+        } catch (Exception e) {
+            log.debug("查找Playwright缓存Chromium失败: {}", browsersPath, e);
+            return null;
+        }
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("win");
+    }
+
+    private static boolean isMac() {
+        return System.getProperty("os.name", "").toLowerCase(java.util.Locale.ROOT).contains("mac");
     }
 
     private void rebuild() {
