@@ -35,6 +35,9 @@ COPY --from=frontend-build /app/vue-code/../src/main/resources/static src/main/r
 # 复制后端源码
 COPY src/ src/
 
+# 后端安全回归测试会直接读取前端源码；构建阶段需要保留源码路径，运行时镜像不会携带该目录。
+COPY vue-code/ vue-code/
+
 RUN ./mvnw --batch-mode --no-transfer-progress clean package
 
 # 阶段3: 提供Java 21运行时
