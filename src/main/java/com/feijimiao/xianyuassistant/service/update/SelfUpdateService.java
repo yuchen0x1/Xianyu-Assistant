@@ -140,6 +140,11 @@ public class SelfUpdateService {
     });
 
     private Path currentJarPath;
+    /**
+     * Windows 无法覆盖当前 JVM 正在使用的 JAR 时，先把新包放在此路径，
+     * 重启子进程后再完成覆盖。非 Windows 更新始终直接替换，不设置此字段。
+     */
+    private volatile Path pendingJarPath;
     private final String unavailableReason;
 
     private volatile Status status = new Status(PHASE_IDLE, 0, 0, 0, null, null);
@@ -266,26 +271,44 @@ public class SelfUpdateService {
             String mode = restartMode == null ? "exit" : restartMode.trim().toLowerCase(Locale.ROOT);
             if ("manual".equals(mode)) {
                 log.info("重启策略为 manual，等待人工重启服务");
+                String message = pendingJarPath == null
+                        ? "新包已就绪，请按部署方式手动重启服务"
+                        : "新包已就绪（Windows 已侧置换暂存），请按部署方式手动重启服务";
                 status = new Status(PHASE_SWAPPED, status.percent(), status.downloadedBytes(),
-                        status.totalBytes(), status.targetVersion(), "新包已就绪，请按部署方式手动重启服务");
+                        status.totalBytes(), status.targetVersion(), message);
                 return;
             }
             if ("self".equals(mode)) {
                 // 进程自拉起：以相同命令行生成新进程（通过 waitForPid 握手等本进程退出后再绑定端口），
                 // 本进程随即退出，由新进程加载新包继续服务。适用于无进程管理器的裸部署。
-                if (spawnSelfRelaunch()) {
+                Path launchJar = pendingJarPath != null ? pendingJarPath : currentJarPath;
+                if (spawnSelfRelaunch(launchJar)) {
                     log.warn("在线更新完成，已拉起新进程接管服务，当前进程退出: target={}", status.targetVersion());
                     System.exit(0);
                 }
-                log.error("拉起新进程失败，保持当前进程继续运行（新包已替换，重启后生效）");
+                log.error("拉起新进程失败，保持当前进程继续运行（新包已替换或暂存，重启后生效）");
                 status = new Status(PHASE_SWAPPED, status.percent(), status.downloadedBytes(),
-                        status.totalBytes(), status.targetVersion(), "自动拉起新进程失败，新包已就绪，请手动重启服务");
+                        status.totalBytes(), status.targetVersion(), pendingJarPath == null
+                                ? "自动拉起新进程失败，新包已就绪，请手动重启服务"
+                                : "自动拉起新进程失败，Windows 新包已暂存，请手动重启服务");
                 return;
             }
             if ("command".equals(mode)) {
                 // 不执行配置驱动的 shell 命令，避免配置或环境变量被篡改后获得进程权限。
                 // 兼容旧配置：按 exit 处理，由 systemd/Docker 等进程管理器重新拉起。
                 log.warn("restart-mode=command 已禁用自定义 shell，按 exit 策略退出");
+            }
+            if (pendingJarPath != null && isWindows()) {
+                // exit 模式下交给外部进程管理器重启；先启动一次短暂的 swap-only 子进程，
+                // 等当前 JVM 退出释放文件锁后把暂存包复制回原 JAR 路径。
+                if (spawnWindowsSwapHelper(pendingJarPath, currentJarPath)) {
+                    log.warn("Windows 新包已暂存，已启动退出后置换助手: target={}", status.targetVersion());
+                    System.exit(0);
+                }
+                log.error("启动 Windows 退出后置换助手失败，保持当前进程继续运行");
+                status = new Status(PHASE_SWAPPED, status.percent(), status.downloadedBytes(),
+                        status.totalBytes(), status.targetVersion(), "新包已暂存，自动重启助手启动失败，请手动重启服务");
+                return;
             }
             log.warn("在线更新完成，进程退出以加载新版本: target={}", status.targetVersion());
             System.exit(0);
@@ -297,6 +320,10 @@ public class SelfUpdateService {
 
     /** 子进程等待旧进程退出的握手系统属性名。 */
     static final String WAIT_FOR_PID_PROPERTY = "xianyu.restart.waitForPid";
+    /** Windows 侧置换：子进程启动后把已校验的新包复制到旧包路径。 */
+    static final String PENDING_JAR_PROPERTY = "xianyu.restart.pendingJar";
+    static final String TARGET_JAR_PROPERTY = "xianyu.restart.targetJar";
+    static final String SWAP_ONLY_PROPERTY = "xianyu.restart.swapOnly";
     /** 握手最长等待：超时则继续启动（旧进程大概率已死，仅多等片刻）。 */
     private static final Duration RESTART_HANDSHAKE_TIMEOUT = Duration.ofSeconds(15);
 
@@ -305,14 +332,18 @@ public class SelfUpdateService {
      * 等待本进程退出后再启动，避免端口竞争；失败返回 false，调用方保持当前进程运行。
      */
     private boolean spawnSelfRelaunch() {
+        return spawnSelfRelaunch(currentJarPath);
+    }
+
+    private boolean spawnSelfRelaunch(Path launchJar) {
         ProcessHandle.Info info = ProcessHandle.current().info();
         String javaCommand = info.command().orElseGet(SelfUpdateService::currentJavaLauncher);
         String[] arguments = info.arguments().orElse(null);
         List<String> command = buildRelaunchCommand(javaCommand, arguments,
-                currentJarPath, ProcessHandle.current().pid());
+                launchJar, ProcessHandle.current().pid());
         try {
             ProcessBuilder builder = new ProcessBuilder(command);
-            Path workDir = currentJarPath.toAbsolutePath().getParent();
+            Path workDir = launchJar.toAbsolutePath().getParent();
             if (workDir != null) {
                 builder.directory(workDir.toFile());
             }
@@ -334,6 +365,49 @@ public class SelfUpdateService {
     }
 
     /**
+     * Windows exit 模式的后置换包助手。助手本身从暂存 JAR 启动，
+     * 等旧进程退出释放原 JAR 后，在进入 Spring 前把暂存内容复制回原路径，
+     * 然后立即退出，交给 systemd/Docker/守护循环按原路径拉起新版本。
+     */
+    private boolean spawnWindowsSwapHelper(Path pending, Path target) {
+        ProcessHandle.Info info = ProcessHandle.current().info();
+        String javaCommand = info.command().orElseGet(SelfUpdateService::currentJavaLauncher);
+        List<String> command = new ArrayList<>();
+        command.add(javaCommand);
+        command.add("-D" + WAIT_FOR_PID_PROPERTY + "=" + ProcessHandle.current().pid());
+        command.add("-D" + PENDING_JAR_PROPERTY + "=" + pending.toAbsolutePath());
+        command.add("-D" + TARGET_JAR_PROPERTY + "=" + target.toAbsolutePath());
+        command.add("-D" + SWAP_ONLY_PROPERTY + "=true");
+        command.add("-jar");
+        command.add(pending.toAbsolutePath().toString());
+        try {
+            ProcessBuilder builder = new ProcessBuilder(command);
+            Path workDir = pending.toAbsolutePath().getParent();
+            if (workDir != null) {
+                builder.directory(workDir.toFile());
+            }
+            builder.inheritIO();
+            Process child = builder.start();
+            Thread.sleep(500);
+            if (!child.isAlive()) {
+                log.error("Windows 置换助手启动后立即退出: exited={}", child.exitValue());
+                child.destroyForcibly();
+                return false;
+            }
+            log.warn("Windows 置换助手已启动: pid={}, pending={}, target={}",
+                    child.pid(), pending, target);
+            return true;
+        } catch (Exception e) {
+            log.error("启动 Windows 置换助手失败: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private static boolean isWindows() {
+        return System.getProperty("os.name", "").toLowerCase(Locale.ROOT).contains("win");
+    }
+
+    /**
      * 组装重启命令：复用当前 JVM 与全部原始参数，注入 waitForPid 握手属性。
      * 原始参数不可得时回退为 {@code -jar <当前JAR>}。
      */
@@ -344,14 +418,38 @@ public class SelfUpdateService {
         command.add("-D" + WAIT_FOR_PID_PROPERTY + "=" + parentPid);
         boolean hasArgs = originalArgs != null && originalArgs.length > 0;
         if (hasArgs) {
-            for (String arg : originalArgs) {
-                command.add(arg);
+            boolean replacedJar = false;
+            for (int i = 0; i < originalArgs.length; i++) {
+                String arg = originalArgs[i];
+                if ("-jar".equals(arg) && i + 1 < originalArgs.length) {
+                    command.add(arg);
+                    String originalJar = originalArgs[i + 1];
+                    command.add(formatJarArgument(jarPath, originalJar));
+                    i++;
+                    replacedJar = true;
+                } else {
+                    command.add(arg);
+                }
+            }
+            if (!replacedJar) {
+                command.add("-jar");
+                command.add(jarPath.toString());
             }
         } else {
             command.add("-jar");
             command.add(jarPath.toString());
         }
         return command;
+    }
+
+    private static String formatJarArgument(Path jarPath, String originalJar) {
+        String value = jarPath.toString();
+        // Path.of("/opt/app.jar") 在 Windows 上会渲染为 "\\opt\\app.jar"；
+        // 保留原始命令行的斜杠风格，避免跨平台重启命令被错误改写。
+        if (originalJar != null && originalJar.contains("/") && !originalJar.contains("\\")) {
+            return value.replace('\\', '/');
+        }
+        return value;
     }
 
     /**
@@ -387,6 +485,7 @@ public class SelfUpdateService {
         long deadline = System.nanoTime() + RESTART_HANDSHAKE_TIMEOUT.toNanos();
         while (System.nanoTime() < deadline) {
             if (ProcessHandle.of(parentPid).isEmpty()) {
+                completePendingSwap();
                 return;
             }
             try {
@@ -397,6 +496,30 @@ public class SelfUpdateService {
             }
         }
         System.err.println("[restart] 等待旧进程(pid=" + parentPid + ")退出超时(15s)，继续启动");
+        completePendingSwap();
+    }
+
+    /** 启动早期执行 Windows 暂存包的后置置换。 */
+    private static void completePendingSwap() {
+        String pendingValue = System.getProperty(PENDING_JAR_PROPERTY);
+        String targetValue = System.getProperty(TARGET_JAR_PROPERTY);
+        if (pendingValue == null || pendingValue.isBlank() || targetValue == null || targetValue.isBlank()) {
+            return;
+        }
+        Path pending = Path.of(pendingValue);
+        Path target = Path.of(targetValue);
+        try {
+            Files.copy(pending, target, StandardCopyOption.REPLACE_EXISTING);
+            System.err.println("[restart] Windows 新包已复制到目标路径: " + target);
+        } catch (Exception e) {
+            System.err.println("[restart] Windows 新包置换失败: " + e.getClass().getSimpleName()
+                    + ": " + e.getMessage());
+        }
+    }
+
+    /** 仅执行后置置换并退出的短暂助手进程。 */
+    public static boolean isSwapOnlyProcess() {
+        return "true".equalsIgnoreCase(System.getProperty(SWAP_ONLY_PROPERTY));
     }
 
     // ============ 更新主流程 ============
@@ -516,6 +639,20 @@ public class SelfUpdateService {
                 Files.move(newJar, currentJarPath, StandardCopyOption.REPLACE_EXISTING);
             }
         } catch (Exception e) {
+            if (isWindows() && (e instanceof java.nio.file.AccessDeniedException
+                    || e instanceof java.nio.file.FileSystemException)) {
+                // Windows JVM 会锁住正在运行的 JAR，当前进程无法直接覆盖它。
+                // 把已验签的新包侧置，重启阶段再由新进程完成复制，避免把可用旧包破坏掉。
+                Path staged = currentJarPath.resolveSibling(currentJarPath.getFileName() + ".pending");
+                try {
+                    Files.move(newJar, staged, StandardCopyOption.REPLACE_EXISTING);
+                    pendingJarPath = staged;
+                    log.warn("当前 JAR 被 Windows 文件锁占用，已将新包侧置等待重启: pending={}", staged);
+                    return;
+                } catch (Exception stageError) {
+                    e.addSuppressed(stageError);
+                }
+            }
             // 替换失败：立即从备份还原原 JAR，保证服务还能用旧版本重启
             try {
                 Files.copy(backup, currentJarPath, StandardCopyOption.REPLACE_EXISTING);

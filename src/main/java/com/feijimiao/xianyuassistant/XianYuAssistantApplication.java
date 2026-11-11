@@ -27,6 +27,11 @@ public class XianYuAssistantApplication {
     public static void main(String[] args) {
         // 在线自更新 restart-mode=self 的握手：新进程在此等待旧进程退出（释放端口）后再启动。
         SelfUpdateService.awaitRestartHandshake();
+        // Windows exit 模式的短暂置换助手只负责复制已校验的新包，
+        // 不应继续启动第二个 Spring 服务实例。
+        if (SelfUpdateService.isSwapOnlyProcess()) {
+            return;
+        }
         SpringApplication.run(XianYuAssistantApplication.class, args);
     }
 
