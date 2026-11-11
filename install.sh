@@ -59,7 +59,7 @@ GITHUB_API_ASSET_PREFIX="https://api.github.com/repos/${GITHUB_REPO}/releases/as
 # 官方发布签名验证公钥（Ed25519, X.509 SPKI DER 的 Base64）。
 # 私钥仅发布方保管（CI Secret/离线），不随任何发布物分发；
 # SHA-256 校验文件与安装包同源，发布通道被入侵时无法同时伪造 Ed25519 签名。
-RELEASE_SIGN_PUBLIC_KEY="MCowBQYDK2VwAyEA4BjYdeOn5znHC0utuw8PFFZkzmejLdVRYGQOzpUgK+M="
+RELEASE_SIGN_PUBLIC_KEY="MCowBQYDK2VwAyEAsstW68X2ZMRu5o2ZVHwBiV3m4YezlHuScQy3Jo/Lie4="
 
 echo -e "${BLUE}"
 echo "╔════════════════════════════════════════════════════════╗"
