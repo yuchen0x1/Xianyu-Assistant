@@ -148,17 +148,14 @@ public interface XianyuChatMessageMapper {
     List<XianyuChatMessage> findRecentBySId(@Param("sId") String sId, @Param("limit") int limit, @Param("offset") int offset);
 
     /**
-     * 咨询商品排行（按买家消息数降序）
+     * 咨询商品排行（按买家消息数降序，按账号范围过滤）
      * 排除系统账号自己发送的消息
+     *
+     * <p><b>方法名必须唯一</b>：MyBatis 语句 ID 不含参数签名，同名重载会让后声明的方法被静默丢弃，
+     * 账号范围过滤随之失效。带范围的查询统一用 {@code Scoped} 后缀。</p>
      */
-    @Select("SELECT xy_goods_id AS goodsId, COUNT(*) AS msgCount " +
-            "FROM xianyu_chat_message " +
-            "WHERE xy_goods_id IS NOT NULL AND xy_goods_id != '' " +
-            "GROUP BY xy_goods_id ORDER BY msgCount DESC LIMIT #{limit}")
-    List<java.util.Map<String, Object>> selectTopGoodsByMessages(@Param("limit") int limit);
-
     @Select("<script>SELECT xy_goods_id AS goodsId, COUNT(*) AS msgCount FROM xianyu_chat_message WHERE xy_goods_id IS NOT NULL AND xy_goods_id != '' <choose><when test='scope.accountIds == null'></when><when test='scope.accountIds.isEmpty()'>AND 1 = 0</when><otherwise>AND xianyu_account_id IN <foreach collection='scope.accountIds' item='accountId' open='(' separator=',' close=')'>#{accountId}</foreach></otherwise></choose> GROUP BY xy_goods_id ORDER BY msgCount DESC LIMIT #{limit}</script>")
-    List<java.util.Map<String, Object>> selectTopGoodsByMessages(@Param("limit") int limit, @Param("scope") com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope);
+    List<java.util.Map<String, Object>> selectTopGoodsByMessagesScoped(@Param("limit") int limit, @Param("scope") com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope);
 
     /**
      * 会话聚合查询：按 s_id 分组取每个会话最新一条消息（含消息数），支持关键词过滤与分页

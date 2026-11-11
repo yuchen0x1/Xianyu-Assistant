@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
@@ -27,7 +28,11 @@ public class CommandRegistry {
                 .collect(Collectors.toMap(
                         cmd -> cmd.descriptor().name(),
                         Function.identity(),
-                        (a, b) -> a
+                        (a, b) -> {
+                            String name = a.descriptor().name();
+                            throw new IllegalStateException("检测到重复的命令名称: " + name);
+                        },
+                        LinkedHashMap::new
                 ));
         log.info("命令注册表初始化完成，共 {} 个命令: {}", commandMap.size(), commandMap.keySet());
     }

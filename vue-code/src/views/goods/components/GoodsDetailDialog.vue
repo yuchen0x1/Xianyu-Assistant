@@ -755,15 +755,15 @@ onBeforeUnmount(() => {
 
 .btn-glass { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 8px 16px; border-radius: var(--radius-pill); font-size: 13px; font-weight: 590; cursor: pointer; transition: opacity .15s, transform .12s; border: none; font-family: inherit; user-select: none; white-space: nowrap; }
 .btn-glass:active { opacity: .80; transform: scale(.96); }
-.btn-glass--primary { background: var(--brand-600); color: #fff; border: 1px solid var(--border-1); box-shadow: 0 4px 16px rgba(10,132,255,0.35), 0 8px 32px rgba(0,0,0,0.08); }
+.btn-glass--primary { background: var(--brand-600); color: #fff; border: 1px solid var(--border-1); box-shadow: 0 4px 16px var(--brand-500), 0 8px 32px rgba(0,0,0,0.08); }
 .btn-glass--default { background: var(--glass-bg); color: var(--brand-600); border: 1px solid var(--glass-border); box-shadow: 0 8px 32px rgba(0,0,0,0.08); }
-.btn-glass--success { background: rgba(48,209,88,0.85); color: #fff; border: 1px solid var(--border-1); }
-.btn-glass--warning { background: rgba(255,159,10,0.85); color: #fff; border: 1px solid var(--border-1); }
+.btn-glass--success { background: var(--success-500); color: #fff; border: 1px solid var(--border-1); }
+.btn-glass--warning { background: var(--warning-500); color: #fff; border: 1px solid var(--border-1); }
 .btn-glass--danger { color: var(--danger-500); background: var(--danger-50); border: 1px solid var(--border-1); }
 .tag { display: inline-flex; align-items: center; padding: 2px 10px; border-radius: var(--radius-pill); font-size: 12px; font-weight: 500; }
-.tag--success { background: rgba(48,209,88,0.12); color: var(--success-500); }
-.tag--warning { background: rgba(255,159,10,0.12); color: var(--warning-500); }
-.tag--info { background: rgba(120,120,128,0.12); color: var(--text-2); }
+.tag--success { background: var(--success-50); color: var(--success-500); }
+.tag--warning { background: var(--warning-50); color: var(--warning-500); }
+.tag--info { background: var(--bg-muted); color: var(--text-2); }
 .tag--danger { background: var(--danger-50); color: var(--danger-500); }
 .native-image { width: 100%; height: 100%; object-fit: cover; border-radius: 8px; }
 

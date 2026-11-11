@@ -168,8 +168,8 @@ const clearImage = () => {
   width: 100%;
   border-radius: 12px;
   overflow: hidden;
-  border: 1px solid #e5e5e5;
-  background: #f5f5f7;
+  border: 1px solid var(--border-1);
+  background: var(--bg-muted);
 }
 
 .image-preview img {
@@ -208,7 +208,7 @@ const clearImage = () => {
 .image-upload-area {
   width: 100%;
   height: 120px;
-  border: 2px dashed #d4d4d4;
+  border: 2px dashed var(--border-2);
   border-radius: 12px;
   display: flex;
   flex-direction: column;
@@ -217,17 +217,17 @@ const clearImage = () => {
   gap: 8px;
   cursor: pointer;
   transition: all 0.2s;
-  background: #fafafa;
+  background: var(--bg-hover);
 }
 
 .image-upload-area:hover {
-  border-color: #1a1a1a;
-  background: #f5f5f7;
+  border-color: var(--text-1);
+  background: var(--bg-muted);
 }
 
 .image-upload-area--uploading {
   pointer-events: none;
-  border-color: #007aff;
+  border-color: var(--brand-500);
 }
 
 .upload-hint {
@@ -235,19 +235,19 @@ const clearImage = () => {
   flex-direction: column;
   align-items: center;
   gap: 6px;
-  color: #666;
+  color: var(--text-2);
   font-size: 13px;
 }
 
 .upload-hint svg {
   width: 28px;
   height: 28px;
-  color: #999;
+  color: var(--text-3);
 }
 
 .upload-hint__size {
   font-size: 11px;
-  color: #999;
+  color: var(--text-3);
 }
 
 .upload-progress {
@@ -261,19 +261,19 @@ const clearImage = () => {
 .upload-progress__bar {
   width: 100%;
   height: 6px;
-  background: #e5e5e5;
+  background: var(--border-1);
   border-radius: 3px;
   overflow: hidden;
 }
 
 .upload-progress__fill {
   height: 100%;
-  background: #007aff;
+  background: var(--brand-500);
   transition: width 0.2s;
 }
 
 .upload-progress__text {
   font-size: 12px;
-  color: #007aff;
+  color: var(--brand-500);
 }
 </style>

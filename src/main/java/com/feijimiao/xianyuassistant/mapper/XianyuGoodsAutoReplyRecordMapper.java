@@ -99,45 +99,29 @@ public interface XianyuGoodsAutoReplyRecordMapper {
     @Select("SELECT COUNT(*) FROM xianyu_goods_auto_reply_record WHERE date(create_time) = date('now', '-1 day', 'localtime')")
     int countYesterdayAiReplies();
 
-    @Select("SELECT COUNT(*) FROM xianyu_goods_auto_reply_record")
-    int countAllReplies();
-
+    /**
+     * 全量回复数（按账号范围过滤）。
+     *
+     * <p><b>方法名必须唯一</b>：MyBatis 的语句 ID 是「接口全限定名 + 方法名」，不含参数签名。
+     * 历史上这里存在同名的无 scope 重载，后注册的带 scope 版本被 MyBatis 静默丢弃，
+     * 导致账号范围过滤实际不生效。故带范围的查询统一用 {@code Scoped} 后缀。</p>
+     */
     @Select("<script>SELECT COUNT(*) FROM xianyu_goods_auto_reply_record <where><choose><when test='scope.accountIds == null'></when><when test='scope.accountIds.isEmpty()'>1 = 0</when><otherwise>xianyu_account_id IN <foreach collection='scope.accountIds' item='accountId' open='(' separator=',' close=')'>#{accountId}</foreach></otherwise></choose></where></script>")
-    int countAllReplies(@Param("scope") com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope);
-
-    @Select("SELECT COUNT(*) FROM xianyu_goods_auto_reply_record WHERE date(create_time) = #{date}")
-    int countAiRepliesByDate(@Param("date") String date);
+    int countAllRepliesScoped(@Param("scope") com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope);
 
     @Select("<script>SELECT COUNT(*) FROM xianyu_goods_auto_reply_record WHERE date(create_time) = #{date} <choose><when test='scope.accountIds == null'></when><when test='scope.accountIds.isEmpty()'>AND 1 = 0</when><otherwise>AND xianyu_account_id IN <foreach collection='scope.accountIds' item='accountId' open='(' separator=',' close=')'>#{accountId}</foreach></otherwise></choose></script>")
-    int countAiRepliesByDate(@Param("date") String date, @Param("scope") com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope);
+    int countAiRepliesByDateScoped(@Param("date") String date, @Param("scope") com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope);
 
     /**
-     * 按账号分组的AI回复统计（指定日期）
+     * 按账号分组的AI回复统计（指定日期，按账号范围过滤）。
      */
-    @Select("SELECT xianyu_account_id AS accountId, COUNT(*) AS replyCount " +
-            "FROM xianyu_goods_auto_reply_record WHERE date(create_time) = #{date} " +
-            "GROUP BY xianyu_account_id ORDER BY replyCount DESC")
-    List<java.util.Map<String, Object>> selectAccountRepliesByDate(@Param("date") String date);
-
     @Select("<script>SELECT xianyu_account_id AS accountId, COUNT(*) AS replyCount FROM xianyu_goods_auto_reply_record WHERE date(create_time) = #{date} <choose><when test='scope.accountIds == null'></when><when test='scope.accountIds.isEmpty()'>AND 1 = 0</when><otherwise>AND xianyu_account_id IN <foreach collection='scope.accountIds' item='accountId' open='(' separator=',' close=')'>#{accountId}</foreach></otherwise></choose> GROUP BY xianyu_account_id ORDER BY replyCount DESC</script>")
-    List<java.util.Map<String, Object>> selectAccountRepliesByDate(@Param("date") String date, @Param("scope") com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope);
+    List<java.util.Map<String, Object>> selectAccountRepliesByDateScoped(@Param("date") String date, @Param("scope") com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope);
 
     /**
-     * 关键词命中排行（指定日期，按 matched_keyword 聚合）
+     * 关键词命中排行（指定日期，按 matched_keyword 聚合，按账号范围过滤）
      * 统计命中次数、成功/失败/待回复数与涉及买家数
      */
-    @Select("SELECT matched_keyword AS keyword, " +
-            "COUNT(*) AS hitCount, " +
-            "SUM(CASE WHEN state = 1 THEN 1 ELSE 0 END) AS successCount, " +
-            "SUM(CASE WHEN state = -1 THEN 1 ELSE 0 END) AS failCount, " +
-            "SUM(CASE WHEN state = 0 THEN 1 ELSE 0 END) AS pendingCount, " +
-            "COUNT(DISTINCT buyer_user_id) AS buyerCount " +
-            "FROM xianyu_goods_auto_reply_record " +
-            "WHERE date(create_time) = #{date} " +
-            "AND matched_keyword IS NOT NULL AND matched_keyword != '' " +
-            "GROUP BY matched_keyword ORDER BY hitCount DESC LIMIT #{limit}")
-    List<java.util.Map<String, Object>> selectKeywordRankByDate(@Param("date") String date, @Param("limit") int limit);
-
     @Select("<script>SELECT matched_keyword AS keyword, COUNT(*) AS hitCount, SUM(CASE WHEN state = 1 THEN 1 ELSE 0 END) AS successCount, SUM(CASE WHEN state = -1 THEN 1 ELSE 0 END) AS failCount, SUM(CASE WHEN state = 0 THEN 1 ELSE 0 END) AS pendingCount, COUNT(DISTINCT buyer_user_id) AS buyerCount FROM xianyu_goods_auto_reply_record WHERE date(create_time) = #{date} <choose><when test='scope.accountIds == null'></when><when test='scope.accountIds.isEmpty()'>AND 1 = 0</when><otherwise>AND xianyu_account_id IN <foreach collection='scope.accountIds' item='accountId' open='(' separator=',' close=')'>#{accountId}</foreach></otherwise></choose> AND matched_keyword IS NOT NULL AND matched_keyword != '' GROUP BY matched_keyword ORDER BY hitCount DESC LIMIT #{limit}</script>")
-    List<java.util.Map<String, Object>> selectKeywordRankByDate(@Param("date") String date, @Param("limit") int limit, @Param("scope") com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope);
+    List<java.util.Map<String, Object>> selectKeywordRankByDateScoped(@Param("date") String date, @Param("limit") int limit, @Param("scope") com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope);
 }

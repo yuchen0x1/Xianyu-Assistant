@@ -31,33 +31,18 @@ public class AutoReplyRecordServiceImpl implements AutoReplyRecordService {
     }
 
     @Override
-    public int countAiRepliesByDate(String date) {
-        return autoReplyRecordMapper.countAiRepliesByDate(date);
+    public int countAiRepliesByDateScoped(String date, com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope) {
+        return autoReplyRecordMapper.countAiRepliesByDateScoped(date, scope);
     }
 
     @Override
-    public int countAllReplies() {
-        return autoReplyRecordMapper.countAllReplies();
+    public List<java.util.Map<String, Object>> getAccountRepliesByDateScoped(String date, com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope) {
+        return autoReplyRecordMapper.selectAccountRepliesByDateScoped(date, scope);
     }
 
     @Override
-    public List<java.util.Map<String, Object>> getAccountRepliesByDate(String date) {
-        return autoReplyRecordMapper.selectAccountRepliesByDate(date);
-    }
-
-    @Override
-    public int countAiRepliesByDate(String date, com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope) {
-        return autoReplyRecordMapper.countAiRepliesByDate(date, scope);
-    }
-
-    @Override
-    public List<java.util.Map<String, Object>> getAccountRepliesByDate(String date, com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope) {
-        return autoReplyRecordMapper.selectAccountRepliesByDate(date, scope);
-    }
-
-    @Override
-    public int countAllReplies(com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope) {
-        return autoReplyRecordMapper.countAllReplies(scope);
+    public int countAllRepliesScoped(com.feijimiao.xianyuassistant.service.DataPanelAccountScope scope) {
+        return autoReplyRecordMapper.countAllRepliesScoped(scope);
     }
 
 

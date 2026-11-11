@@ -123,10 +123,10 @@ const removeImage = (index: number) => {
         />
       </div>
 
-      <div v-if="canAdd" class="multi-img__card multi-img__card--add" @click="addImage">
+      <button v-if="canAdd" type="button" class="multi-img__card multi-img__card--add" @click="addImage">
         <IconPlus />
         <span>添加图片</span>
-      </div>
+      </button>
     </div>
 
     <input
@@ -161,8 +161,8 @@ const removeImage = (index: number) => {
   height: 100px;
   border-radius: 10px;
   overflow: hidden;
-  border: 1px solid #e5e5e5;
-  background: #f5f5f7;
+  border: 1px solid var(--border-1);
+  background: var(--bg-muted);
   flex-shrink: 0;
 }
 
@@ -203,6 +203,8 @@ const removeImage = (index: number) => {
 }
 
 .multi-img__card--add {
+  appearance: none;
+  background: transparent;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -210,15 +212,15 @@ const removeImage = (index: number) => {
   gap: 4px;
   cursor: pointer;
   border-style: dashed;
-  color: #999;
+  color: var(--text-3);
   font-size: 11px;
   transition: all 0.2s;
 }
 
 .multi-img__card--add:hover {
-  border-color: #1a1a1a;
-  color: #666;
-  background: #f0f0f2;
+  border-color: var(--text-2);
+  color: var(--text-2);
+  background: var(--bg-muted);
 }
 
 .multi-img__card--add svg {
@@ -237,20 +239,20 @@ const removeImage = (index: number) => {
 .multi-img__progress-bar {
   flex: 1;
   height: 4px;
-  background: #e5e5e5;
+  background: var(--border-1);
   border-radius: 2px;
   overflow: hidden;
 }
 
 .multi-img__progress-fill {
   height: 100%;
-  background: #007aff;
+  background: var(--brand-500);
   transition: width 0.2s;
 }
 
 .multi-img__progress-text {
   font-size: 11px;
-  color: #007aff;
+  color: var(--brand-500);
   white-space: nowrap;
 }
 </style>

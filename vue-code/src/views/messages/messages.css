@@ -231,7 +231,7 @@
   width: 27px;
   height: 27px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--bg-elevated);
   box-shadow: 0 2px 8px rgba(0,0,0,.22), inset 0 1px 0 var(--bg-elevated);
   position: absolute;
   top: 2px;
@@ -841,7 +841,7 @@
 .ms__bubble {
   max-width: 75%;
   padding: 9px 12px;
-  background: #fff;
+  background: var(--bg-elevated);
   border: 1px solid var(--d-border-strong);
   border-radius: var(--radius-sm) var(--radius-sm) var(--radius-sm) var(--radius-xs);
   box-shadow: 0 1px 3px rgba(0,0,0,0.05);
@@ -874,7 +874,7 @@
 }
 
 .ms__bubble-row--own .ms__bubble-time {
-  color: rgba(255,255,255,0.75);
+  color: var(--glass-bg-strong);
 }
 
 /* --- Reply Bar --- */

@@ -6,8 +6,10 @@
 
 ```bash
 flutter pub get
-flutter build apk --release --build-name 3.4.10 --build-number 3410
-flutter build appbundle --release --build-name 3.4.10 --build-number 3410
+flutter build apk --release --build-name 3.5.21 --build-number 3521
+flutter build appbundle --release --build-name 3.5.21 --build-number 3521
 ```
+
+版本号以 `mobile/pubspec.yaml` 的 `version:` 为准，构建时可省略 `--build-name/--build-number` 直接沿用。
 
 Windows 可以构建 Android APK/AAB。iOS 工程可在 macOS + Xcode 中打开 `ios/Runner.xcworkspace` 后签名构建；Windows 无法生成签名 `.ipa`。

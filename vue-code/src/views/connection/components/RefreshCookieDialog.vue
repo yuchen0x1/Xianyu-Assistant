@@ -283,15 +283,15 @@ onUnmounted(stopPolling)
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f5f5f7;
+  background: var(--bg-muted);
   border-radius: var(--radius-sm);
 }
 
 .loading-spinner {
   width: 28px;
   height: 28px;
-  border: 2px solid #e5e5e5;
-  border-top-color: #0071e3;
+  border: 2px solid var(--border-1);
+  border-top-color: var(--brand-600);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;
 }

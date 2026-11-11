@@ -42,7 +42,7 @@ export function showConfirm(
 
     const titleElement = document.createElement('div')
     titleElement.id = titleId
-    titleElement.style.cssText = 'font-size:17px;font-weight:600;color:var(--text-1, #1c1c1e);margin-bottom:8px;'
+    titleElement.style.cssText = 'font-size:17px;font-weight:600;color:var(--text-1, var(--text-1));margin-bottom:8px;'
     titleElement.textContent = title
 
     const messageElement = document.createElement('div')

@@ -773,7 +773,7 @@ const getConfirmBg = (state: number) => {
   content: '';
   width: 8px;
   height: 2px;
-  background: #fff;
+  background: var(--bg-elevated);
   border-radius: 1px;
 }
 

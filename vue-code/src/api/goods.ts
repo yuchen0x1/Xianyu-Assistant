@@ -235,7 +235,8 @@ export function batchUpdatePrice(data: {
   return request<BatchUpdatePriceResult>({
     url: '/items/batchUpdatePrice',
     method: 'POST',
-    data
+    data,
+    timeout: 120000
   })
 }
 
@@ -396,7 +397,8 @@ export function polishGoods(data: {
   });
 }
 
-// 批量擦亮商品（若 xyGoodsIds 为空则擦亮账号下全部在售商品）
+// 批量擦亮商品（若 xyGoodsIds 为空则擦亮账号下全部在售商品，后端上限 50 件）
+// 后端逐件调用平台擦亮接口、件间间隔 1 秒，必须覆盖全局 30s 超时。
 export function batchPolishGoods(data: {
   xianyuAccountId: number;
   xyGoodsIds?: string[];
@@ -404,7 +406,8 @@ export function batchPolishGoods(data: {
   return request<PolishItemResponse>({
     url: '/items/batchPolish',
     method: 'POST',
-    data
+    data,
+    timeout: 120000
   });
 }
 

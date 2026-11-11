@@ -108,11 +108,14 @@ export interface BatchOffShelfResp {
 }
 
 // 批量下架商品
+// 后端逐件调用平台下架接口、件间间隔 1 秒（上限 50 件），必须覆盖全局 30s 超时，
+// 否则前端先超时但服务端仍在执行，用户重试会造成重复下架。
 export function batchOffShelf(data: BatchOffShelfReq) {
   return request<BatchOffShelfResp>({
     url: '/publish/batchOffShelf',
     method: 'POST',
-    data
+    data,
+    timeout: 120000
   });
 }
 

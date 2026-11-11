@@ -1,10 +1,8 @@
 package com.feijimiao.xianyuassistant.service.reply;
 
 import com.feijimiao.xianyuassistant.entity.XianyuGoodsConfig;
-import com.feijimiao.xianyuassistant.entity.bo.KeywordReplyRuleBO;
 import com.feijimiao.xianyuassistant.event.chatMessageEvent.ChatMessageData;
 import com.feijimiao.xianyuassistant.mapper.XianyuGoodsConfigMapper;
-import com.feijimiao.xianyuassistant.service.KeywordReplyService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -19,9 +17,6 @@ public class ReplyStrategyResolver {
     private XianyuGoodsConfigMapper goodsConfigMapper;
 
     @Autowired
-    private KeywordReplyService keywordReplyService;
-
-    @Autowired
     private KeywordReplyStrategy keywordReplyStrategy;
 
     @Autowired
@@ -31,7 +26,13 @@ public class ReplyStrategyResolver {
     private AIReplyStrategy aiReplyStrategy;
 
     public ReplyStrategy resolve(List<ChatMessageData> messageList) {
+        if (messageList == null || messageList.isEmpty()) {
+            return null;
+        }
         ChatMessageData lastMessage = messageList.get(messageList.size() - 1);
+        if (lastMessage == null) {
+            return null;
+        }
         Long accountId = lastMessage.getXianyuAccountId();
         String xyGoodsId = lastMessage.getXyGoodsId();
 

@@ -156,4 +156,17 @@ class McpServerControllerTest {
         assertTrue(success.path("result").path("content").get(0).path("text").asText().contains("success"));
         assertEquals(-32600, malformed.path("error").path("code").asInt());
     }
+
+    @Test
+    void rejectsRequestsWithMissingOrUnsupportedJsonRpcVersion() {
+        JsonNode missingVersion = controller.handle("""
+                {"id":11,"method":"initialize"}
+                """);
+        JsonNode unsupportedVersion = controller.handle("""
+                {"jsonrpc":"1.0","id":12,"method":"initialize"}
+                """);
+
+        assertEquals(-32600, missingVersion.path("error").path("code").asInt());
+        assertEquals(-32600, unsupportedVersion.path("error").path("code").asInt());
+    }
 }

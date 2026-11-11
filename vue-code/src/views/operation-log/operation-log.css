@@ -830,7 +830,7 @@
 }
 
 .ol__page-btn--active {
-  color: rgba(255,255,255,0.55);
+  color: var(--glass-bg-soft);
   background: var(--d-text-primary);
   border-color: var(--d-text-primary);
 }

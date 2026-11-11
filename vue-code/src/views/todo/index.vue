@@ -13,10 +13,17 @@ const loading = ref(true)
 const loadError = ref('')
 const activeType = ref<'pendingShipment' | 'pendingReply' | 'pendingReview' | 'pendingEvaluation'>('pendingShipment')
 
+import { useVisibilityPolling } from '@/composables/useVisibilityPolling'
+
 const autoRefresh = ref(false)
 const refreshInterval = ref(15)
 const refreshOptions = [5, 10, 15, 30, 60]
-let refreshTimer: ReturnType<typeof setInterval> | null = null
+const autoRefreshIntervalMs = computed(() => refreshInterval.value * 1000)
+const { restart: startAutoRefresh, stop: stopAutoRefresh } = useVisibilityPolling({
+  enabled: autoRefresh,
+  intervalMs: autoRefreshIntervalMs,
+  tick: () => { if (!loading.value) void load() }
+})
 
 onMounted(() => { void load() })
 onUnmounted(() => { stopAutoRefresh() })
@@ -41,13 +48,6 @@ const load = async () => {
   }
 }
 
-const startAutoRefresh = () => {
-  stopAutoRefresh()
-  if (autoRefresh.value) {
-    refreshTimer = setInterval(() => { if (!loading.value) void load() }, refreshInterval.value * 1000)
-  }
-}
-const stopAutoRefresh = () => { if (refreshTimer) { clearInterval(refreshTimer); refreshTimer = null } }
 const toggleAutoRefresh = () => { if (autoRefresh.value) startAutoRefresh(); else stopAutoRefresh() }
 
 const tabs = [
@@ -64,6 +64,7 @@ const activeList = computed<TodoItem[]>(() => {
     case 'pendingReply': return overview.value.pendingReply
     case 'pendingReview': return overview.value.pendingReview
     case 'pendingEvaluation': return overview.value.pendingEvaluation
+    default: return []
   }
 })
 
@@ -137,13 +138,13 @@ const formatTime = (t?: string | null): string => {
 
     <template v-else>
       <div class="todo__summary">
-        <div v-for="tab in tabs" :key="tab.key" class="todo__summary-card" :class="{ 'todo__summary-card--active': activeType === tab.key }" @click="activeType = tab.key" role="button" tabindex="0" @keydown.enter="activeType = tab.key">
+        <button v-for="tab in tabs" :key="tab.key" type="button" class="todo__summary-card" :class="{ 'todo__summary-card--active': activeType === tab.key }" @click="activeType = tab.key" :aria-pressed="activeType === tab.key">
           <component :is="tab.icon" class="todo__summary-icon" aria-hidden="true" :style="{ color: tab.color }" />
           <div class="todo__summary-meta">
             <span class="todo__summary-label">{{ tab.label }}</span>
             <strong class="todo__summary-count">{{ countFor(tab.key) }}</strong>
           </div>
-        </div>
+        </button>
         <div class="todo__summary-total">
           <span class="todo__summary-label">总计</span>
           <strong class="todo__summary-total-count">{{ totalCount }}</strong>
@@ -162,7 +163,7 @@ const formatTime = (t?: string | null): string => {
       </div>
 
       <div v-else class="todo__list">
-        <div v-for="item in activeList" :key="item.type + '-' + item.id" class="todo__card" @click="goHandle(item)" role="button" tabindex="0" @keydown.enter="goHandle(item)">
+        <button v-for="item in activeList" :key="item.type + '-' + item.id" type="button" class="todo__card" @click="goHandle(item)">
           <div class="todo__card-body">
             <div class="todo__card-line">
               <span class="todo__card-label">账号</span>
@@ -186,7 +187,7 @@ const formatTime = (t?: string | null): string => {
             </div>
           </div>
           <span class="todo__card-go">处理 ›</span>
-        </div>
+        </button>
       </div>
     </template>
   </div>
@@ -220,8 +221,14 @@ const formatTime = (t?: string | null): string => {
   -webkit-backdrop-filter: var(--glass-blur-sm); backdrop-filter: var(--glass-blur-sm);
   cursor: pointer; transition: border-color .15s, box-shadow .15s;
 }
+.todo__summary-card {
+  appearance: none; color: var(--text-1); font: inherit; text-align: left;
+}
 .todo__summary-card:hover { border-color: var(--glass-border-strong); box-shadow: var(--glass-shadow-float); }
 .todo__summary-card--active { border-color: var(--brand-500); box-shadow: var(--glow-brand); }
+.todo__summary-card:focus-visible, .todo__card:focus-visible {
+  outline: 2px solid var(--brand-500); outline-offset: 3px;
+}
 .todo__summary-icon { width: 26px; height: 26px; flex-shrink: 0; }
 .todo__summary-meta { display: flex; flex-direction: column; }
 .todo__summary-label { font-size: 12px; color: var(--text-2); }
@@ -243,6 +250,7 @@ const formatTime = (t?: string | null): string => {
   box-shadow: var(--glass-shadow);
   -webkit-backdrop-filter: var(--glass-blur-sm); backdrop-filter: var(--glass-blur-sm);
   cursor: pointer; transition: border-color .15s, box-shadow .15s;
+  appearance: none; width: 100%; color: var(--text-1); font: inherit; text-align: left;
 }
 @media (hover: hover) {
   .todo__card:hover { border-color: var(--glass-border-strong); box-shadow: var(--glass-shadow-float); }

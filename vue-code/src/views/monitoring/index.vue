@@ -21,10 +21,10 @@ const statusLabels: Record<string, string> = {
   ACTIVE: '活跃', ACKED: '已确认', SILENCED: '已静默', RESOLVED: '已恢复'
 }
 const statusColors: Record<string, string> = {
-  ACTIVE: '#f44336', ACKED: '#ff9800', SILENCED: '#9e9e9e', RESOLVED: '#4caf50'
+  ACTIVE: 'var(--danger-500)', ACKED: 'var(--warning-500)', SILENCED: 'var(--text-3)', RESOLVED: 'var(--success-500)'
 }
 const levelColors: Record<string, string> = {
-  ERROR: '#f44336', WARNING: '#ff9800', INFO: '#2196f3'
+  ERROR: 'var(--danger-500)', WARNING: 'var(--warning-500)', INFO: 'var(--info-500)'
 }
 
 const loadAlerts = async () => {
@@ -108,14 +108,14 @@ onMounted(() => {
       <div v-for="alert in alerts" :key="alert.id" class="alert-card">
         <div class="alert-header">
           <span class="alert-title">{{ alert.title }}</span>
-          <span class="alert-pill" :style="{ color: statusColors[alert.status] || '#888' }">
+          <span class="alert-pill" :style="{ color: statusColors[alert.status] || 'var(--text-3)' }">
             {{ statusLabels[alert.status] || alert.status }}
           </span>
         </div>
         <div class="alert-key">{{ alert.alertKey }}</div>
         <div class="alert-message">{{ alert.message }}</div>
         <div class="alert-meta">
-          <span class="alert-level" :style="{ color: levelColors[alert.level] || '#888' }">{{ alert.level }}</span>
+          <span class="alert-level" :style="{ color: levelColors[alert.level] || 'var(--text-3)' }">{{ alert.level }}</span>
           <span>触发 {{ alert.occurrences }} 次</span>
           <span>尝试 {{ alert.sendAttempts }} 次</span>
           <span>首次: {{ formatTime(alert.firstSeenAt) }}</span>
@@ -200,7 +200,7 @@ onMounted(() => {
 }
 
 .overview-card__value.ok {
-  color: var(--success-500, #4caf50);
+  color: var(--success-500, var(--success-500));
 }
 
 .overview-card__value.warn {

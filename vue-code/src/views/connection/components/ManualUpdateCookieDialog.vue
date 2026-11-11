@@ -158,7 +158,7 @@ const handleClose = () => {
 }
 
 .help-link:hover {
-  color: #0071e3;
+  color: var(--brand-600);
 }
 
 .modal-close {
@@ -228,7 +228,7 @@ const handleClose = () => {
 
 .form-textarea:focus {
   outline: none;
-  border-color: #0071e3;
+  border-color: var(--brand-600);
 }
 
 .alert-box {
@@ -240,7 +240,7 @@ const handleClose = () => {
 .alert-title {
   font-size: 13px;
   font-weight: 600;
-  color: #0071e3;
+  color: var(--brand-600);
   margin: 0 0 8px;
 }
 
@@ -320,12 +320,12 @@ const handleClose = () => {
 }
 
 .btn-primary {
-  background: #0071e3;
+  background: var(--brand-600);
   color: var(--bg-elevated);
 }
 
 .btn-primary:hover:not(:disabled) {
-  background: #0077ed;
+  background: var(--brand-500);
 }
 
 .btn-primary:disabled {

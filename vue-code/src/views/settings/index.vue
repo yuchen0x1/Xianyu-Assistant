@@ -2119,7 +2119,7 @@ function handleBackupMenuEnter() {
               </tr>
             </tbody>
           </table>
-          <p v-if="!emailConfigured" class="settings__hint" style="color:#e6a23c;margin-top:8px;">请先配置邮箱后再开启通知</p>
+          <p v-if="!emailConfigured" class="settings__hint" style="color:var(--warning-500);margin-top:8px;">请先配置邮箱后再开启通知</p>
         </div>
       </div>
 
