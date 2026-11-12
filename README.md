@@ -144,8 +144,8 @@ bash install.sh
 当前 v3.5.22 资产：
 
 - [XianYuSellerConsole-3.5.22.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar)
-- [XianYuSellerConsole-3.5.22.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianyuSellerConsole-3.5.22.jar.sha256)
-- [XianYuSellerConsole-3.5.22.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianyuSellerConsole-3.5.22.jar.sig)
+- [XianYuSellerConsole-3.5.22.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sha256)
+- [XianYuSellerConsole-3.5.22.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sig)
 
 移动端目前随仓库提供 Flutter 源码，Release 不提供预构建 APK。
 
