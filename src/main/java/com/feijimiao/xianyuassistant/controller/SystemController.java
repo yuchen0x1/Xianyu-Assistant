@@ -30,7 +30,7 @@ import java.util.Map;
 @RequestMapping("/api/system")
 public class SystemController {
 
-    @Value("${app.version:3.5.21}")
+    @Value("${app.version:3.5.22}")
     private String currentVersion;
 
     @Autowired
@@ -57,6 +57,8 @@ public class SystemController {
         dto.setPercent(status.percent());
         dto.setDownloadedBytes(status.downloadedBytes());
         dto.setTotalBytes(status.totalBytes());
+        dto.setDownloadSpeedBytesPerSecond(selfUpdateService.getDownloadSpeedBytesPerSecond());
+        dto.setEstimatedSecondsRemaining(selfUpdateService.getEstimatedSecondsRemaining());
         dto.setTargetVersion(status.targetVersion());
         dto.setMessage(status.message());
         dto.setCanRestart(status.phase() != null
@@ -81,6 +83,16 @@ public class SystemController {
                 : "无法开始更新：目标版本无效或已有更新进行中（当前阶段 " + status.phase() + "）")
                 : selfUpdateService.getUnavailableReason();
         return ResultObject.failed(reason);
+    }
+
+    /** 取消尚未完成的在线更新；已替换或已进入重启阶段的更新不可取消。 */
+    @PostMapping("/selfUpdate/cancel")
+    @com.feijimiao.xianyuassistant.rbac.annotation.RequirePermission("settings:write")
+    public ResultObject<?> cancelSelfUpdate() {
+        if (selfUpdateService.cancel()) {
+            return ResultObject.success("在线更新已取消");
+        }
+        return ResultObject.failed("当前没有可取消的在线更新");
     }
 
     /**

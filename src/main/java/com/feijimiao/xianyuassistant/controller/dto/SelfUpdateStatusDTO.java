@@ -19,7 +19,7 @@ public class SelfUpdateStatusDTO {
     private String unavailableReason;
 
     /**
-     * 更新阶段：IDLE / DOWNLOADING / VERIFYING / SWAPPED / RESTARTING / FAILED
+     * 更新阶段：IDLE / DOWNLOADING / VERIFYING / SWAPPED / RESTARTING / FAILED / CANCELLED
      */
     private String phase;
 
@@ -31,6 +31,12 @@ public class SelfUpdateStatusDTO {
     private long downloadedBytes;
 
     private long totalBytes;
+
+    /** 最近一次可计算出的下载速度（字节/秒）。 */
+    private long downloadSpeedBytesPerSecond;
+
+    /** 按最近下载速度估算的剩余秒数；无法估算时为 0。 */
+    private long estimatedSecondsRemaining;
 
     private String targetVersion;
 

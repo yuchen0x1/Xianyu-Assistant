@@ -295,6 +295,9 @@ class SelfUpdateServiceTest {
         assertThat(VersionUtils.compare("3.10.0", "3.9.9")).isPositive();
         assertThat(VersionUtils.compare("3.3.20", "v3.3.20")).isZero();
         assertThat(VersionUtils.compare("3.3", "3.3.0")).isZero();
+        assertThat(VersionUtils.normalize("v3.6.0-beta.2")).isEqualTo("3.6.0-beta.2");
+        assertThat(VersionUtils.compare("3.6.0-beta.2", "3.6.0-beta.1")).isPositive();
+        assertThat(VersionUtils.compare("3.6.0", "3.6.0-rc.1")).isPositive();
     }
 
     // ============ JAR 分卷序列选择 ============

@@ -7,7 +7,7 @@ server:
 info:
   app:
     name: ${spring.application.name}
-    version: ${app.version:3.5.21}
+    version: ${app.version:3.5.22}
     description: "XianYu Seller Console"
 
 management:
@@ -66,6 +66,8 @@ app:
     gitee-repository: "${XIANYU_ASSISTANT_UPDATE_GITEE_REPOSITORY:}"
     # 在线检查结果短缓存，避免每次打开更新提示都访问公网；设为 0 可关闭缓存。
     cache-seconds: ${XIANYU_ASSISTANT_UPDATE_CACHE_SECONDS:300}
+    # 更新通道：stable=稳定版，beta=仅预发布版，dev=最新稳定版或预发布版。
+    channel: ${XIANYU_ASSISTANT_UPDATE_CHANNEL:stable}
   self-update:
     # 在线自更新：从发布通道下载新 JAR → SHA-256 校验 → 原子替换 → 按策略重启。
     # 仅在以独立 JAR 方式运行时可用（IDE 开发模式自动不可用）。

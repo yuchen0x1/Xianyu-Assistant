@@ -2,6 +2,7 @@ package com.feijimiao.xianyuassistant.service.update;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.feijimiao.xianyuassistant.common.VersionUtils;
 import com.feijimiao.xianyuassistant.controller.dto.VersionInfoRespDTO;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -30,7 +31,7 @@ import java.util.regex.Pattern;
 @Service
 public class UpdateCheckService {
 
-    @Value("${app.version:3.5.21}")
+    @Value("${app.version:3.5.22}")
     private String currentVersion;
 
     @Value("${app.update-check.enabled:false}")
@@ -51,6 +52,10 @@ public class UpdateCheckService {
     @Value("${app.update-check.cache-seconds:300}")
     private long updateCheckCacheSeconds = 300L;
 
+    /** 更新通道：stable=稳定版，beta=仅预发布版，dev=最新稳定版或预发布版。 */
+    @Value("${app.update-check.channel:stable}")
+    private String updateChannel = "stable";
+
     /** 合并并发更新检查，避免缓存失效瞬间重复访问公网。 */
     private final Object updateCheckCacheLock = new Object();
     private volatile UpdateCheckCacheEntry updateCheckCache;
@@ -65,7 +70,8 @@ public class UpdateCheckService {
                 updateCheckEnabled,
                 resolvedApiUrl,
                 currentVersion,
-                updateCheckCacheSeconds);
+                updateCheckCacheSeconds,
+                normalizeUpdateChannel());
 
         VersionInfoRespDTO cached = getCachedUpdate(cacheKey);
         if (cached != null) {
@@ -89,6 +95,7 @@ public class UpdateCheckService {
     private VersionInfoRespDTO fetchUpdateInfo(String resolvedApiUrl) {
         VersionInfoRespDTO respDTO = createNoUpdateResponse();
         respDTO.setChannel(UpdateChannel.GITHUB.label());
+        respDTO.setReleaseChannel(normalizeUpdateChannel());
         if (!updateCheckEnabled || !hasText(resolvedApiUrl)) {
             respDTO.setCheckStatus("disabled");
             respDTO.setMessage("在线更新检查未启用");
@@ -132,22 +139,31 @@ public class UpdateCheckService {
 
             ObjectMapper mapper = new ObjectMapper();
             JsonNode root = mapper.readTree(responseBody);
-            if (root == null || !root.isObject()) {
+            JsonNode release = selectRelease(root);
+            if (release == null) {
+                if (root != null && root.isArray()) {
+                    respDTO.setLatestVersion(currentVersion);
+                    respDTO.setHasUpdate(false);
+                    respDTO.setCheckStatus("available");
+                    respDTO.setMessage("当前更新通道暂无可用 Release");
+                    return respDTO;
+                }
                 log.warn("更新源返回了无效的 JSON 响应");
                 respDTO.setCheckStatus("unavailable");
                 respDTO.setMessage("更新源响应格式无效，请稍后重试");
                 return respDTO;
             }
 
-            String tagName = root.path("tag_name").asText("");
+            String tagName = release.path("tag_name").asText("");
             String latestVersion = normalizeVersion(tagName);
-            String body = root.path("body").asText("");
-            String publishedAt = root.path("published_at").asText("");
+            String body = release.path("body").asText("");
+            String publishedAt = release.path("published_at").asText("");
             // 部分 Release API 可能只带 created_at。
             if (!hasText(publishedAt)) {
-                publishedAt = root.path("created_at").asText("");
+                publishedAt = release.path("created_at").asText("");
             }
-            String htmlUrl = root.path("html_url").asText("");
+            String htmlUrl = release.path("html_url").asText("");
+            populateReleaseMetadata(respDTO, release);
 
             if (latestVersion.isBlank()) {
                 log.warn("更新源返回了无法识别的版本号");
@@ -239,10 +255,86 @@ public class UpdateCheckService {
         copy.setUpdateContent(source.getUpdateContent());
         copy.setPublishedAt(source.getPublishedAt());
         copy.setDownloadUrl(source.getDownloadUrl());
+        copy.setAssetName(source.getAssetName());
+        copy.setAssetSize(source.getAssetSize());
+        copy.setPrerelease(source.getPrerelease());
+        copy.setMandatory(source.getMandatory());
+        copy.setSecurityFix(source.getSecurityFix());
+        copy.setReleaseChannel(source.getReleaseChannel());
         copy.setChannel(source.getChannel());
         copy.setCheckStatus(source.getCheckStatus());
         copy.setMessage(source.getMessage());
         return copy;
+    }
+
+    private void populateReleaseMetadata(VersionInfoRespDTO response, JsonNode release) {
+        JsonNode assets = release.path("assets");
+        JsonNode jar = null;
+        if (assets.isArray()) {
+            for (JsonNode asset : assets) {
+                String name = asset.path("name").asText("");
+                if (name.toLowerCase(Locale.ROOT).endsWith(".jar")
+                        && !name.toLowerCase(Locale.ROOT).endsWith(".jar.sha256")
+                        && !name.toLowerCase(Locale.ROOT).endsWith(".jar.sig")
+                        && (jar == null || asset.path("size").asLong(0) > jar.path("size").asLong(0))) {
+                    jar = asset;
+                }
+            }
+        }
+        if (jar != null) {
+            response.setAssetName(jar.path("name").asText(""));
+            response.setAssetSize(jar.path("size").asLong(0));
+        }
+        response.setPrerelease(release.path("prerelease").asBoolean(false));
+        String body = release.path("body").asText("");
+        response.setMandatory(hasReleaseMarker(body, "mandatory"));
+        response.setSecurityFix(hasReleaseMarker(body, "security-fix"));
+    }
+
+    private boolean hasReleaseMarker(String body, String marker) {
+        if (!hasText(body)) return false;
+        if (body.matches("(?is).*<!--\\s*" + Pattern.quote(marker) + "\\s*-->.*")) {
+            return true;
+        }
+        Pattern lineMarker = Pattern.compile("^\\s*\\[" + Pattern.quote(marker) + "\\]\\s*$",
+                Pattern.CASE_INSENSITIVE);
+        return body.lines().anyMatch(line -> lineMarker.matcher(line).matches());
+    }
+
+    private JsonNode selectRelease(JsonNode root) {
+        if (root == null) return null;
+        if (root.isObject()) {
+            return isReleaseCandidate(root) ? root : null;
+        }
+        if (!root.isArray()) return null;
+
+        JsonNode best = null;
+        String bestVersion = "";
+        String bestPublishedAt = "";
+        for (JsonNode candidate : root) {
+            if (!isReleaseCandidate(candidate)) continue;
+            String version = normalizeVersion(candidate.path("tag_name").asText(""));
+            String publishedAt = candidate.path("published_at").asText("");
+            if (!hasText(publishedAt)) publishedAt = candidate.path("created_at").asText("");
+            if (best == null || compareVersion(version, bestVersion) > 0
+                    || (compareVersion(version, bestVersion) == 0 && publishedAt.compareTo(bestPublishedAt) > 0)) {
+                best = candidate;
+                bestVersion = version;
+                bestPublishedAt = publishedAt;
+            }
+        }
+        return best;
+    }
+
+    private boolean isReleaseCandidate(JsonNode release) {
+        if (release == null || !release.isObject() || release.path("draft").asBoolean(false)) return false;
+        String version = normalizeVersion(release.path("tag_name").asText(""));
+        if (version.isBlank()) return false;
+        return switch (normalizeUpdateChannel()) {
+            case "beta" -> release.path("prerelease").asBoolean(false);
+            case "dev" -> true;
+            default -> !release.path("prerelease").asBoolean(false);
+        };
     }
 
     /** 下载入口：仅返回受信任的 GitHub Release 页面地址。 */
@@ -262,11 +354,11 @@ public class UpdateCheckService {
         if (hasText(updateApiUrl)) {
             String configured = updateApiUrl.trim();
             Matcher githubReleaseMatcher = GITHUB_RELEASE_URL.matcher(configured);
-            if (githubReleaseMatcher.matches()) return GITHUB_API_PREFIX + githubReleaseMatcher.group(1) + "/releases/latest";
+            if (githubReleaseMatcher.matches()) return githubReleaseApiUrl(githubReleaseMatcher.group(1));
             Matcher githubTagMatcher = GITHUB_TAG_URL.matcher(configured);
             if (githubTagMatcher.matches()) return GITHUB_API_PREFIX + githubTagMatcher.group(1) + "/releases/tags/" + githubTagMatcher.group(2);
             Matcher giteeReleaseMatcher = GITEE_RELEASE_URL.matcher(configured);
-            if (giteeReleaseMatcher.matches()) return GITEE_API_PREFIX + giteeReleaseMatcher.group(1) + "/releases/latest";
+            if (giteeReleaseMatcher.matches()) return giteeReleaseApiUrl(giteeReleaseMatcher.group(1));
             Matcher giteeTagMatcher = GITEE_TAG_URL.matcher(configured);
             if (giteeTagMatcher.matches()) return GITEE_API_PREFIX + giteeTagMatcher.group(1) + "/releases/tags/" + giteeTagMatcher.group(2);
             try {
@@ -279,9 +371,21 @@ public class UpdateCheckService {
             }
         }
         String repository = resolveRepositorySlug(updateGithubRepository);
-        if (hasText(repository)) return GITHUB_API_PREFIX + repository + "/releases/latest";
+        if (hasText(repository)) return githubReleaseApiUrl(repository);
         String giteeRepository = resolveGiteeRepositorySlug(updateGiteeRepository);
-        return hasText(giteeRepository) ? GITEE_API_PREFIX + giteeRepository + "/releases/latest" : "";
+        return hasText(giteeRepository) ? giteeReleaseApiUrl(giteeRepository) : "";
+    }
+
+    private String githubReleaseApiUrl(String repository) {
+        return isStableChannel()
+                ? GITHUB_API_PREFIX + repository + "/releases/latest"
+                : GITHUB_API_PREFIX + repository + "/releases?per_page=50";
+    }
+
+    private String giteeReleaseApiUrl(String repository) {
+        return isStableChannel()
+                ? GITEE_API_PREFIX + repository + "/releases/latest"
+                : GITEE_API_PREFIX + repository + "/releases?per_page=50";
     }
 
     /** 归一化 owner/repository 配置，仅接受 GitHub slug 或 github.com 地址。 */
@@ -301,7 +405,7 @@ public class UpdateCheckService {
             URI uri = URI.create(value);
             return "https".equalsIgnoreCase(uri.getScheme()) && uri.getUserInfo() == null
                     && "api.github.com".equals(normalizeHost(uri))
-                    && uri.getPath() != null && uri.getPath().matches("/repos/[^/\\s]+/[^/\\s]+/releases(?:/latest|/tags/[^/\\s]+)");
+                    && uri.getPath() != null && uri.getPath().matches("/repos/[^/\\s]+/[^/\\s]+/releases(?:/latest|/tags/[^/\\s]+)?");
         } catch (IllegalArgumentException e) {
             return false;
         }
@@ -312,7 +416,7 @@ public class UpdateCheckService {
             URI uri = URI.create(value);
             return "https".equalsIgnoreCase(uri.getScheme()) && uri.getUserInfo() == null
                     && "gitee.com".equals(normalizeHost(uri))
-                    && uri.getPath() != null && uri.getPath().matches("/api/v5/repos/[^/\\s]+/[^/\\s]+/releases(?:/latest|/tags/[^/\\s]+)");
+                    && uri.getPath() != null && uri.getPath().matches("/api/v5/repos/[^/\\s]+/[^/\\s]+/releases(?:/latest|/tags/[^/\\s]+)?");
         } catch (IllegalArgumentException e) {
             return false;
         }
@@ -389,6 +493,18 @@ public class UpdateCheckService {
         return value != null && !value.isBlank();
     }
 
+    private String normalizeUpdateChannel() {
+        String value = updateChannel == null ? "stable" : updateChannel.trim().toLowerCase(Locale.ROOT);
+        return switch (value) {
+            case "beta", "dev" -> value;
+            default -> "stable";
+        };
+    }
+
+    private boolean isStableChannel() {
+        return "stable".equals(normalizeUpdateChannel());
+    }
+
     /** GitHub Release API 前缀；自定义 api-url 仅允许同源 API 的 releases 路径。 */
     private static final String GITHUB_API_PREFIX = "https://api.github.com/repos/";
     private static final String GITEE_API_PREFIX = "https://gitee.com/api/v5/repos/";
@@ -404,35 +520,11 @@ public class UpdateCheckService {
     private static final Pattern GITEE_TAG_URL = Pattern.compile("https?://gitee\\.com/([^/\\s]+/[^/\\s]+)/releases/tag/([^/\\s?#]+)/*", Pattern.CASE_INSENSITIVE);
 
     private String normalizeVersion(String raw) {
-        if (!hasText(raw)) return "";
-        String value = raw.trim().replaceFirst("^[vV]\\.?", "");
-        Matcher matcher = Pattern.compile("^(\\d+(?:\\.\\d+){0,3})").matcher(value);
-        return matcher.find() ? matcher.group(1) : "";
+        return VersionUtils.normalize(raw);
     }
 
     private int compareVersion(String v1, String v2) {
-        String normalized1 = normalizeVersion(v1);
-        String normalized2 = normalizeVersion(v2);
-        if (normalized1.isBlank() || normalized2.isBlank()) return 0;
-        String[] parts1 = normalized1.split("\\.");
-        String[] parts2 = normalized2.split("\\.");
-        int maxLen = Math.max(parts1.length, parts2.length);
-        for (int i = 0; i < maxLen; i++) {
-            int num1 = i < parts1.length ? parseVersionPart(parts1[i]) : 0;
-            int num2 = i < parts2.length ? parseVersionPart(parts2[i]) : 0;
-            if (num1 != num2) {
-                return Integer.compare(num1, num2);
-            }
-        }
-        return 0;
-    }
-
-    private int parseVersionPart(String value) {
-        try {
-            return Integer.parseInt(value);
-        } catch (NumberFormatException ignored) {
-            return 0;
-        }
+        return VersionUtils.compare(v1, v2);
     }
 
     /** Cache identity excludes secrets by design; the key only carries non-sensitive config. */
@@ -440,7 +532,8 @@ public class UpdateCheckService {
             boolean enabled,
             String resolvedApiUrl,
             String currentVersion,
-            long cacheSeconds) {
+            long cacheSeconds,
+            String releaseChannel) {
     }
 
     private record UpdateCheckCacheEntry(

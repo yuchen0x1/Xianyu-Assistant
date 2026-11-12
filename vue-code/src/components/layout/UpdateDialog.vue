@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onUnmounted, ref } from 'vue'
-import { applySelfUpdate, checkUpdate, getSelfUpdateStatus, getSystemHealth, restartSelfUpdate } from '@/api/system'
+import { applySelfUpdate, cancelSelfUpdate, checkUpdate, getSelfUpdateStatus, getSystemHealth, restartSelfUpdate } from '@/api/system'
 import type { SelfUpdateStatus } from '@/api/system'
 import IconClose from '@/components/icons/IconClose.vue'
 import IconCheck from '@/components/icons/IconCheck.vue'
@@ -8,7 +8,7 @@ import IconSparkle from '@/components/icons/IconSparkle.vue'
 
 declare const __APP_VERSION__: string
 
-const appVersion = __APP_VERSION__ || '3.5.21'
+const appVersion = __APP_VERSION__ || '3.5.22'
 
 const visible = ref(false)
 const loading = ref(false)
@@ -22,6 +22,12 @@ const updateInfo = ref<{
   updateContent: string
   publishedAt: string
   downloadUrl: string
+  assetName?: string
+  assetSize?: number
+  prerelease?: boolean
+  mandatory?: boolean
+  securityFix?: boolean
+  releaseChannel?: 'stable' | 'beta' | 'dev' | string
   checkStatus?: 'disabled' | 'available' | 'unavailable' | string
   /** 更新通道：默认 GitHub，兼容旧后端的 gitee。 */
   channel?: 'github' | 'gitee' | string
@@ -40,6 +46,7 @@ const PHASE_DOWNLOADING = 'DOWNLOADING'
 const PHASE_VERIFYING = 'VERIFYING'
 const PHASE_SWAPPED = 'SWAPPED'
 const PHASE_FAILED = 'FAILED'
+const PHASE_CANCELLED = 'CANCELLED'
 
 const updatePhaseLabel = computed(() => {
   const phase = selfUpdate.value?.phase
@@ -47,10 +54,15 @@ const updatePhaseLabel = computed(() => {
     const total = selfUpdate.value?.totalBytes || 0
     const downloaded = selfUpdate.value?.downloadedBytes || 0
     const sizeText = total > 0 ? `（${formatSize(downloaded)} / ${formatSize(total)}）` : ''
-    return `正在下载新版本 ${selfUpdate.value?.percent || 0}%${sizeText}`
+    const speed = selfUpdate.value?.downloadSpeedBytesPerSecond || 0
+    const eta = selfUpdate.value?.estimatedSecondsRemaining || 0
+    const speedText = speed > 0 ? ` · ${formatSize(speed)}/秒` : ''
+    const etaText = eta > 0 ? ` · 预计 ${formatDuration(eta)}` : ''
+    return `正在下载新版本 ${selfUpdate.value?.percent || 0}%${sizeText}${speedText}${etaText}`
   }
   if (phase === PHASE_VERIFYING) return '正在校验安装包...'
   if (phase === PHASE_SWAPPED) return '新版本已就绪'
+  if (phase === PHASE_CANCELLED) return '在线更新已取消'
   if (phase === 'RESTARTING') return '服务正在重启...'
   return ''
 })
@@ -59,6 +71,12 @@ const formatSize = (bytes: number) => {
   if (bytes >= 1024 * 1024 * 1024) return (bytes / 1024 / 1024 / 1024).toFixed(2) + ' GB'
   if (bytes >= 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB'
   return Math.round(bytes / 1024) + ' KB'
+}
+
+const formatDuration = (seconds: number) => {
+  if (seconds >= 3600) return `${Math.floor(seconds / 3600)}小时${Math.floor((seconds % 3600) / 60)}分`
+  if (seconds >= 60) return `${Math.floor(seconds / 60)}分${seconds % 60}秒`
+  return `${seconds}秒`
 }
 
 const readMessage = (value: unknown) => typeof value === 'string' && value.trim() ? value.trim() : ''
@@ -160,10 +178,31 @@ const scheduleStatusPoll = () => {
       updating.value = false
       return
     }
+    if (phase === PHASE_CANCELLED) {
+      updateError.value = selfUpdate.value?.message || '在线更新已取消'
+      updating.value = false
+      return
+    }
     if (updating.value && visible.value) {
       scheduleStatusPoll()
     }
   }, 1000)
+}
+
+const cancelOnlineUpdate = async () => {
+  if (!updating.value || restarting.value) return
+  try {
+    const res = await cancelSelfUpdate()
+    if (!isSuccessfulResponse(res)) {
+      updateError.value = getResponseMessage(res) || '当前更新无法取消'
+      return
+    }
+    updateError.value = '正在取消在线更新...'
+    await loadSelfUpdateStatus()
+    updating.value = false
+  } catch (e) {
+    updateError.value = getErrorMessage(e, '取消在线更新失败，请稍后重试')
+  }
 }
 
 const triggerRestart = async () => {
@@ -278,7 +317,12 @@ const displayCurrentVersion = computed(() => updateInfo.value?.currentVersion ||
 // 下载/查看入口始终使用后端返回的 downloadUrl，这里仅用于展示来源。
 const updateChannelLabel = computed(() => {
   const channel = updateInfo.value?.channel
-  if (channel === 'github') return 'GitHub'
+  const releaseChannel = updateInfo.value?.releaseChannel
+  if (channel === 'github') {
+    if (releaseChannel === 'beta') return 'GitHub · Beta'
+    if (releaseChannel === 'dev') return 'GitHub · Dev'
+    return 'GitHub · 稳定版'
+  }
   if (channel === 'gitee') return 'Gitee'
   return ''
 })
@@ -309,6 +353,11 @@ const formattedDate = computed(() => {
   const d = new Date(updateInfo.value.publishedAt)
   if (Number.isNaN(d.getTime())) return ''
   return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')}`
+})
+
+const formattedAssetSize = computed(() => {
+  const size = updateInfo.value?.assetSize || 0
+  return size > 0 ? formatSize(size) : ''
 })
 
 // 更新源（Gitee Release body）是 Markdown 源码，弹窗按纯文本展示：
@@ -497,6 +546,10 @@ defineExpose({ open })
                 <span class="version-label">更新通道</span>
                 <span class="version-value">{{ updateChannelLabel }}</span>
               </div>
+              <div v-if="formattedAssetSize" class="version-item">
+                <span class="version-label">安装包</span>
+                <span class="version-value">{{ formattedAssetSize }}</span>
+              </div>
             </div>
 
             <!-- Status Badge -->
@@ -514,6 +567,11 @@ defineExpose({ open })
 
             <div v-if="sourceMessage" class="source-message" role="status">
               {{ sourceMessage }}
+            </div>
+
+            <div v-if="updateInfo.mandatory || updateInfo.securityFix" class="source-message" role="status">
+              <span v-if="updateInfo.mandatory">此版本需要尽快更新。</span>
+              <span v-if="updateInfo.securityFix">包含安全修复。</span>
             </div>
 
             <!-- Changelog -->
@@ -544,6 +602,9 @@ defineExpose({ open })
           <div v-if="!loading && updateInfo" class="modal-footer">
             <button v-if="updateDisplayState === 'warning'" class="btn btn-secondary" type="button" @click="retry">重新检查</button>
             <button class="btn btn-secondary" type="button" :disabled="updating" @click="close">关闭</button>
+            <button v-if="updating && !restarting" class="btn btn-secondary" type="button" @click="cancelOnlineUpdate">
+              取消更新
+            </button>
             <button
               v-if="canUpdateOnline"
               class="btn btn-primary"

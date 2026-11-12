@@ -80,7 +80,8 @@ public class SelfUpdateAutoScheduler {
         SelfUpdateService.Status status = selfUpdateService.getStatus();
         String phase = status == null ? null : status.phase();
         if (phase != null && !SelfUpdateService.PHASE_IDLE.equals(phase)
-                && !SelfUpdateService.PHASE_FAILED.equals(phase)) {
+                && !SelfUpdateService.PHASE_FAILED.equals(phase)
+                && !SelfUpdateService.PHASE_CANCELLED.equals(phase)) {
             log.info("自动更新跳过：已有更新流程进行中（阶段 {}）", phase);
             return null;
         }

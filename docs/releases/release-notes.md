@@ -1,5 +1,9 @@
 ### 2026-11-12
 
+- 发布 v3.5.22：接入稳定版、Beta 和 Dev 在线更新通道，增强下载重试、取消、空间检查、进度估算、SHA-256/Ed25519 校验和原子替换流程；GitHub Actions 增加发布前测试。完整说明见 [`CHANGELOG.md`](../../CHANGELOG.md) 与 [`docs/AUTO_UPDATE.md`](../AUTO_UPDATE.md)。
+
+### 2026-11-12
+
 - 发布 v3.5.21：修复数据面板账号范围过滤静默失效，补齐批量擦亮 / 下架 / 改价的数量上限、限流与超时保护；修复 Windows / macOS 浏览器探测、未知 API 404 与 Actuator SPA 回退；统一注册和改密口令策略，并将构建版本与时间接入 `/actuator/info`。完整说明见 [`RELEASE_NOTES_CN.md`](../../RELEASE_NOTES_CN.md) 与 [`CHANGELOG.md`](../../CHANGELOG.md)。
 
 ### 2026-11-08

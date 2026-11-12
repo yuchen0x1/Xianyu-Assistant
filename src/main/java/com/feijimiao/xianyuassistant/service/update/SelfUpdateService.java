@@ -36,6 +36,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -68,6 +69,7 @@ public class SelfUpdateService {
     public static final String PHASE_SWAPPED = "SWAPPED";
     public static final String PHASE_RESTARTING = "RESTARTING";
     public static final String PHASE_FAILED = "FAILED";
+    public static final String PHASE_CANCELLED = "CANCELLED";
 
     private static final String GITHUB_API_PREFIX = "https://api.github.com/repos/";
     private static final String GITHUB_API_ACCEPT = "application/vnd.github+json";
@@ -83,6 +85,8 @@ public class SelfUpdateService {
      */
     private static final Duration BODY_STALL_TIMEOUT = Duration.ofSeconds(60);
     private static final int MAX_REDIRECT_HOPS = 5;
+    private static final int MAX_DOWNLOAD_ATTEMPTS = 3;
+    private static final long MIN_FREE_SPACE_BYTES = 64L * 1024 * 1024;
 
     /** 官方发布渠道仓库标识：更新源为该仓库时强制发布物签名校验（auto 模式）。 */
     static final String OFFICIAL_UPDATE_SLUG = "yuchen0x1/Xianyu-Assistant";
@@ -95,7 +99,7 @@ public class SelfUpdateService {
     static final String OFFICIAL_RELEASE_PUBLIC_KEY =
             "MCowBQYDK2VwAyEAsstW68X2ZMRu5o2ZVHwBiV3m4YezlHuScQy3Jo/Lie4=";
 
-    @Value("${app.version:3.5.21}")
+    @Value("${app.version:3.5.22}")
     private String currentVersion;
 
     @Value("${app.self-update.enabled:true}")
@@ -148,6 +152,11 @@ public class SelfUpdateService {
     private final String unavailableReason;
 
     private volatile Status status = new Status(PHASE_IDLE, 0, 0, 0, null, null);
+    private final AtomicBoolean cancelRequested = new AtomicBoolean(false);
+    private volatile long downloadSpeedBytesPerSecond;
+    private volatile long estimatedSecondsRemaining;
+    private volatile long lastProgressAtNanos;
+    private volatile long lastProgressBytes;
 
     public SelfUpdateService() {
         String[] processArgs = ProcessHandle.current().info().arguments().orElse(new String[0]);
@@ -226,6 +235,14 @@ public class SelfUpdateService {
         return status;
     }
 
+    public long getDownloadSpeedBytesPerSecond() {
+        return downloadSpeedBytesPerSecond;
+    }
+
+    public long getEstimatedSecondsRemaining() {
+        return estimatedSecondsRemaining;
+    }
+
     // ============ 触发更新 ============
 
     /**
@@ -248,8 +265,23 @@ public class SelfUpdateService {
             log.warn("已有更新进行中（{}），忽略本次请求", phase);
             return false;
         }
+        cancelRequested.set(false);
+        downloadSpeedBytesPerSecond = 0;
+        estimatedSecondsRemaining = 0;
+        lastProgressAtNanos = System.nanoTime();
+        lastProgressBytes = 0;
         status = new Status(PHASE_DOWNLOADING, 0, 0, 0, targetVersion, null);
         worker.submit(() -> doUpdate(targetVersion));
+        return true;
+    }
+
+    /** 请求取消下载或校验；当前 JAR 和已发布的旧版本不会被修改。 */
+    public synchronized boolean cancel() {
+        String phase = status.phase();
+        if (!PHASE_DOWNLOADING.equals(phase) && !PHASE_VERIFYING.equals(phase)) {
+            return false;
+        }
+        cancelRequested.set(true);
         return true;
     }
 
@@ -527,7 +559,10 @@ public class SelfUpdateService {
     private void doUpdate(String targetVersion) {
         Path newJar = currentJarPath.resolveSibling(currentJarPath.getFileName() + ".new");
         try {
+            checkCancelled();
             ReleaseAssets assets = withProbedJarSizes(resolveAssets(targetVersion));
+            checkCancelled();
+            ensureDiskSpace(assets);
             status = withPhase(PHASE_DOWNLOADING);
             long downloaded;
             String actualDigest;
@@ -556,12 +591,22 @@ public class SelfUpdateService {
                 return;
             }
 
+            checkCancelled();
             verifyReleaseSignature(assets, newJar);
 
             swapJars(newJar);
             status = new Status(PHASE_SWAPPED, 100, downloaded, downloaded, targetVersion,
                     "新版本已就绪，可执行重启");
             log.info("新版本 JAR 替换完成: target={}", targetVersion);
+        } catch (UpdateCancelledException e) {
+            try {
+                Files.deleteIfExists(newJar);
+            } catch (Exception ignored) {
+                // 清理失败不影响取消状态上报
+            }
+            downloadSpeedBytesPerSecond = 0;
+            estimatedSecondsRemaining = 0;
+            status = new Status(PHASE_CANCELLED, 0, 0, 0, targetVersion, "在线更新已取消，当前版本未改动");
         } catch (Throwable e) {
             // 用 Throwable 收口：OutOfMemoryError 等 Error 若逃出本方法，线程会带任务消亡，
             // 状态机将永久停在 DOWNLOADING/VERIFYING，后续更新全部被"已有更新进行中"拒绝。
@@ -572,6 +617,25 @@ public class SelfUpdateService {
             }
             log.error("在线更新失败: target={}, errorType={}", targetVersion, e.getClass().getSimpleName());
             status = failed(safeUpdateFailureMessage(e));
+        }
+    }
+
+    private void ensureDiskSpace(ReleaseAssets assets) throws IOException {
+        long downloadBytes = assets.jar() != null
+                ? assets.jar().size()
+                : assets.jarSplitParts().stream().mapToLong(ReleaseAsset::size).sum();
+        if (downloadBytes <= 0 || currentJarPath == null) {
+            return;
+        }
+        Path parent = currentJarPath.toAbsolutePath().getParent();
+        if (parent == null) {
+            return;
+        }
+        long currentBytes = Files.exists(currentJarPath) ? Files.size(currentJarPath) : 0;
+        long required = Math.addExact(Math.addExact(downloadBytes, currentBytes), MIN_FREE_SPACE_BYTES);
+        long usable = Files.getFileStore(parent).getUsableSpace();
+        if (usable < required) {
+            throw new IOException("磁盘空间不足：至少需要 " + required + " 字节，可用 " + usable + " 字节");
         }
     }
 
@@ -899,6 +963,38 @@ public class SelfUpdateService {
 
     private DownloadResult downloadToFile(ReleaseAsset asset, Path target,
                                           long progressOffset, long progressTotal) throws Exception {
+        Exception last = null;
+        for (int attempt = 1; attempt <= MAX_DOWNLOAD_ATTEMPTS; attempt++) {
+            checkCancelled();
+            try {
+                return downloadToFileOnce(asset, target, progressOffset, progressTotal);
+            } catch (UpdateCancelledException | SecurityException e) {
+                throw e;
+            } catch (Exception e) {
+                last = e;
+                try {
+                    Files.deleteIfExists(target.resolveSibling(target.getFileName() + ".part"));
+                } catch (IOException ignored) {
+                    // 下一次尝试仍会以覆盖方式打开临时文件
+                }
+                if (attempt < MAX_DOWNLOAD_ATTEMPTS) {
+                    long backoff = Math.min(5000L, 500L * attempt);
+                    log.warn("下载失败，将在 {}ms 后重试（第 {}/{} 次）: {}",
+                            backoff, attempt + 1, MAX_DOWNLOAD_ATTEMPTS, e.getMessage());
+                    try {
+                        Thread.sleep(backoff);
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        throw interrupted;
+                    }
+                }
+            }
+        }
+        throw last == null ? new IOException("下载失败") : last;
+    }
+
+    private DownloadResult downloadToFileOnce(ReleaseAsset asset, Path target,
+                                          long progressOffset, long progressTotal) throws Exception {
         // 每次尝试使用全新摘要：镜像/资产 API 中途失败回退时，不能让部分字节
         // 混入下一次尝试的校验值（否则 SHA-256 必然失败，回退机制失效）。
         if (hasText(jarBaseUrl)) {
@@ -906,6 +1002,8 @@ public class SelfUpdateService {
             try {
                 return downloadUri(URI.create(mirrored), defaultHeaders(), target,
                         asset.size(), progressOffset, progressTotal);
+            } catch (UpdateCancelledException | SecurityException e) {
+                throw e;
             } catch (Exception e) {
                 log.warn("镜像地址下载失败，回退官方发布源: {}", e.getMessage());
             }
@@ -931,7 +1029,11 @@ public class SelfUpdateService {
             byte[] buffer = new byte[64 * 1024];
             try (var out = Files.newOutputStream(tmp)) {
                 int read;
-                while ((read = body.read(buffer)) >= 0) {
+                while ((read = body.read(buffer)) != -1) {
+                    checkCancelled();
+                    if (read == 0) {
+                        continue;
+                    }
                     out.write(buffer, 0, read);
                     digest.update(buffer, 0, read);
                     downloaded += read;
@@ -944,6 +1046,13 @@ public class SelfUpdateService {
             }
             Files.move(tmp, target, StandardCopyOption.REPLACE_EXISTING);
             return new DownloadResult(downloaded, String.format("%064x", new BigInteger(1, digest.digest())));
+        } catch (Exception e) {
+            try {
+                Files.deleteIfExists(target.resolveSibling(target.getFileName() + ".part"));
+            } catch (IOException ignored) {
+                // 上层重试/失败清理会再次尝试
+            }
+            throw e;
         }
     }
 
@@ -1020,12 +1129,36 @@ public class SelfUpdateService {
         if (!PHASE_DOWNLOADING.equals(current.phase())) {
             return;
         }
+        long now = System.nanoTime();
+        long previousAt = lastProgressAtNanos;
+        long previousBytes = lastProgressBytes;
+        if (previousAt > 0 && now > previousAt && downloaded >= previousBytes) {
+            long elapsedNanos = now - previousAt;
+            long deltaBytes = downloaded - previousBytes;
+            if (deltaBytes > 0) {
+                long instantSpeed = Math.max(1L, (long) (deltaBytes * 1_000_000_000d / elapsedNanos));
+                downloadSpeedBytesPerSecond = downloadSpeedBytesPerSecond <= 0
+                        ? instantSpeed
+                        : (downloadSpeedBytesPerSecond * 3 + instantSpeed) / 4;
+                estimatedSecondsRemaining = total > downloaded && downloadSpeedBytesPerSecond > 0
+                        ? (total - downloaded) / downloadSpeedBytesPerSecond
+                        : 0;
+            }
+        }
+        lastProgressAtNanos = now;
+        lastProgressBytes = downloaded;
         // 每 2MB 或整段结束时刷新一次状态，避免高频可见写
         if (downloaded - current.downloadedBytes() < 2L * 1024 * 1024 && (total <= 0 || downloaded < total)) {
             return;
         }
         int percent = total > 0 ? (int) Math.min(99, downloaded * 100 / total) : 0;
         status = new Status(PHASE_DOWNLOADING, percent, downloaded, total, current.targetVersion(), null);
+    }
+
+    private void checkCancelled() throws UpdateCancelledException {
+        if (cancelRequested.get() || Thread.currentThread().isInterrupted()) {
+            throw new UpdateCancelledException();
+        }
     }
 
     /**
@@ -1088,9 +1221,10 @@ public class SelfUpdateService {
     }
 
     private static boolean isTrustedDownloadHost(String host) {
-        return host.equals("github.com") || host.endsWith(".github.com")
+        return host.equals("github.com")
                 || host.equals("release-assets.githubusercontent.com")
-                || host.equals("githubusercontent.com") || host.endsWith(".githubusercontent.com");
+                || host.equals("objects.githubusercontent.com")
+                || host.equals("githubusercontent.com");
     }
 
     private static void requireAllowedApiUri(URI uri) {
@@ -1183,6 +1317,7 @@ public class SelfUpdateService {
             return "GitHub Release 访问被拒绝，请确认仓库权限或 Release 可见性";
         }
         if (detail.contains("HTTP 404")) return "GitHub Release 或发布资产不存在，请确认目标标签和资产已发布";
+        if (detail.contains("磁盘空间不足")) return "磁盘空间不足，在线更新未开始，请清理空间后重试";
         if (detail.contains("JAR 发布资产")) return "GitHub Release 未找到安装包资产，请确认已上传 JAR";
         if (detail.contains("签名") || detail.contains("验签")) return "GitHub Release 发布物签名校验失败，已拒绝更新";
         if (detail.contains("SHA-256") || detail.contains("校验")) return "GitHub Release 校验文件不可用，无法验证安装包完整性";
@@ -1217,5 +1352,11 @@ public class SelfUpdateService {
     /** 不可变状态快照。 */
     public record Status(String phase, int percent, long downloadedBytes, long totalBytes,
                          String targetVersion, String message) {
+    }
+
+    private static final class UpdateCancelledException extends IOException {
+        private UpdateCancelledException() {
+            super("在线更新已取消");
+        }
     }
 }

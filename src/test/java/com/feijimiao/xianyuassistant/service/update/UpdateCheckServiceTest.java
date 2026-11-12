@@ -70,6 +70,28 @@ class UpdateCheckServiceTest {
     }
 
     @Test
+    void betaChannelSelectsNewestPrereleaseAndKeepsPrereleaseSuffix() throws Exception {
+        HttpServer server = startServer(exchange -> sendJson(exchange, 200,
+                "[{\"tag_name\":\"v2.2.0\",\"prerelease\":false,\"published_at\":\"2026-07-18T00:00:00Z\",\"html_url\":\"https://github.com/example/app/releases/tag/v2.2.0\"},"
+                        + "{\"tag_name\":\"v2.3.0-beta.1\",\"prerelease\":true,\"published_at\":\"2026-07-19T00:00:00Z\",\"html_url\":\"https://github.com/example/app/releases/tag/v2.3.0-beta.1\"},"
+                        + "{\"tag_name\":\"v2.3.0-beta.2\",\"prerelease\":true,\"published_at\":\"2026-07-20T00:00:00Z\",\"html_url\":\"https://github.com/example/app/releases/tag/v2.3.0-beta.2\"}]"));
+        try {
+            UpdateCheckService service = configuredService(server, 0);
+            ReflectionTestUtils.setField(service, "currentVersion", "2.3.0-beta.1");
+            ReflectionTestUtils.setField(service, "updateChannel", "beta");
+
+            VersionInfoRespDTO result = service.checkUpdate();
+
+            assertThat(result.getLatestVersion()).isEqualTo("2.3.0-beta.2");
+            assertThat(result.getHasUpdate()).isTrue();
+            assertThat(result.getPrerelease()).isTrue();
+            assertThat(result.getReleaseChannel()).isEqualTo("beta");
+        } finally {
+            server.stop(0);
+        }
+    }
+
+    @Test
     void githubRepositorySettingBuildsGithubReleaseApiUrl() {
         UpdateCheckService service = new UpdateCheckService();
         ReflectionTestUtils.setField(service, "updateGithubRepository", "https://github.com/example/private-app");
@@ -77,6 +99,17 @@ class UpdateCheckServiceTest {
         String resolved = ReflectionTestUtils.invokeMethod(service, "resolveUpdateApiUrl");
 
         assertThat(resolved).isEqualTo("https://api.github.com/repos/example/private-app/releases/latest");
+    }
+
+    @Test
+    void devChannelUsesReleaseListApi() {
+        UpdateCheckService service = new UpdateCheckService();
+        ReflectionTestUtils.setField(service, "updateGithubRepository", "example/private-app");
+        ReflectionTestUtils.setField(service, "updateChannel", "dev");
+
+        String resolved = ReflectionTestUtils.invokeMethod(service, "resolveUpdateApiUrl");
+
+        assertThat(resolved).isEqualTo("https://api.github.com/repos/example/private-app/releases?per_page=50");
     }
 
     @Test

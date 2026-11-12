@@ -42,6 +42,12 @@ export function checkUpdate() {
     updateContent: string
     publishedAt: string
     downloadUrl: string
+    assetName?: string
+    assetSize?: number
+    prerelease?: boolean
+    mandatory?: boolean
+    securityFix?: boolean
+    releaseChannel?: 'stable' | 'beta' | 'dev' | string
     /** 服务端更新源状态（旧后端可能不返回）。 */
     checkStatus?: 'disabled' | 'available' | 'unavailable' | string
     /** 更新通道：默认 GitHub，兼容旧后端的 gitee。 */
@@ -57,11 +63,13 @@ export function checkUpdate() {
 export interface SelfUpdateStatus {
   available: boolean
   unavailableReason?: string
-  /** IDLE / DOWNLOADING / VERIFYING / SWAPPED / RESTARTING / FAILED */
+  /** IDLE / DOWNLOADING / VERIFYING / SWAPPED / RESTARTING / FAILED / CANCELLED */
   phase: string
   percent: number
   downloadedBytes: number
   totalBytes: number
+  downloadSpeedBytesPerSecond?: number
+  estimatedSecondsRemaining?: number
   targetVersion?: string
   message?: string
   canRestart: boolean
@@ -88,6 +96,14 @@ export function applySelfUpdate(targetVersion: string) {
 export function restartSelfUpdate() {
   return request<string>({
     url: '/system/selfUpdate/restart',
+    method: 'post'
+  })
+}
+
+/** 取消尚未完成的在线更新 */
+export function cancelSelfUpdate() {
+  return request<string>({
+    url: '/system/selfUpdate/cancel',
     method: 'post'
   })
 }

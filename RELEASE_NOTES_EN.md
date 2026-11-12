@@ -1,3 +1,21 @@
+# Xianyu Assistant (Xianyu Seller Console) v3.5.22
+
+> Release: 2026-11-12
+
+This release adds a verifiable online update pipeline with stable, beta, and dev channels.
+
+## ✨ Highlights
+
+- Online updates now support download retries, cancellation, disk-space preflight, real speed, and ETA reporting.
+- Downloads must pass SHA-256 and official Ed25519 signature verification before atomic replacement and restart.
+- The GitHub Release workflow runs backend tests, frontend tests, and TypeScript checks before publishing.
+- Added [`docs/AUTO_UPDATE.md`](docs/AUTO_UPDATE.md) with configuration, release, rollback, and external-validation guidance.
+
+## Verification
+
+- 690 backend tests passed, with 3 skipped.
+- 40 frontend tests passed; type-check and production build passed.
+
 # Xianyu Assistant (Xianyu Seller Console) v3.5.21
 
 > Release: 2026-11-12

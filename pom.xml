@@ -10,7 +10,7 @@
     </parent>
     <groupId>com.feijimiao</groupId>
     <artifactId>XianYuSellerConsole</artifactId>
-    <version>3.5.21</version>
+    <version>3.5.22</version>
     <name>XianYu Seller Console</name>
     <description>XianYu Seller Console - Local seller operations console</description>
     <url/>

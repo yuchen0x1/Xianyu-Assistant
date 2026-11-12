@@ -52,6 +52,12 @@ jobs:
             exit 1
           fi
 
+      - name: Run release preflight checks
+        shell: bash
+        run: |
+          ./mvnw --batch-mode --no-transfer-progress test
+          (cd vue-code && npm ci && npm test && npm run type-check)
+
       - name: Build and publish to GitHub Release
         env:
           GITHUB_TOKEN: ${{ github.token }}
