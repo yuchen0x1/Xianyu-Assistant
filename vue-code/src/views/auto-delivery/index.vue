@@ -39,6 +39,7 @@ const {
   deliveryRulesLoading,
   deliveryRulesSaving,
   deliveryRulePanelOpen,
+  deliveryTemplates,
   configForm,
   skuList,
   selectedSkuId,
@@ -453,6 +454,22 @@ onMounted(() => {
           </div>
 
           <!-- Top Tab Switch -->
+          <div class="ad__config-section ad__config-section--template-picker">
+            <div class="ad__config-section-title">多段发货模板</div>
+            <div class="ad__template-picker-row">
+              <select v-model="configForm.deliveryTemplateId" class="native-select">
+                <option :value="null">不使用模板（沿用下方单段配置）</option>
+                <option v-for="template in deliveryTemplates" :key="template.id" :value="template.id">
+                  {{ template.name }} · {{ template.messages?.length || 0 }} 段
+                </option>
+              </select>
+              <router-link class="ad__template-manage-link" to="/delivery-templates">管理发货模板</router-link>
+            </div>
+            <div v-if="configForm.deliveryTemplateId" class="ad__template-picker-hint">
+              已选择多段模板，保存后会按模板顺序逐段发送；下方旧内容仅作为未选择模板时的兼容配置。
+            </div>
+          </div>
+
           <div class="ad__config-section ad__config-section--no-pad-bottom">
             <div class="ad__tab-group">
               <button

@@ -12,6 +12,7 @@ export interface AutoDeliveryConfig {
   kamiConfigIds?: string;
   kamiDeliveryTemplate?: string;
   autoDeliveryImageUrl?: string;
+  deliveryTemplateId?: number | null;
   autoConfirmShipment?: number;
   createTime: string;
   updateTime: string;
@@ -28,6 +29,7 @@ export interface SaveAutoDeliveryConfigReq {
   kamiConfigIds?: string;
   kamiDeliveryTemplate?: string;
   autoDeliveryImageUrl?: string;
+  deliveryTemplateId?: number | null;
   autoConfirmShipment?: number;
 }
 

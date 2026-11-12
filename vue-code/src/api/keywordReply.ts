@@ -17,6 +17,12 @@ export interface KeywordReplyRule {
   contents: KeywordReplyContent[];
 }
 
+export const KEYWORD_MATCH_MODE = {
+  FUZZY: 1,
+  EXACT: 2,
+  REGEX: 3
+} as const;
+
 export function getKeywordReplyRules(data: { xianyuAccountId: number; xyGoodsId: string }) {
   return request<KeywordReplyRule[]>({ url: '/keyword-reply/rules', method: 'POST', data });
 }

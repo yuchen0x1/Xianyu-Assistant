@@ -5,7 +5,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/yuchen0x1/Xianyu-Assistant?display_name=tag&sort=semver)](https://github.com/yuchen0x1/Xianyu-Assistant/releases)
 
-当前版本：**v3.5.22** · [GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
+当前版本：**v3.5.23** · [GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
 
 ## 项目简介
 
@@ -24,6 +24,15 @@
 > **使用边界**：请仅用于你有权管理的账号和数据，并遵守闲鱼及相关第三方服务的用户协议、隐私政策和适用法律。本项目不鼓励绕过平台安全机制或实施滥发、欺诈等违规行为。
 
 ## 最新更新
+
+### v3.5.23（2026-11-12）
+
+- 新增有序多段自动发货模板：支持商品/SKU 绑定、订单/买家/卡密变量、WebSocket 顺序发送、断点恢复和卡密预占回滚。
+- 备份支持导入导出发货模板与模板消息；旧的单段自动发货配置继续兼容。
+- 自动回复支持多关键词，以及模糊、精确和正则匹配；同类资源检测支持强制刷新并纳入当前发布仓库基线。
+- 新增 `V3_27` 增量迁移，保留既有业务数据；后端 703 项测试、前端 40 项测试及类型检查、Lint、生产构建通过。
+
+完整说明见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`docs/releases/release-notes.md`](docs/releases/release-notes.md)。
 
 ### v3.5.22（2026-11-12）
 
@@ -48,7 +57,7 @@
 | --- | --- |
 | 后端 | Java 21、Spring Boot 3.5、MyBatis-Plus、SQLite、WebSocket、Playwright、OkHttp、JJWT、EasyExcel |
 | Web 前端 | Vue 3.5、TypeScript、Vite、Vitest |
-| 移动端 | Flutter 工程，当前版本 `3.5.22+3522` |
+| 移动端 | Flutter 工程，当前版本 `3.5.23+3523` |
 | AI | Spring AI，支持 OpenAI 兼容接口；默认配置指向 DashScope 兼容接口 |
 | 可观测性 | Spring Boot Actuator、Micrometer、Prometheus |
 | 部署 | 官方 Release JAR、源码构建 JAR、Docker、本机开发、systemd + Nginx |
@@ -141,11 +150,11 @@ bash install.sh
 
 安装脚本从 GitHub Release 获取最新 JAR，并校验 SHA-256 与官方 Ed25519 签名。默认安装目录为 `~/xianyu-seller-console`，端口可通过 `PORT` 环境变量覆盖。
 
-当前 v3.5.22 资产：
+当前 v3.5.23 资产：
 
-- [XianYuSellerConsole-3.5.22.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar)
-- [XianYuSellerConsole-3.5.22.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sha256)
-- [XianYuSellerConsole-3.5.22.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sig)
+- [XianYuSellerConsole-3.5.23.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar)
+- [XianYuSellerConsole-3.5.23.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sha256)
+- [XianYuSellerConsole-3.5.23.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sig)
 
 移动端目前随仓库提供 Flutter 源码，Release 不提供预构建 APK。
 
@@ -264,12 +273,14 @@ export XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false
 
 自动更新与手动在线更新共用更新状态机，同一时间只允许一个更新流程执行。完整配置见下方环境变量表和 `docs/production-deployment.md`。
 
-### 从 v3.5.21 升级
+### 从 v3.5.22 升级
 
 - 推荐使用应用内在线更新、自动更新或重新执行 `bash install.sh`。
 - 升级前备份 `dbdata/`，尤其是 SQLite 数据库、JWT 密钥和凭据密钥文件。
 - 使用默认 `exit` 模式时，确认 systemd / Docker / 守护循环具备自动重启能力。
-- v3.5.22 没有数据库迁移或破坏性配置变更；不需要自动更新时设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false`。
+- v3.5.23 会执行 `V3_27` 增量迁移，为有序多段自动发货模板增加表和配置字段；不会清空或覆盖既有业务数据。
+- 旧的单段自动发货配置继续可用；模板发货支持在后台按商品或 SKU 绑定后启用。
+- 不需要自动更新时设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false`。
 
 ## 配置参考
 

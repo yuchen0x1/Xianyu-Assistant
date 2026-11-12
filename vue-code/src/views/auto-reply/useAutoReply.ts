@@ -10,7 +10,7 @@ import { toast } from '@/utils/toast'
 import type { Account } from '@/types'
 import type { GoodsItemWithConfig } from '@/api/goods'
 import { getKeywordReplyRules, addKeywordRule, deleteKeywordRule, updateKeyword, addKeywordContent, deleteKeywordContent, updateKeywordContent, updateKeywordRuleMatchMode, ensureFallbackRule } from '@/api/keywordReply'
-import type { KeywordReplyRule, KeywordReplyContent } from '@/api/keywordReply'
+import { KEYWORD_MATCH_MODE, type KeywordReplyRule, type KeywordReplyContent } from '@/api/keywordReply'
 
 // 聊天消息类型
 export interface ChatMessage {
@@ -588,7 +588,7 @@ export function useAutoReply() {
       if (rule) {
         rule.matchMode = matchMode
       }
-      showSuccess('匹配模式修改成功')
+      showSuccess(matchMode === KEYWORD_MATCH_MODE.REGEX ? '正则匹配已启用（多个表达式用逗号分隔）' : '匹配模式修改成功')
     } catch (e) {
       showError((e as Error)?.message || '更新匹配模式失败')
     }

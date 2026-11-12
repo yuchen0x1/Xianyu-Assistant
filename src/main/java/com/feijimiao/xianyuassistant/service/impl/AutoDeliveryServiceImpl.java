@@ -4,6 +4,7 @@ import com.feijimiao.xianyuassistant.entity.XianyuGoodsAutoDeliveryConfig;
 import com.feijimiao.xianyuassistant.entity.XianyuGoodsOrder;
 import com.feijimiao.xianyuassistant.entity.XianyuGoodsAutoReplyRecord;
 import com.feijimiao.xianyuassistant.entity.XianyuGoodsConfig;
+import com.feijimiao.xianyuassistant.entity.DeliveryTemplate;
 import com.feijimiao.xianyuassistant.mapper.XianyuGoodsAutoDeliveryConfigMapper;
 import com.feijimiao.xianyuassistant.mapper.XianyuGoodsConfigMapper;
 import com.feijimiao.xianyuassistant.mapper.XianyuGoodsOrderMapper;
@@ -12,6 +13,7 @@ import com.feijimiao.xianyuassistant.service.ApiDeliveryResult;
 import com.feijimiao.xianyuassistant.service.AutoDeliveryService;
 import com.feijimiao.xianyuassistant.service.DeliveryBlockDecision;
 import com.feijimiao.xianyuassistant.service.DeliveryBlockRuleService;
+import com.feijimiao.xianyuassistant.service.DeliveryTemplateService;
 import com.feijimiao.xianyuassistant.service.EmailNotifyService;
 import com.feijimiao.xianyuassistant.service.MessageSendResult;
 import com.feijimiao.xianyuassistant.service.OrderService;
@@ -22,6 +24,7 @@ import com.feijimiao.xianyuassistant.service.delivery.DeliveryOrderLeaseManager;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryOrderState;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryReservation;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryStrategyResolver;
+import com.feijimiao.xianyuassistant.service.delivery.DeliveryTemplateRenderContext;
 import com.feijimiao.xianyuassistant.service.delivery.OrderDetailFetcher;
 import com.feijimiao.xianyuassistant.utils.HumanLikeDelayUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -83,6 +86,9 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
 
     @Autowired
     private DeliveryStrategyResolver deliveryStrategyResolver;
+
+    @Autowired
+    private DeliveryTemplateService deliveryTemplateService;
 
     @Autowired
     private DeliveryBlockRuleService deliveryBlockRuleService;
@@ -220,14 +226,27 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
             }
             
             XianyuGoodsAutoDeliveryConfig deliveryConfig = getAutoDeliveryConfig(accountId, xyGoodsId);
-            if (deliveryConfig == null || deliveryConfig.getAutoDeliveryContent() == null || 
-                    deliveryConfig.getAutoDeliveryContent().isEmpty()) {
+            if (deliveryConfig == null
+                    || (deliveryConfig.getDeliveryTemplateId() == null
+                    && (deliveryConfig.getAutoDeliveryContent() == null
+                    || deliveryConfig.getAutoDeliveryContent().isEmpty()))) {
                 log.warn("【账号{}】商品未配置自动发货内容: xyGoodsId={}", accountId, xyGoodsId);
                 recordAutoDelivery(accountId, xyGoodsId, buyerUserId, buyerUserName, null, 0, null, orderId);
                 return;
             }
             
-            String content = deliveryConfig.getAutoDeliveryContent();
+            // 这个兼容入口已经不是订单事件的主路径（主路径走 executeDelivery），
+            // 但仍可能被旧调用方触发。模板配置没有旧的单段 content 字段，不能在
+            // 这里直接调用 content.length()，否则仅绑定模板的商品会被误判为异常。
+            String content = resolveLegacyAutoDeliveryContent(
+                    accountId, xyGoodsId, orderId, buyerUserId, buyerUserName, deliveryConfig);
+            if (content == null || content.isBlank()) {
+                log.warn("【账号{}】商品未解析出自动发货内容: xyGoodsId={}, templateId={}",
+                        accountId, xyGoodsId, deliveryConfig.getDeliveryTemplateId());
+                recordAutoDelivery(accountId, xyGoodsId, buyerUserId, buyerUserName,
+                        null, 0, null, orderId);
+                return;
+            }
             log.info("【账号{}】准备发送自动发货消息: contentLength={}", accountId, content.length());
 
             HumanLikeDelayUtils.mediumDelay();
@@ -271,6 +290,49 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
             log.error("【账号{}】自动发货异常: xyGoodsId={}", accountId, xyGoodsId, e);
             recordAutoDelivery(accountId, xyGoodsId, buyerUserId, buyerUserName, null, 0, null, orderId);
         }
+    }
+
+    /**
+     * Resolve content for the legacy one-message entry point.
+     *
+     * <p>The order-aware {@link #executeDelivery} path is responsible for sending
+     * template segments as separate messages. This compatibility path has no
+     * order record/checkpoint, so it keeps the old single-send contract and joins
+     * rendered template segments with a newline. Most importantly, a template-only
+     * configuration must never fall through to {@code content.length()} with null.</p>
+     */
+    private String resolveLegacyAutoDeliveryContent(Long accountId, String xyGoodsId, String orderId,
+                                                    String buyerUserId, String buyerUserName,
+                                                    XianyuGoodsAutoDeliveryConfig deliveryConfig) {
+        String legacyContent = deliveryConfig.getAutoDeliveryContent();
+        Long templateId = deliveryConfig.getDeliveryTemplateId();
+        if (templateId == null) {
+            return legacyContent;
+        }
+
+        // 旧入口没有订单级卡密预占上下文，不能把空的 card_name 当成真实卡密
+        // 发送；卡密模板必须走 executeDelivery 主链路完成预占、确认和回滚。
+        if (deliveryConfig.getDeliveryMode() != null && deliveryConfig.getDeliveryMode() == 2) {
+            log.warn("【账号{}】旧版兼容入口不支持卡密多段模板，转交订单发货主流程: templateId={}, xyGoodsId={}",
+                    accountId, templateId, xyGoodsId);
+            return null;
+        }
+
+        DeliveryTemplate template = deliveryTemplateService.findByIdForAccount(accountId, templateId);
+        if (template == null) {
+            log.warn("【账号{}】兼容发货入口找不到绑定模板: templateId={}, xyGoodsId={}",
+                    accountId, templateId, xyGoodsId);
+            return null;
+        }
+
+        DeliveryTemplateRenderContext renderContext = DeliveryTemplateRenderContext.builder()
+                .orderId(orderId)
+                .itemId(xyGoodsId)
+                .buyerId(buyerUserId)
+                .buyerNick(buyerUserName)
+                .build();
+        List<String> messages = deliveryTemplateService.renderMessages(template, renderContext);
+        return messages == null || messages.isEmpty() ? null : joinContents(messages);
     }
     
     @Override
@@ -508,12 +570,36 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                 return;
             }
 
+            DeliveryTemplate deliveryTemplate = null;
+            if (deliveryConfig.getDeliveryTemplateId() != null) {
+                deliveryTemplate = deliveryTemplateService.findByIdForAccount(
+                        accountId, deliveryConfig.getDeliveryTemplateId());
+                if (deliveryTemplate == null) {
+                    String failReason = "绑定的多段发货模板不存在或已删除";
+                    updateRecordState(recordId, DeliveryOrderState.FAILED, null, failReason);
+                    log.warn("【账号{}】{}: templateId={}, xyGoodsId={}", accountId, failReason,
+                            deliveryConfig.getDeliveryTemplateId(), xyGoodsId);
+                    return;
+                }
+            }
+
             int deliveryMode = deliveryConfig.getDeliveryMode() != null ? deliveryConfig.getDeliveryMode() : 1;
             String cid = sId.replace("@goofish", "");
             String toId = cid;
             boolean wsConnected = webSocketService.isConnected(accountId);
+            String effectiveBuyerNick = orderDetail != null && orderDetail.buyerUserName != null
+                    ? orderDetail.buyerUserName : buyerUserName;
+            String itemTitle = orderDetail != null ? orderDetail.goodsTitle
+                    : (currentOrder != null ? currentOrder.getGoodsTitle() : null);
+            String deliveryCheckpoint = currentOrder != null ? currentOrder.getDeliveryPhase() : null;
             // 实时连接可用时走 WebSocket；断线时自动退回虚拟发货 API，并保留/回滚卡密资源。
-            StringBuilder allContent = new StringBuilder();
+            String previousTemplateContent = deliveryTemplate != null
+                    && deliveryCheckpoint != null
+                    && deliveryCheckpoint.startsWith("UNIT_")
+                    && currentOrder != null
+                    ? currentOrder.getContent() : null;
+            StringBuilder allContent = new StringBuilder(
+                    previousTemplateContent == null ? "" : previousTemplateContent);
 
             DeliveryContext ctx = DeliveryContext.builder()
                     .recordId(recordId)
@@ -521,7 +607,7 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                     .xyGoodsId(xyGoodsId)
                     .sId(sId)
                     .orderId(orderId)
-                    .buyerUserName(buyerUserName)
+                    .buyerUserName(effectiveBuyerNick)
                     .deliveryConfig(deliveryConfig)
                     .build();
 
@@ -530,13 +616,15 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                 // 自动发货 API 兜底：无论订单来自 WebSocket 事件还是手动触发，只要当前离线都会走这里。
                 List<DeliveryReservation> reservations = new ArrayList<>();
                 List<String> contents = new ArrayList<>();
-                int virtualUnitCount = deliveryMode == 2 ? buyNum : 1;
+                int virtualUnitCount = deliveryTemplate != null ? buyNum : (deliveryMode == 2 ? buyNum : 1);
                 try {
                     for (int i = 0; i < virtualUnitCount; i++) {
                         ctx.setActionId(buildDeliveryActionId(recordId, orderId, i));
                         ctx.setReservation(DeliveryReservation.none());
-                        String unitContent = deliveryStrategyResolver.resolve(deliveryMode, ctx);
-                        if (unitContent == null) {
+                        List<String> unitMessages = resolveUnitMessages(
+                                deliveryMode, deliveryTemplate, ctx, orderId, xyGoodsId, itemTitle,
+                                buyerUserId, effectiveBuyerNick);
+                        if (unitMessages.isEmpty()) {
                             currentReservation(ctx).rollback();
                             rollbackReservations(reservations);
                             String failMsg = buildResolveFailureMessage(deliveryMode);
@@ -545,7 +633,7 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                             emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, failMsg);
                             return;
                         }
-                        contents.add(unitContent);
+                        contents.addAll(unitMessages);
                         reservations.add(currentReservation(ctx));
                     }
                 } catch (Exception e) {
@@ -619,12 +707,21 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                 for (int i = 0; i < buyNum; i++) {
                     log.info("【账号{}】发货第{}/{}次: orderId={}", accountId, i + 1, buyNum, orderId);
 
+                    if (deliveryTemplate != null
+                            && isTemplateUnitCompleted(deliveryCheckpoint, i + 1, deliveryTemplate.getMessages().size())) {
+                        log.info("【账号{}】模板第{}件已完成，按检查点跳过重复发送: recordId={}",
+                                accountId, i + 1, recordId);
+                        continue;
+                    }
+
                     ctx.setActionId(buildDeliveryActionId(recordId, orderId, i));
                     ctx.setReservation(DeliveryReservation.none());
-                    String content = deliveryStrategyResolver.resolve(deliveryMode, ctx);
+                    List<String> unitMessages = resolveUnitMessages(
+                            deliveryMode, deliveryTemplate, ctx, orderId, xyGoodsId, itemTitle,
+                            buyerUserId, effectiveBuyerNick);
                     DeliveryReservation reservation = currentReservation(ctx);
 
-                    if (content == null) {
+                    if (unitMessages.isEmpty()) {
                         String failMsg = buildResolveFailureMessage(deliveryMode);
                         log.warn("【账号{}】发货内容解析失败: {}", accountId, failMsg);
                         updateRecordState(recordId, DeliveryOrderState.FAILED, allContent.toString(), failMsg);
@@ -632,62 +729,93 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                         return;
                     }
 
-                    if (needHumanLikeDelay) {
-                        if (i > 0) {
+                    boolean acknowledgedInUnit = false;
+                    for (int messageIndex = 0; messageIndex < unitMessages.size(); messageIndex++) {
+                        String content = unitMessages.get(messageIndex);
+                        int messageNumber = messageIndex + 1;
+                        if (deliveryTemplate != null
+                                && isTemplateMessageCompleted(deliveryCheckpoint, i + 1, messageNumber)) {
+                            log.info("【账号{}】模板第{}件第{}段已完成，跳过重复发送: recordId={}",
+                                    accountId, i + 1, messageNumber, recordId);
+                            acknowledgedInUnit = true;
+                            continue;
+                        }
+
+                        if (needHumanLikeDelay) {
+                            HumanLikeDelayUtils.mediumDelay();
                             HumanLikeDelayUtils.thinkingDelay();
+                            HumanLikeDelayUtils.typingDelay(content.length());
                         }
-                        HumanLikeDelayUtils.mediumDelay();
-                        HumanLikeDelayUtils.thinkingDelay();
-                        HumanLikeDelayUtils.typingDelay(content.length());
-                    }
 
-                    log.info("【账号{}】准备发送发货文本[{}/{}]: content长度={}, deliveryMode={}", accountId, i + 1, buyNum, content.length(), deliveryMode);
-                    MessageSendResult textResult;
-                    try {
-                        textResult = webSocketService.sendMessageWithOutcome(accountId, cid, toId, content);
-                    } catch (Exception e) {
-                        // 发送方法抛出异常时，消息可能已经写出到连接。判 FAILED 会立即回滚卡密，
-                        // 而买家可能已收到内容，因此按 UNKNOWN 处理（保留预占，走人工核对）。
-                        log.error("【账号{}】发货消息本地发送异常[{}/{}]，结果未知: errorType={}",
-                                accountId, i + 1, buyNum, e.getClass().getSimpleName());
-                        textResult = MessageSendResult.UNKNOWN;
-                    }
+                        String sendingPhase = templatePhase(i + 1, messageNumber, "SENDING");
+                        if (deliveryTemplate != null) {
+                            orderMapper.updateDeliveryPhase(recordId, sendingPhase);
+                        }
+                        log.info("【账号{}】准备发送发货文本[{}件/{}/{}段]: content长度={}, deliveryMode={}",
+                                accountId, i + 1, buyNum, messageNumber, content.length(), deliveryMode);
+                        MessageSendResult textResult;
+                        try {
+                            textResult = webSocketService.sendMessageWithOutcome(accountId, cid, toId, content);
+                        } catch (Exception e) {
+                            // 发送方法抛出异常时，消息可能已经写出到连接。判 UNKNOWN，保留资源并人工核对。
+                            log.error("【账号{}】发货消息本地发送异常[{}件/{}段]，结果未知: errorType={}",
+                                    accountId, i + 1, messageNumber, e.getClass().getSimpleName());
+                            textResult = MessageSendResult.UNKNOWN;
+                        }
 
-                    if (textResult == MessageSendResult.FAILED) {
-                        reservation.rollback();
-                        String failMsg = String.format("第%d/%d件消息发送失败", i + 1, buyNum);
-                        log.error("【账号{}】❌ 发货失败[{}/{}]: recordId={}", accountId, i + 1, buyNum, recordId);
-                        updateRecordState(recordId, DeliveryOrderState.FAILED, allContent.toString(), failMsg);
-                        emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, failMsg);
-                        notifyDeliveryFailure(accountId, xyGoodsId, orderId, failMsg);
-                        return;
-                    }
+                        if (textResult == MessageSendResult.FAILED) {
+                            if (deliveryMode == 2 && acknowledgedInUnit) {
+                                reservation.hold();
+                            } else {
+                                reservation.rollback();
+                            }
+                            if (deliveryTemplate != null) {
+                                orderMapper.updateDeliveryPhase(recordId, templatePhase(i + 1, messageNumber, "FAILED"));
+                            }
+                            String failMsg = deliveryTemplate != null
+                                    ? String.format("第%d件第%d段消息发送失败", i + 1, messageNumber)
+                                    : String.format("第%d/%d件消息发送失败", i + 1, buyNum);
+                            log.error("【账号{}】❌ 发货失败: recordId={}, phase={}", accountId, recordId, sendingPhase);
+                            updateRecordState(recordId, DeliveryOrderState.FAILED, allContent.toString(), failMsg);
+                            emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, failMsg);
+                            notifyDeliveryFailure(accountId, xyGoodsId, orderId, failMsg);
+                            return;
+                        }
 
-                    if (textResult == MessageSendResult.UNKNOWN) {
-                        // The socket write may have reached the buyer. Releasing the card
-                        // here could sell the same credential twice, but we also cannot claim
-                        // it was delivered. Freeze it as pending and let the sweeper resolve it.
-                        reservation.hold();
+                        if (textResult == MessageSendResult.UNKNOWN) {
+                            reservation.hold();
+                            appendContent(allContent, content);
+                            String unknownMsg = deliveryTemplate != null
+                                    ? buildTemplateUnknownSendMessage(i + 1, messageNumber, buyNum, deliveryMode)
+                                    : buildUnknownSendMessage(i + 1, buyNum, "消息", deliveryMode);
+                            if (deliveryTemplate != null) {
+                                orderMapper.updateDeliveryPhase(recordId, templatePhase(i + 1, messageNumber, "UNKNOWN"));
+                            }
+                            log.warn("【账号{}】发货结果未知[{}件/{}段]，停止后续发送: recordId={}",
+                                    accountId, i + 1, messageNumber, recordId);
+                            boolean manualReviewPersisted = updateRecordState(
+                                    recordId, DeliveryOrderState.PENDING, allContent.toString(), unknownMsg);
+                            if (!manualReviewPersisted) {
+                                alertManualReviewNotPersisted(accountId, recordId, orderId);
+                            }
+                            emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, unknownMsg);
+                            notifyDeliveryFailure(accountId, xyGoodsId, orderId, unknownMsg);
+                            return;
+                        }
+
+                        acknowledgedInUnit = true;
                         appendContent(allContent, content);
-                        String unknownMsg = buildUnknownSendMessage(i + 1, buyNum, "消息", deliveryMode);
-                        log.warn("【账号{}】发货结果未知[{}/{}]，停止后续发送: recordId={}",
-                                accountId, i + 1, buyNum, recordId);
-                        boolean manualReviewPersisted = updateRecordState(
-                                recordId, DeliveryOrderState.PENDING, allContent.toString(), unknownMsg);
-                        if (!manualReviewPersisted) {
-                            alertManualReviewNotPersisted(accountId, recordId, orderId);
+                        sentMessageSaveService.saveAiAssistantReply(accountId, cid, toId, content, xyGoodsId);
+                        if (deliveryTemplate != null) {
+                            deliveryCheckpoint = templatePhase(i + 1, messageNumber, "DONE");
+                            orderMapper.updateDeliveryPhase(recordId, deliveryCheckpoint);
                         }
-                        emailNotifyService.sendAutoDeliveryFailEmail(null, xyGoodsId, orderId, unknownMsg);
-                        notifyDeliveryFailure(accountId, xyGoodsId, orderId, unknownMsg);
-                        return;
                     }
 
-                    // The server acknowledged delivery. From this point the card must not
-                    // be returned to stock even if a later image or unit fails.
+                    // 全部模板段已被服务端确认后再提交卡密预占。
                     reservation.commit();
-                    appendContent(allContent, content);
-                    log.info("【账号{}】✅ 发货成功[{}/{}]: recordId={}, deliveryMode={}", accountId, i + 1, buyNum, recordId, deliveryMode);
-                    sentMessageSaveService.saveAiAssistantReply(accountId, cid, toId, content, xyGoodsId);
+                    log.info("【账号{}】✅ 发货成功[{}件/{}段]: recordId={}, deliveryMode={}",
+                            accountId, i + 1, unitMessages.size(), recordId, deliveryMode);
 
                     if (needHumanLikeDelay) {
                         HumanLikeDelayUtils.thinkingDelay();
@@ -816,6 +944,47 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
         return MessageSendResult.SUCCESS;
     }
 
+    /**
+     * 解析一个购买单位的发货消息。
+     *
+     * <p>旧配置仍返回单条消息；多段模板按模板顺序返回多条消息。卡密模式先完成
+     * 卡密预占，再把卡密内容作为 {@code card_name} 变量交给模板渲染。</p>
+     */
+    private List<String> resolveUnitMessages(int deliveryMode,
+                                             DeliveryTemplate template,
+                                             DeliveryContext context,
+                                             String orderId,
+                                             String itemId,
+                                             String itemTitle,
+                                             String buyerId,
+                                             String buyerNick) {
+        if (template == null) {
+            String content = deliveryStrategyResolver.resolve(deliveryMode, context);
+            return content == null ? List.of() : List.of(content);
+        }
+
+        String cardContent = null;
+        if (deliveryMode == 1) {
+            // 模板本身就是文本来源，不要求旧的单段内容字段也填写。
+            context.setReservation(DeliveryReservation.none());
+        } else {
+            cardContent = deliveryStrategyResolver.resolve(deliveryMode, context);
+            if (cardContent == null) {
+                return List.of();
+            }
+        }
+
+        DeliveryTemplateRenderContext renderContext = DeliveryTemplateRenderContext.builder()
+                .orderId(orderId)
+                .itemId(itemId)
+                .itemTitle(itemTitle)
+                .buyerId(buyerId)
+                .buyerNick(buyerNick)
+                .cardName(cardContent)
+                .build();
+        return deliveryTemplateService.renderMessages(template, renderContext);
+    }
+
     private void appendContent(StringBuilder allContent, String content) {
         if (allContent.length() > 0) {
             allContent.append("\n");
@@ -829,6 +998,60 @@ public class AutoDeliveryServiceImpl implements AutoDeliveryService {
                         + "（10秒未收到服务端响应），请人工核对",
                 unitNumber, buyNum, payloadType);
         return deliveryMode == 2 ? message + "；卡密已保留预占" : message;
+    }
+
+    private String buildTemplateUnknownSendMessage(int unitNumber, int messageNumber,
+                                                   int buyNum, int deliveryMode) {
+        String message = String.format(
+                "第%d/%d件第%d段消息发送" + DeliveryOrderState.MANUAL_REVIEW_MARKER
+                        + "（10秒未收到服务端响应），请人工核对",
+                unitNumber, buyNum, messageNumber);
+        return deliveryMode == 2 ? message + "；卡密已保留预占" : message;
+    }
+
+    private String templatePhase(int unitNumber, int messageNumber, String status) {
+        return String.format("UNIT_%d_MESSAGE_%d_%s", unitNumber, messageNumber, status);
+    }
+
+    /**
+     * 只有服务端确认完成的最后一段，才能把整件商品视为完成；SENDING/FAILED/UNKNOWN
+     * 只代表它之前的段已确认，当前段必须重试或人工核对。
+     */
+    private boolean isTemplateUnitCompleted(String phase, int unitNumber, int messageCount) {
+        int[] checkpoint = parseTemplatePhase(phase);
+        return checkpoint[0] == unitNumber
+                && checkpoint[2] == 1
+                && checkpoint[1] >= messageCount;
+    }
+
+    private boolean isTemplateMessageCompleted(String phase, int unitNumber, int messageNumber) {
+        int[] checkpoint = parseTemplatePhase(phase);
+        if (checkpoint[0] != unitNumber) {
+            return checkpoint[0] > unitNumber;
+        }
+        if (checkpoint[2] == 1) {
+            return checkpoint[1] >= messageNumber;
+        }
+        return checkpoint[1] > messageNumber;
+    }
+
+    /** 返回 [unit, message, doneStatus]；无法解析时为 [-1, -1, 0]。 */
+    private int[] parseTemplatePhase(String phase) {
+        if (phase == null || phase.isBlank()) {
+            return new int[]{-1, -1, 0};
+        }
+        String[] parts = phase.split("_");
+        if (parts.length != 5 || !"UNIT".equals(parts[0]) || !"MESSAGE".equals(parts[2])) {
+            return new int[]{-1, -1, 0};
+        }
+        try {
+            int unit = Integer.parseInt(parts[1]);
+            int message = Integer.parseInt(parts[3]);
+            int done = "DONE".equals(parts[4]) ? 1 : 0;
+            return unit > 0 && message > 0 ? new int[]{unit, message, done} : new int[]{-1, -1, 0};
+        } catch (NumberFormatException ignored) {
+            return new int[]{-1, -1, 0};
+        }
     }
 
     private String buildDeliveryActionId(Long recordId, String orderId, int unitIndex) {

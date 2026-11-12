@@ -7,7 +7,7 @@ server:
 info:
   app:
     name: ${spring.application.name}
-    version: ${app.version:3.5.22}
+    version: ${app.version:3.5.23}
     description: "XianYu Seller Console"
 
 management:

@@ -5,6 +5,8 @@ import com.feijimiao.xianyuassistant.entity.XianyuGoodsConfig;
 import com.feijimiao.xianyuassistant.entity.XianyuGoodsOrder;
 import com.feijimiao.xianyuassistant.entity.XianyuKamiItem;
 import com.feijimiao.xianyuassistant.entity.XianyuKamiUsageRecord;
+import com.feijimiao.xianyuassistant.entity.DeliveryTemplate;
+import com.feijimiao.xianyuassistant.entity.DeliveryTemplateMessage;
 import com.feijimiao.xianyuassistant.mapper.XianyuGoodsAutoDeliveryConfigMapper;
 import com.feijimiao.xianyuassistant.mapper.XianyuGoodsAutoReplyRecordMapper;
 import com.feijimiao.xianyuassistant.mapper.XianyuGoodsConfigMapper;
@@ -19,14 +21,17 @@ import com.feijimiao.xianyuassistant.service.KamiConfigService;
 import com.feijimiao.xianyuassistant.service.MessageSendResult;
 import com.feijimiao.xianyuassistant.service.OrderService;
 import com.feijimiao.xianyuassistant.service.SentMessageSaveService;
+import com.feijimiao.xianyuassistant.service.DeliveryTemplateService;
 import com.feijimiao.xianyuassistant.service.WebSocketService;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryContext;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryOrderLease;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryOrderLeaseManager;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryOrderState;
 import com.feijimiao.xianyuassistant.service.delivery.DeliveryStrategyResolver;
+import com.feijimiao.xianyuassistant.service.delivery.DeliveryTemplateRenderContext;
 import com.feijimiao.xianyuassistant.service.delivery.KamiDeliveryStrategy;
 import com.feijimiao.xianyuassistant.service.delivery.OrderDetailFetcher;
+import com.feijimiao.xianyuassistant.webhook.service.WebhookService;
 import com.feijimiao.xianyuassistant.utils.HumanLikeDelayUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -96,6 +101,10 @@ class AutoDeliveryServiceImplTest {
     private XianyuKamiUsageRecordMapper kamiUsageRecordMapper;
     @Mock
     private AlertService alertService;
+    @Mock
+    private DeliveryTemplateService deliveryTemplateService;
+    @Mock
+    private WebhookService webhookService;
 
     private AutoDeliveryServiceImpl service;
 
@@ -117,6 +126,8 @@ class AutoDeliveryServiceImplTest {
         ReflectionTestUtils.setField(service, "deliveryStrategyResolver", deliveryStrategyResolver);
         ReflectionTestUtils.setField(service, "deliveryBlockRuleService", deliveryBlockRuleService);
         ReflectionTestUtils.setField(service, "alertService", alertService);
+        ReflectionTestUtils.setField(service, "deliveryTemplateService", deliveryTemplateService);
+        ReflectionTestUtils.setField(service, "webhookService", webhookService);
         lenient().when(deliveryBlockRuleService.evaluate(anyLong(), any(), any(), any()))
                 .thenReturn(DeliveryBlockDecision.allow());
         lenient().when(orderMapper.updateStateContentAndFailReason(anyLong(), anyInt(), any(), any()))
@@ -285,6 +296,118 @@ class AutoDeliveryServiceImplTest {
                 RECORD_ID, 1, "first-content\nsecond-content", null);
         verify(webSocketService, atLeastOnce()).sendImageMessageWithOutcome(
                 ACCOUNT_ID, "buyer-55", "buyer-55", "https://local.invalid/required.png", 800, 800);
+    }
+
+    @Test
+    void templateMessagesAreRenderedAndSentInConfiguredOrder() {
+        XianyuGoodsAutoDeliveryConfig config = deliveryConfig(1);
+        config.setDeliveryTemplateId(99L);
+        arrangeOrder(config, 1);
+
+        XianyuGoodsOrder currentOrder = new XianyuGoodsOrder();
+        currentOrder.setBuyerUserId("buyer-55");
+        currentOrder.setGoodsTitle("商品标题");
+        when(orderMapper.selectByAccountIdAndOrderId(ACCOUNT_ID, ORDER_ID)).thenReturn(currentOrder);
+
+        DeliveryTemplate template = template(99L, 2);
+        when(deliveryTemplateService.findByIdForAccount(ACCOUNT_ID, 99L)).thenReturn(template);
+        when(deliveryTemplateService.renderMessages(eq(template), any(DeliveryTemplateRenderContext.class)))
+                .thenAnswer(invocation -> {
+                    DeliveryTemplateRenderContext context = invocation.getArgument(1);
+                    return List.of(
+                            "订单=" + context.getOrderId(),
+                            "买家=" + context.getBuyerNick());
+                });
+        when(webSocketService.sendMessageWithOutcome(
+                ACCOUNT_ID, "buyer-55", "buyer-55", "订单=order-44"))
+                .thenReturn(MessageSendResult.SUCCESS);
+        when(webSocketService.sendMessageWithOutcome(
+                ACCOUNT_ID, "buyer-55", "buyer-55", "买家=buyer"))
+                .thenReturn(MessageSendResult.SUCCESS);
+
+        service.executeDelivery(RECORD_ID, ACCOUNT_ID, GOODS_ID, SID, ORDER_ID, "buyer", false);
+
+        InOrder inOrder = inOrder(webSocketService);
+        inOrder.verify(webSocketService).sendMessageWithOutcome(
+                ACCOUNT_ID, "buyer-55", "buyer-55", "订单=order-44");
+        inOrder.verify(webSocketService).sendMessageWithOutcome(
+                ACCOUNT_ID, "buyer-55", "buyer-55", "买家=buyer");
+        verify(orderMapper).updateDeliveryPhase(RECORD_ID, "UNIT_1_MESSAGE_1_DONE");
+        verify(orderMapper).updateDeliveryPhase(RECORD_ID, "UNIT_1_MESSAGE_2_DONE");
+        verify(orderMapper).updateStateContentAndFailReason(
+                RECORD_ID, DeliveryOrderState.DELIVERED, "订单=order-44\n买家=buyer", null);
+    }
+
+    @Test
+    void completedTemplateMessageIsSkippedAndRetryContinuesWithRemainingSegment() {
+        XianyuGoodsAutoDeliveryConfig config = deliveryConfig(1);
+        config.setDeliveryTemplateId(99L);
+        arrangeOrder(config, 1);
+
+        XianyuGoodsOrder currentOrder = new XianyuGoodsOrder();
+        currentOrder.setBuyerUserId("buyer-55");
+        currentOrder.setContent("first");
+        currentOrder.setDeliveryPhase("UNIT_1_MESSAGE_1_DONE");
+        when(orderMapper.selectByAccountIdAndOrderId(ACCOUNT_ID, ORDER_ID)).thenReturn(currentOrder);
+
+        DeliveryTemplate template = template(99L, 2);
+        when(deliveryTemplateService.findByIdForAccount(ACCOUNT_ID, 99L)).thenReturn(template);
+        when(deliveryTemplateService.renderMessages(eq(template), any(DeliveryTemplateRenderContext.class)))
+                .thenReturn(List.of("first", "second"));
+        when(webSocketService.sendMessageWithOutcome(
+                ACCOUNT_ID, "buyer-55", "buyer-55", "second"))
+                .thenReturn(MessageSendResult.SUCCESS);
+
+        service.executeDelivery(RECORD_ID, ACCOUNT_ID, GOODS_ID, SID, ORDER_ID, "buyer", false);
+
+        verify(webSocketService, never()).sendMessageWithOutcome(
+                ACCOUNT_ID, "buyer-55", "buyer-55", "first");
+        verify(webSocketService).sendMessageWithOutcome(
+                ACCOUNT_ID, "buyer-55", "buyer-55", "second");
+        verify(orderMapper).updateDeliveryPhase(RECORD_ID, "UNIT_1_MESSAGE_2_DONE");
+        verify(orderMapper).updateStateContentAndFailReason(
+                RECORD_ID, DeliveryOrderState.DELIVERED, "first\nsecond", null);
+    }
+
+    @Test
+    void failedLaterTemplateSegmentHoldsCardReservationAfterEarlierSegmentWasAcknowledged() {
+        XianyuGoodsAutoDeliveryConfig config = deliveryConfig(2);
+        config.setDeliveryTemplateId(99L);
+        config.setKamiConfigIds("66");
+        arrangeOrder(config, 1);
+
+        XianyuGoodsOrder currentOrder = new XianyuGoodsOrder();
+        currentOrder.setBuyerUserId("buyer-55");
+        when(orderMapper.selectByAccountIdAndOrderId(ACCOUNT_ID, ORDER_ID)).thenReturn(currentOrder);
+
+        DeliveryTemplate template = template(99L, 2);
+        when(deliveryTemplateService.findByIdForAccount(ACCOUNT_ID, 99L)).thenReturn(template);
+        when(deliveryTemplateService.renderMessages(eq(template), any(DeliveryTemplateRenderContext.class)))
+                .thenAnswer(invocation -> {
+                    DeliveryTemplateRenderContext context = invocation.getArgument(1);
+                    return List.of("first:" + context.getCardName(), "second:" + context.getCardName());
+                });
+
+        XianyuKamiItem item = new XianyuKamiItem();
+        item.setId(77L);
+        item.setKamiConfigId(66L);
+        item.setKamiContent("secret-code");
+        when(kamiConfigService.acquireKami(eq(66L), any())).thenReturn(item);
+        when(kamiUsageRecordMapper.insert(any(XianyuKamiUsageRecord.class))).thenReturn(1);
+        installKamiStrategy();
+        when(webSocketService.sendMessageWithOutcome(
+                ACCOUNT_ID, "buyer-55", "buyer-55", "first:secret-code"))
+                .thenReturn(MessageSendResult.SUCCESS);
+        when(webSocketService.sendMessageWithOutcome(
+                ACCOUNT_ID, "buyer-55", "buyer-55", "second:secret-code"))
+                .thenReturn(MessageSendResult.FAILED);
+
+        service.executeDelivery(RECORD_ID, ACCOUNT_ID, GOODS_ID, SID, ORDER_ID, "buyer", false);
+
+        verify(kamiConfigService, never()).releaseKamiReservation(anyLong(), any(), any());
+        verify(orderMapper).updateDeliveryPhase(RECORD_ID, "UNIT_1_MESSAGE_2_FAILED");
+        verify(orderMapper).updateStateContentAndFailReason(
+                RECORD_ID, DeliveryOrderState.FAILED, "first:secret-code", "第1件第2段消息发送失败");
     }
 
     @Test
@@ -578,5 +701,20 @@ class AutoDeliveryServiceImplTest {
         config.setDeliveryMode(mode);
         config.setAutoConfirmShipment(0);
         return config;
+    }
+
+    private DeliveryTemplate template(Long id, int messageCount) {
+        DeliveryTemplate template = new DeliveryTemplate();
+        template.setId(id);
+        for (int i = 1; i <= messageCount; i++) {
+            DeliveryTemplateMessage message = new DeliveryTemplateMessage();
+            message.setId((long) i);
+            message.setTemplateId(id);
+            message.setSortOrder(i);
+            message.setMessageType("TEXT");
+            message.setContent("message-" + i);
+            template.getMessages().add(message);
+        }
+        return template;
     }
 }

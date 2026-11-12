@@ -42,7 +42,8 @@ const checkUpdates = async () => {
   try {
     const res = await request<SimilarProject[]>({
       url: '/similar-projects/check',
-      method: 'GET'
+      method: 'GET',
+      params: { force: true }
     })
     if (res.code === 200 && res.data) {
       projects.value = res.data

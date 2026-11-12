@@ -52,6 +52,9 @@ public class AutoDeliveryConfigReqDTO {
      * 自动发货图片URL
      */
     private String autoDeliveryImageUrl;
+
+    /** 有序多段发货模板ID；为空时使用旧单段配置 */
+    private Long deliveryTemplateId;
     
     /**
      * 自动确认发货开关：0-关闭，1-开启

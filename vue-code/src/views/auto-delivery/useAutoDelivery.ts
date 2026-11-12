@@ -40,6 +40,7 @@ import {
   saveDeliveryBlockRules,
   type DeliveryBlockRule
 } from '@/api/delivery-block-rule'
+import { listDeliveryTemplates, type DeliveryTemplate } from '@/api/delivery-template'
 
 const copyToClipboard = (text: string) => {
   navigator.clipboard.writeText(text).then(() => {
@@ -76,6 +77,7 @@ export function useAutoDelivery() {
   const deliveryRulesLoading = ref(false)
   const deliveryRulesSaving = ref(false)
   const deliveryRulePanelOpen = ref(false)
+  const deliveryTemplates = ref<DeliveryTemplate[]>([])
 
   const skuList = ref<GoodsSku[]>([])
   const selectedSkuId = ref<string | null>(null)
@@ -96,6 +98,7 @@ export function useAutoDelivery() {
     kamiConfigIds: '',
     kamiDeliveryTemplate: '',
     autoDeliveryImageUrl: '',
+    deliveryTemplateId: null as number | null,
     autoConfirmShipment: 0
   })
 
@@ -539,6 +542,7 @@ export function useAutoDelivery() {
     await loadConfig()
     await loadDeliveryRecords()
     await loadKamiConfigOptions()
+    await loadDeliveryTemplates()
 
     if (isMobile.value) { mobileView.value = 'config' }
   }
@@ -556,6 +560,22 @@ export function useAutoDelivery() {
         kamiConfigOptions.value = res.data || []
       }
     } catch {}
+  }
+
+  const loadDeliveryTemplates = async () => {
+    if (!selectedAccountId.value) {
+      deliveryTemplates.value = []
+      return
+    }
+    try {
+      const response = await listDeliveryTemplates(selectedAccountId.value)
+      if (response.code === 0 || response.code === 200) {
+        deliveryTemplates.value = response.data || []
+      }
+    } catch (error) {
+      console.error('加载发货模板失败:', error)
+      deliveryTemplates.value = []
+    }
   }
 
   const loadConfig = async () => {
@@ -591,6 +611,7 @@ export function useAutoDelivery() {
           configForm.value.kamiConfigIds = response.data.kamiConfigIds || ''
           configForm.value.kamiDeliveryTemplate = response.data.kamiDeliveryTemplate || ''
           configForm.value.autoDeliveryImageUrl = response.data.autoDeliveryImageUrl || ''
+          configForm.value.deliveryTemplateId = response.data.deliveryTemplateId ?? null
           if (response.data.autoConfirmShipment != null) {
             configForm.value.autoConfirmShipment = response.data.autoConfirmShipment
           }
@@ -600,6 +621,7 @@ export function useAutoDelivery() {
           configForm.value.kamiConfigIds = ''
           configForm.value.kamiDeliveryTemplate = ''
           configForm.value.autoDeliveryImageUrl = ''
+          configForm.value.deliveryTemplateId = null
         }
       } else {
         throw new Error(response.msg || '获取配置失败')
@@ -616,11 +638,11 @@ export function useAutoDelivery() {
       return
     }
 
-    if (configForm.value.deliveryMode === 1 && !configForm.value.autoDeliveryContent.trim()) {
+    if (configForm.value.deliveryMode === 1 && !configForm.value.deliveryTemplateId && !configForm.value.autoDeliveryContent.trim()) {
       showInfo('请输入自动发货内容')
       return
     }
-    if (configForm.value.deliveryMode === 2 && !configForm.value.kamiConfigIds) {
+    if (configForm.value.deliveryMode === 2 && !configForm.value.deliveryTemplateId && !configForm.value.kamiConfigIds) {
       showInfo('请绑定卡密配置')
       return
     }
@@ -642,6 +664,7 @@ export function useAutoDelivery() {
         kamiConfigIds: configForm.value.kamiConfigIds,
         kamiDeliveryTemplate: configForm.value.kamiDeliveryTemplate.trim(),
         autoDeliveryImageUrl: configForm.value.autoDeliveryImageUrl.trim(),
+        deliveryTemplateId: configForm.value.deliveryTemplateId,
         autoConfirmShipment: configForm.value.autoConfirmShipment
       }
 
@@ -999,11 +1022,11 @@ export function useAutoDelivery() {
       showWsDisconnectedTip()
       return
     }
-    if (configForm.value.deliveryMode === 1 && (!configForm.value.autoDeliveryContent || !configForm.value.autoDeliveryContent.trim())) {
+    if (configForm.value.deliveryMode === 1 && !configForm.value.deliveryTemplateId && (!configForm.value.autoDeliveryContent || !configForm.value.autoDeliveryContent.trim())) {
       showError('请配置发货内容！')
       return
     }
-    if (configForm.value.deliveryMode === 2 && !configForm.value.kamiConfigIds) {
+    if (configForm.value.deliveryMode === 2 && !configForm.value.deliveryTemplateId && !configForm.value.kamiConfigIds) {
       showError('请绑定卡密配置！')
       return
     }
@@ -1090,6 +1113,7 @@ export function useAutoDelivery() {
     deliveryRulesLoading,
     deliveryRulesSaving,
     deliveryRulePanelOpen,
+    deliveryTemplates,
     configForm,
     skuList,
     selectedSkuId,
@@ -1131,6 +1155,7 @@ export function useAutoDelivery() {
     openDeliveryRulePanel,
     closeDeliveryRulePanel,
     saveDeliveryRules,
+    loadDeliveryTemplates,
     toggleRuleExcludedItem,
     loadGoods,
     handleAccountChange,

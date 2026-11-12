@@ -49,6 +49,7 @@ const groups: NavGroup[] = [
     items: [
       { path: '/kami-config', label: '卡密仓库', icon: markRaw(IconKey), permission: 'kami:read' },
       { path: '/auto-delivery', label: '自动发货', icon: markRaw(IconRobot), permission: 'order:read' },
+      { path: '/delivery-templates', label: '发货模板', icon: markRaw(IconTruck), permission: 'order:read' },
       { path: '/orders', label: '发货记录', icon: markRaw(IconTruck), permission: 'order:read' },
       { path: '/pending-orders', label: '待发货订单', icon: markRaw(IconTruck), permission: 'order:read' },
       { path: '/auto-reply', label: '自动回复', icon: markRaw(IconChat), permission: 'message:read' },

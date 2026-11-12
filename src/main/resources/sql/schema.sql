@@ -217,6 +217,7 @@ CREATE TABLE IF NOT EXISTS xianyu_goods_auto_delivery_config (
     kami_config_ids TEXT,                             -- 卡密发货：绑定的卡密配置ID列表（逗号分隔）
     kami_delivery_template TEXT,                      -- 卡密发货文案模板，使用{kmKey}占位符替换卡密内容
     auto_delivery_image_url TEXT,                     -- 自动发货图片URL
+    delivery_template_id BIGINT,                      -- 有序多段发货模板ID，NULL表示使用旧单段配置
     auto_confirm_shipment TINYINT DEFAULT 0,          -- 自动确认发货开关：0-关闭，1-开启
     rag_delay_seconds INTEGER DEFAULT 15,             -- 自动回复延时秒数（RAG回复延时）
     create_time DATETIME DEFAULT (datetime('now', 'localtime')),   -- 创建时间
@@ -230,6 +231,38 @@ CREATE INDEX IF NOT EXISTS idx_auto_delivery_config_xy_goods_id ON xianyu_goods_
 DROP INDEX IF EXISTS idx_auto_delivery_config_unique;
 UPDATE xianyu_goods_auto_delivery_config SET sku_id = NULL WHERE sku_id = '';
 CREATE UNIQUE INDEX IF NOT EXISTS idx_auto_delivery_config_unique_v2 ON xianyu_goods_auto_delivery_config(xianyu_account_id, xy_goods_id, COALESCE(sku_id, ''));
+
+-- 有序多段自动发货模板
+CREATE TABLE IF NOT EXISTS xianyu_delivery_template (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    xianyu_account_id BIGINT NOT NULL,
+    name VARCHAR(100) NOT NULL,
+    enabled TINYINT NOT NULL DEFAULT 1,
+    create_time DATETIME DEFAULT (datetime('now', 'localtime')),
+    update_time DATETIME DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (xianyu_account_id) REFERENCES xianyu_account(id)
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_delivery_template_account_name
+    ON xianyu_delivery_template(xianyu_account_id, name);
+CREATE INDEX IF NOT EXISTS idx_delivery_template_account
+    ON xianyu_delivery_template(xianyu_account_id, enabled, update_time);
+
+CREATE TABLE IF NOT EXISTS xianyu_delivery_template_message (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    template_id BIGINT NOT NULL,
+    sort_order INTEGER NOT NULL,
+    message_type VARCHAR(20) NOT NULL DEFAULT 'TEXT',
+    content TEXT NOT NULL,
+    create_time DATETIME DEFAULT (datetime('now', 'localtime')),
+    update_time DATETIME DEFAULT (datetime('now', 'localtime')),
+    FOREIGN KEY (template_id) REFERENCES xianyu_delivery_template(id) ON DELETE CASCADE
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uk_delivery_template_message_order
+    ON xianyu_delivery_template_message(template_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_delivery_template_message_template
+    ON xianyu_delivery_template_message(template_id, sort_order);
 
 -- 账号级发货风控规则
 CREATE TABLE IF NOT EXISTS xianyu_delivery_block_rule (

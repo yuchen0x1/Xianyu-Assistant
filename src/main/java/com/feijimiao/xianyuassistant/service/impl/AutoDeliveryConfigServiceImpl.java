@@ -234,6 +234,7 @@ public class AutoDeliveryConfigServiceImpl implements AutoDeliveryConfigService 
                     target.setKamiConfigIds(source.getKamiConfigIds());
                     target.setKamiDeliveryTemplate(source.getKamiDeliveryTemplate());
                     target.setAutoDeliveryImageUrl(source.getAutoDeliveryImageUrl());
+                    target.setDeliveryTemplateId(source.getDeliveryTemplateId());
                     target.setAutoConfirmShipment(source.getAutoConfirmShipment());
                     target.setRagDelaySeconds(source.getRagDelaySeconds());
                     target.setUpdateTime(java.time.LocalDateTime.now());

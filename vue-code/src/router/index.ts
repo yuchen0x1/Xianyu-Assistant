@@ -76,6 +76,12 @@ const router = createRouter({
       meta: { title: '自动发货', permissions: ['order:read'] }
     },
     {
+      path: '/delivery-templates',
+      name: 'delivery-templates',
+      component: () => import('@/views/delivery-templates/index.vue'),
+      meta: { title: '发货模板', permissions: ['order:read'] }
+    },
+    {
       path: '/pending-orders',
       name: 'pending-orders',
       component: () => import('@/views/pending-orders/index.vue'),

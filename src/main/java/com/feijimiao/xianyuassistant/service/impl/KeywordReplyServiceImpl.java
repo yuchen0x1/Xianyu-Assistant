@@ -11,6 +11,7 @@ import com.feijimiao.xianyuassistant.mapper.XianyuGoodsConfigMapper;
 import com.feijimiao.xianyuassistant.mapper.XianyuKeywordReplyContentMapper;
 import com.feijimiao.xianyuassistant.mapper.XianyuKeywordReplyRuleMapper;
 import com.feijimiao.xianyuassistant.service.KeywordReplyService;
+import com.feijimiao.xianyuassistant.service.reply.KeywordMatchUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -91,6 +92,13 @@ public class KeywordReplyServiceImpl implements KeywordReplyService {
         if (rule == null) {
             throw new BusinessException("规则不存在: id=" + ruleId);
         }
+        if (keyword == null || keyword.isBlank()) {
+            throw new BusinessException("关键词不能为空");
+        }
+        if (Objects.equals(rule.getMatchMode(), KeywordMatchUtils.REGEX)
+                && !KeywordMatchUtils.isValidRegex(keyword)) {
+            throw new BusinessException("正则表达式无效，请检查括号、转义或分隔符");
+        }
         rule.setKeyword(keyword);
         ruleMapper.updateById(rule);
     }
@@ -100,6 +108,12 @@ public class KeywordReplyServiceImpl implements KeywordReplyService {
         XianyuKeywordReplyRule rule = ruleMapper.selectById(ruleId);
         if (rule == null) {
             throw new BusinessException("规则不存在: id=" + ruleId);
+        }
+        if (matchMode == null || matchMode < KeywordMatchUtils.FUZZY || matchMode > KeywordMatchUtils.REGEX) {
+            throw new BusinessException("不支持的匹配模式");
+        }
+        if (matchMode == KeywordMatchUtils.REGEX && !KeywordMatchUtils.isValidRegex(rule.getKeyword())) {
+            throw new BusinessException("正则表达式无效，请检查括号、转义或分隔符");
         }
         rule.setMatchMode(matchMode);
         ruleMapper.updateById(rule);
@@ -170,23 +184,12 @@ public class KeywordReplyServiceImpl implements KeywordReplyService {
             return Collections.emptyList();
         }
 
-        String msg = message.trim();
-
-        List<XianyuKeywordReplyRule> exactMatches = ruleMapper.matchExact(accountId, xyGoodsId, msg);
-        List<XianyuKeywordReplyRule> fuzzyMatches = ruleMapper.matchFuzzy(accountId, xyGoodsId, msg);
-
-        Set<Long> matchedIds = new HashSet<>();
-        List<XianyuKeywordReplyRule> allMatches = new ArrayList<>();
-        for (XianyuKeywordReplyRule r : exactMatches) {
-            if (matchedIds.add(r.getId())) {
-                allMatches.add(r);
-            }
-        }
-        for (XianyuKeywordReplyRule r : fuzzyMatches) {
-            if (matchedIds.add(r.getId())) {
-                allMatches.add(r);
-            }
-        }
+        List<XianyuKeywordReplyRule> allMatches = ruleMapper.selectByAccountAndGoodsId(accountId, xyGoodsId)
+                .stream()
+                .filter(rule -> !Objects.equals(rule.getIsFallback(), 1))
+                .filter(rule -> KeywordMatchUtils.matches(rule.getKeyword(), rule.getMatchMode(), message))
+                .sorted(Comparator.comparingInt(rule -> matchPriority(rule.getMatchMode())))
+                .toList();
 
         if (!allMatches.isEmpty()) {
             return allMatches.stream().map(rule -> {
@@ -204,6 +207,12 @@ public class KeywordReplyServiceImpl implements KeywordReplyService {
         }
 
         return Collections.emptyList();
+    }
+
+    private int matchPriority(Integer matchMode) {
+        if (Objects.equals(matchMode, KeywordMatchUtils.EXACT)) return 0;
+        if (Objects.equals(matchMode, KeywordMatchUtils.REGEX)) return 1;
+        return 2;
     }
 
     @Override

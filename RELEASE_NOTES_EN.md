@@ -1,3 +1,27 @@
+# Xianyu Assistant (Xianyu Seller Console) v3.5.23
+
+> Release: 2026-11-12
+
+This release turns upstream-resource synchronization into usable product functionality in the current project, with ordered multi-part delivery templates and richer auto-reply matching.
+
+## ✨ Highlights
+
+- **Ordered multi-part delivery templates**: bind templates to goods or SKUs, render order, buyer, item, and card-key variables, send segments in order over WebSocket, and persist `delivery_phase` checkpoints.
+- **Card-key consistency**: reserve keys before sending, commit on explicit success, roll back on explicit failure, and retain unknown outcomes for manual review without double-consuming inventory on retry.
+- **Backup migration**: import and export delivery templates and template messages while keeping older backups and legacy single-message delivery configurations compatible.
+- **Auto-reply matching**: support multiple keywords with fuzzy, exact, or regular-expression matching.
+- **Similar-resource checks**: support `force=true` refreshes and show the current public repository as a tracked release baseline.
+
+## Database & Upgrade
+
+- Added additive migration `V3_27` for delivery-template tables and auto-delivery configuration fields.
+- The migration preserves existing business data; backing up `dbdata/` before upgrade is still recommended.
+
+## Verification
+
+- 703 backend tests passed, with 0 failures, 0 errors, and 3 skipped.
+- 40 frontend tests passed; TypeScript type-check, lint, and production build passed.
+
 # Xianyu Assistant (Xianyu Seller Console) v3.5.22
 
 > Release: 2026-11-12

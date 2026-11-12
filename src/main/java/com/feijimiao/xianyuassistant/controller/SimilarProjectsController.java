@@ -53,8 +53,8 @@ public class SimilarProjectsController {
                     "闲鱼协议逆向与 API/WS 基座", "goofish", "2026-04-06", false),
             entry("xianyu-super-butler", "23Star/xianyu-super-butler", "github",
                     "闲鱼超级管家：滑块/发货/评价/擦亮", "v3.1.0", "2026-08-16", false),
-            entry("XianYuAssistant (Java)", "IAMLZY2018/XianYuAssistant", "github",
-                    "Java 版闲鱼助手（JDK21+SpringBoot），技术栈最接近本系统", "v2.0.4", "2026-06-05", false)
+            entry("XianYu Assistant (当前发布仓库)", "yuchen0x1/Xianyu-Assistant", "github",
+                    "当前项目的公开发布仓库；用于核对本地功能同步后的发布版本", "v3.5.23", "2026-11-12", false)
     );
 
     private final ObjectMapper objectMapper;
@@ -92,9 +92,10 @@ public class SimilarProjectsController {
     }
 
     @GetMapping("/check")
-    public ResultObject<List<Map<String, Object>>> check() {
+    public ResultObject<List<Map<String, Object>>> check(
+            @org.springframework.web.bind.annotation.RequestParam(defaultValue = "false") boolean force) {
         CachedResult cached = checkCache.get("all");
-        if (cached != null && cached.freshUntil() > System.currentTimeMillis()) {
+        if (!force && cached != null && cached.freshUntil() > System.currentTimeMillis()) {
             return ResultObject.success(cached.data());
         }
         List<Map<String, Object>> result = new ArrayList<>();

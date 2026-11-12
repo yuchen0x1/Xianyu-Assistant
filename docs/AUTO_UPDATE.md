@@ -62,7 +62,7 @@ GitHub Actions 的 `release.yml` 只响应符合 `v1.2.3` 的标签。工作流�
 ```bash
 RELEASE_SIGN_PRIVATE_KEY='...' \
 GITHUB_TOKEN='...' \
-bash scripts/publish-github.sh 3.5.22
+bash scripts/publish-github.sh 3.5.23
 ```
 
 发布脚本会检查 Release 资产是否完整，并在同一标签重复发布时只替换同名资产；不会删除其他版本 Release。

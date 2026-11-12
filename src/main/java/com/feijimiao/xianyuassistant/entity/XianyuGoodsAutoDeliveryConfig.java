@@ -60,6 +60,11 @@ public class XianyuGoodsAutoDeliveryConfig {
     private String autoDeliveryImageUrl;
 
     /**
+     * 有序多段发货模板ID；为空时继续使用旧的单段文本/卡密配置。
+     */
+    private Long deliveryTemplateId;
+
+    /**
      * 自动确认发货开关：0-关闭，1-开启
      */
     private Integer autoConfirmShipment;

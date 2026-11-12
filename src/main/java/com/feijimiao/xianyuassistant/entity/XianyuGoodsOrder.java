@@ -50,5 +50,8 @@ public class XianyuGoodsOrder {
     private String totalPrice;
 
     private Integer buyNum;
+
+    /** 有序发货模板的持久化检查点，例如 UNIT_1_MESSAGE_2_DONE。 */
+    private String deliveryPhase;
 }
 

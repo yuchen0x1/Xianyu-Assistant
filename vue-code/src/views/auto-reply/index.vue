@@ -642,8 +642,9 @@ onMounted(() => {
                     </div>
                     <div class="ar__kw-detail-meta">
                       <div class="ar__kw-match-mode">
-                        <button class="ar__kw-mode-btn" :class="{ 'ar__kw-mode-btn--active': selectedKeywordRule.matchMode !== 2 }" @click="handleUpdateMatchMode(selectedKeywordRule.id, 1)">模糊</button>
+                        <button class="ar__kw-mode-btn" :class="{ 'ar__kw-mode-btn--active': selectedKeywordRule.matchMode === 1 }" @click="handleUpdateMatchMode(selectedKeywordRule.id, 1)">模糊</button>
                         <button class="ar__kw-mode-btn" :class="{ 'ar__kw-mode-btn--active': selectedKeywordRule.matchMode === 2 }" @click="handleUpdateMatchMode(selectedKeywordRule.id, 2)">精准</button>
+                        <button class="ar__kw-mode-btn" :class="{ 'ar__kw-mode-btn--active': selectedKeywordRule.matchMode === 3 }" @click="handleUpdateMatchMode(selectedKeywordRule.id, 3)">正则</button>
                       </div>
                     </div>
                     <div v-if="selectedKeywordRule.contents?.length" class="ar__kw-replies">
@@ -669,7 +670,7 @@ onMounted(() => {
                   <div v-if="keywordRules.length > 0" class="ar__kw-items">
                     <div v-for="rule in keywordRules" :key="rule.id" class="ar__kw-item" :class="{ 'ar__kw-item--active': selectedKeywordRuleId === rule.id }" @click="selectedKeywordRuleId = rule.id">
                       <span class="ar__kw-item-text">{{ rule.keyword }}</span>
-                      <span class="ar__kw-item-mode">{{ rule.matchMode === 2 ? '精准' : '模糊' }}</span>
+                      <span class="ar__kw-item-mode">{{ rule.matchMode === 3 ? '正则' : (rule.matchMode === 2 ? '精准' : '模糊') }}</span>
                       <span class="ar__kw-item-count">{{ rule.contents?.length || 0 }}</span>
                       <button class="ar__kw-item-edit" @click.stop="handleOpenEditKeyword(rule)">编辑</button>
                     </div>
@@ -687,11 +688,12 @@ onMounted(() => {
                     </div>
                     <div class="ar__kw-detail-meta">
                       <div class="ar__kw-match-mode">
-                        <button class="ar__kw-mode-btn" :class="{ 'ar__kw-mode-btn--active': selectedKeywordRule.matchMode !== 2 }" @click="handleUpdateMatchMode(selectedKeywordRule.id, 1)">模糊匹配</button>
+                        <button class="ar__kw-mode-btn" :class="{ 'ar__kw-mode-btn--active': selectedKeywordRule.matchMode === 1 }" @click="handleUpdateMatchMode(selectedKeywordRule.id, 1)">模糊匹配</button>
                         <button class="ar__kw-mode-btn" :class="{ 'ar__kw-mode-btn--active': selectedKeywordRule.matchMode === 2 }" @click="handleUpdateMatchMode(selectedKeywordRule.id, 2)">精准匹配</button>
+                        <button class="ar__kw-mode-btn" :class="{ 'ar__kw-mode-btn--active': selectedKeywordRule.matchMode === 3 }" @click="handleUpdateMatchMode(selectedKeywordRule.id, 3)">正则匹配</button>
                       </div>
                     </div>
-                    <div class="ar__kw-detail-sub">匹配此关键词时随机回复以下内容</div>
+                    <div class="ar__kw-detail-sub">支持半角/全角逗号分隔多个表达式；正则模式按表达式搜索匹配。命中后随机回复以下内容</div>
                     <div v-if="selectedKeywordRule.contents?.length" class="ar__kw-replies">
                       <div v-for="(c, i) in selectedKeywordRule.contents" :key="c.id" class="ar__kw-reply">
                         <div class="ar__kw-reply-top"><span class="ar__kw-reply-num">#{{ i + 1 }}</span><button class="ar__kw-reply-del" @click="handleDeleteContent(c.id, selectedKeywordRule!.id)">删除</button></div>
