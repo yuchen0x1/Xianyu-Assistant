@@ -1,121 +1,480 @@
+# 版本更新日志
+
+按版本倒序排列。面向使用者的完整历史见 [发布记录](docs/releases/release-notes.md)，[中文说明](RELEASE_NOTES_CN.md)与[English notes](RELEASE_NOTES_EN.md)覆盖当前 GitHub 的 9 个正式版本。
+
+日期沿用项目历史记录（北京时间），不把标签重建或迁仓日期当作原始发布日期。未记载的日期保持未知；旧版本功能和发布源描述仅反映当时状态。官方发布源在 2026-11-03 随 v3.5.16 迁至 GitHub，此前 Gitee 说明属于历史记录。旧测试记录不表示本轮重新执行或验证真实交易。v3.5 系列的原始实现记录保存在[技术档案](docs/releases/technical-history-v3.5.md)。
+
 # Version 3.5.24
 
 > Release: 2026-11-13
 
-- Webhook 新增持久化投递历史面板：最近 100 条、状态筛选、加载/失败恢复、累计尝试次数和下次重试时间；适配窄屏。
-- 修复空事件数组被视为“不监听任何事件”，使“不选择则全部监听”的界面与后端一致；格式损坏的订阅不再按子串误匹配。
-- 修复成功后尝试次数清零、空值未落库导致旧错误/重试时间残留；损坏载荷明确停止重试，队列拒绝不消耗发送次数。
-- 首次排队与重投共用进程内占用保护；执行前复核成功状态与尝试上限；异步结果仅更新运行字段，避免覆盖用户新配置。
-- 增加 `X-Webhook-Id` 与准确的 `X-Webhook-Attempt`；过长幂等键改为 SHA-256 摘要，避免截断丢失业务标识和时间片。
-- HTTP 异常只记录异常类型及安全提示，避免 URL 查询参数中的凭据进入日志和历史。
-- 无依赖升级或数据库结构迁移，旧配置保持兼容；版本统一为 3.5.24。
+Webhook 投递历史与可靠性。
+
+### 主要变化
+
+- 投递历史：查看最近 100 条记录，按状态筛选、刷新，并查看累计尝试次数、HTTP 状态、失败原因和下次重试时间。
+- 订阅与状态修复：未选择事件时监听全部事件；成功后清除旧错误和重试时间，保留真实尝试次数。
+- 重试更可靠：首次排队与重投共享进程内占用保护，发送前检查成功状态和次数上限；损坏载荷停止重试，队列拒绝不消耗发送次数。
+- 异步投递结果不再覆盖刚编辑的配置；稳定投递编号和准确的尝试序号方便接收端去重，过长幂等键不再直接截断。
+- 保存、测试和历史加载提供等待反馈，手机屏幕可正常查看；请求异常提示不再带出 URL 中的凭据。
+
+### 升级说明
+
+- 无新增数据库迁移或依赖升级；原配置和签名格式兼容。接收端仍需幂等处理，进程内保护不等于跨实例“恰好一次”投递。
+
+### 验证记录与边界
+
+- 本版本发布时本地后端 710 项测试中 707 通过、3 项条件跳过，前端 43 项通过；桌面/手机尺寸浏览器验收、main/tag CI 和 Release 流水线通过。已下载正式 JAR 并验证 SHA-256、Ed25519 签名和包内版本；真实旧客户端安装升级及真实交易回调未实测。
+
+### 下载 / Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sig)
+
+Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.24) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.24) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.23...v3.5.24)
 
 ## English
 
-- View and filter persisted Webhook delivery history, including attempt counts, HTTP status, failure reasons and retry times.
-- Fix all-event subscriptions, stale failure state after success, and asynchronous delivery results overwriting newly edited settings.
-- Improve duplicate-delivery protection and stable delivery identifiers, stop corrupt payload retries, and keep URL credentials out of request-error messages.
-- Add loading feedback and mobile-friendly history; no dependency upgrades or database migrations.
-- See `docs/webhook-delivery.md` for compatibility and remaining end-to-end validation boundaries.
+> Release: 2026-11-13
+
+Webhook history and delivery reliability.
+
+### Changes
+
+- Delivery history shows the latest 100 records with status filters, refresh, cumulative attempts, HTTP status, failure reasons and retry times.
+- An empty event selection subscribes to all events. Successful deliveries clear stale errors and retry times while retaining actual attempt counts.
+- Initial dispatch and retries share an in-process guard and recheck delivery status and attempt limits. Invalid payloads stop retrying; queue rejection does not consume a send attempt.
+- Delivery results no longer overwrite recently edited settings. Stable delivery IDs, accurate attempt headers and hashed long idempotency keys support receiver deduplication.
+- Saving, testing and history loading provide clear feedback on desktop and mobile. Request errors omit credentials embedded in URLs.
+
+### Upgrade notes
+
+- No new database migration or dependency upgrade. Existing configuration and signature formats remain compatible. Receivers still need idempotency; the in-process guard does not provide cross-instance exactly-once delivery.
+
+### Verification and limits
+
+- At release time, 707 of 710 backend tests passed with 3 conditional skips, and 43 frontend tests passed. Desktop/mobile browser checks, main/tag CI and the release workflow passed. The downloaded release JAR passed SHA-256, Ed25519 and packaged-version checks. A real old-client installation upgrade and live transaction callbacks were not tested.
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.24) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.24) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.23...v3.5.24)
 
 # Version 3.5.23
 
 > Release: 2026-11-12
 
-- **功能：有序多段自动发货模板**：支持模板与商品 / SKU 绑定，使用订单、买家和卡密变量渲染消息，并通过 WebSocket 按顺序发送；记录 `delivery_phase` 检查点，断线或重试时可从已完成段落继续。
-- **可靠性：卡密资源一致性**：模板发货支持卡密预占、成功提交、明确失败回滚和未知结果保留，避免重试时重复消耗库存。
-- **备份：模板可迁移**：备份导出 / 导入覆盖发货模板及模板消息，并保持旧备份和旧的单段自动发货配置兼容。
-- **功能：自动回复匹配增强**：关键词回复支持多关键词，以及模糊、精确和正则匹配模式。
-- **运维：同类资源检测**：支持 `force=true` 强制刷新检测结果，并把当前发布仓库纳入可见基线。
-- **迁移：V3_27**：新增模板相关表和配置字段，采用增量迁移，不清空已有业务数据。
-- **验证**：后端 703 项测试通过（0 失败 / 0 错误 / 3 跳过）；前端 40 项测试、TypeScript 类型检查、Lint 和生产构建通过。
+多段发货模板与回复匹配。
+
+### 主要变化
+
+- 发货模板：模板可绑定商品或 SKU，使用订单、买家、商品和卡密变量；消息按顺序发送，并记录已完成段落以便恢复。
+- 卡密一致性：发送前预占，明确成功后提交，明确失败时回滚；结果未知时保留并进入人工复核，避免重试重复消耗库存。
+- 备份支持发货模板和模板消息导入导出，并继续兼容旧备份及单段自动发货配置。
+- 自动回复支持多关键词，以及模糊、精确和正则匹配；同类资源检测支持强制刷新并显示当前项目发布基线。
+
+### 升级说明
+
+- 新增 V3_27 增量迁移，创建模板相关表并补充配置字段；升级前备份 dbdata，保留数据库及密钥文件。旧单段配置可继续使用。
+- 结果未知的发货仍需人工核对；断点恢复和库存保护不代表外部平台必然收到消息。
+
+### 验证记录与边界
+
+- 历史发布记录包含后端测试、前端 40 项测试、类型检查、Lint 和生产构建通过；本次日志整理未重跑旧版本测试。
+
+### 下载 / Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sig)
+
+Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.23) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.23) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.22...v3.5.23)
+
+## English
+
+> Release: 2026-11-12
+
+Multi-part delivery templates and reply matching.
+
+### Changes
+
+- Bind delivery templates to goods or SKUs, render order, buyer, item and card-key variables, and send messages in order with persisted segment checkpoints.
+- Reserve keys before sending, commit on confirmed success, roll back on explicit failure, and retain unknown outcomes for manual review without consuming inventory again on retry.
+- Backup import/export includes templates and template messages while retaining compatibility with older backups and single-message delivery settings.
+- Auto-replies support multiple keywords with fuzzy, exact and regex matching. Similar-resource checks support forced refresh and include this project’s release baseline.
+
+### Upgrade notes
+
+- Additive migration V3_27 creates template tables and configuration fields. Back up dbdata, including the database and key files, before upgrading. Existing single-message configurations remain usable.
+- Unknown delivery outcomes still require manual review. Checkpoint recovery and inventory protection do not prove receipt by the external platform.
+
+### Verification and limits
+
+- Historical release records report backend checks, 40 frontend tests, type checking, lint and production build passing. Historical tests were not rerun for this documentation update.
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.23) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.23) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.22...v3.5.23)
 
 # Version 3.5.22
 
 > Release: 2026-11-12
 
-- **功能：在线自动更新增强**：支持稳定版、Beta 和 Dev 更新通道，预发布版本保留完整 SemVer 后缀并正确定位 Release 资产。
-- **可靠性：下载流程加固**：下载失败自动重试、取消下载、磁盘空间预检、真实速度与预计剩余时间，以及临时文件清理。
-- **安全：发布物校验**：继续强制 SHA-256 校验和官方仓库 Ed25519 签名校验，验证通过后才执行原子替换。
-- **运维：发布流水线**：GitHub Actions 发布前执行后端测试、前端测试和 TypeScript 类型检查；新增自动更新配置与故障处理文档。
-- **验证**：后端 690 项测试通过、3 项跳过；前端 40 项测试通过，类型检查和生产构建通过。
+在线更新通道与 Windows 替换修复。
+
+### 主要变化
+
+- 更新通道：支持稳定版、Beta 和 Dev，保留预发布版本完整 SemVer 后缀并选择匹配的 Release 附件。
+- 下载过程增加失败重试、取消、磁盘空间预检、真实速度和剩余时间展示，并清理临时文件。
+- Windows 更新先暂存新包，退出后再替换被占用的 JAR；修正 Linux 安装脚本的内置 Ed25519 公钥，使其与应用更新器一致。
+- 官方包继续强制 SHA-256 和 Ed25519 校验；发布前增加后端、前端和类型检查，并补充自动更新配置与排障说明。
+
+### 升级说明
+
+- 无新增数据库迁移。Windows 运行中 JAR 的替换延后到退出之后；exit 模式需要外部进程管理器拉起，self 模式由应用安排重启。
+- 旧安装脚本若因旧公钥验签失败，请获取官方新版脚本；不要关闭验签。Beta/Dev 通道只有在对应预发布版本实际存在时才有可选更新。
+
+### 验证记录与边界
+
+- 历史发布记录包含后端与前端 40 项测试、类型检查和生产构建通过。流水线成功或包验签通过不能代替旧客户端安装升级验收。
+
+### 下载 / Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sig)
+
+Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.22) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.22) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.21...v3.5.22)
+
+## English
+
+> Release: 2026-11-12
+
+Update channels and Windows replacement fixes.
+
+### Changes
+
+- Stable, Beta and Dev channels preserve complete prerelease SemVer suffixes and select matching release assets.
+- Downloads support retries, cancellation, disk-space checks, actual speed and ETA reporting, and temporary-file cleanup.
+- Windows updates stage the new package before replacing the locked JAR after exit. The installer’s embedded Ed25519 public key now matches the application updater.
+- Official packages continue to require SHA-256 and Ed25519 verification. Release preflight adds backend, frontend and type checks, with update configuration and troubleshooting documentation.
+
+### Upgrade notes
+
+- No new database migration. Windows replacement occurs after process exit; exit mode needs an external supervisor, while self mode schedules a restart.
+- If an old installer fails signature verification due to its embedded key, obtain the current official installer rather than disabling verification. Beta/Dev updates require an actual matching prerelease.
+
+### Verification and limits
+
+- Historical release records report backend checks, 40 frontend tests, type checking and production build passing. Workflow success and package verification do not replace old-client installation testing.
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.22) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.22) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.21...v3.5.22)
 
 # Version 3.5.21
 
 > Release: 2026-11-12
 
-- **安全：修复数据面板账号范围过滤静默失效（高）**：`XianyuChatMessageMapper`、`XianyuGoodsAutoReplyRecordMapper`、`XianyuOperationLogMapper` 中 7 个查询存在同名重载，其中带 `DataPanelAccountScope` 的版本声明在后。MyBatis 的语句 ID 只由「接口全名 + 方法名」构成，后注册的带范围版本被静默丢弃（启动日志 7 条 `is ignored, because it exists`），导致非 ADMIN 用户在数据面板看到全部账号的统计、趋势、咨询排行、关键词排行、操作统计与失败原因排行，且不报错。现统一改名为 `...Scoped` 后缀消除重载，并在调用点同步；启动日志冲突告警降为 0。
-- **测试：Mapper 重载防腐 + 装配级范围回归**：新增 `MapperOverloadGuardTest`（反射扫描全部 Mapper 接口，禁止同名方法）与 `DataPanelMapperSqlScopeTest`（真实装配 MyBatis + SQLite 双账号数据，对 7 个查询分别断言 ADMIN 全量 / 空范围拒绝全部 / 单账号只见自身）。两个测试均已用「注入旧重载」反向验证会失败，不是空测试。
-- **修复：批量擦亮缺少上限与限流**：`BatchPolishItemsReqDTO` 补 `@Size(max = 50)`，接口补 `@RateLimit(bucket = "batch_polish", limit = 3)`；「商品列表留空 = 擦亮全部在售」的服务层分支同样受 50 件上限约束（该分支原可绕过 DTO 校验）。
-- **修复：批量操作必然前端超时**：批量下架/批量擦亮/批量改价在请求线程内逐件调用平台接口且件间 `Thread.sleep(1000)`，而前端全局超时为 30 秒——约 30 件以上必定 `ECONNABORTED`，但服务端继续执行，用户重试会造成重复操作。现三个批量接口显式设置 120 秒超时；「一键擦亮在售」在前端按 50 件一批串行提交，大账号不再直接收到 400。
-- **修复：未知接口路径返回 200 + `code=500`**：`WebMvcConfig` 的 SPA 回退把未知 `/api/` 路径交给全局兜底，包装成 HTTP 200 +「系统繁忙」并打完整堆栈，既误导调用方也淹没真实 500。新增 `NoResourceFoundException` 处理，明确返回 HTTP 404 + `code=404`。
-- **修复：actuator 端点被 SPA 吞成 HTML**：`/actuator/prometheus` 未从 SPA 回退中排除，实测返回 `index.html`（`Content-Type: text/html`），调用方以为指标抓取成功。`WebMvcConfig` 现将 `actuator/` 路径同样排除；`management.endpoints.web.exposure.include` 改为可通过 `XIANYU_ASSISTANT_ACTUATOR_EXPOSED_ENDPOINTS` 配置，默认仍只开放 health/info，需要指标采集时显式设置。
-- **修复：Windows 上浏览器兜底必然失效**：`PlaywrightManager.findSystemChromium()` 此前只探测 Linux 的 `/usr/bin/*`，缓存回退路径硬编码 `chrome-linux/chrome`，Windows/macOS 上即使装了浏览器也永远找不到，Cookie 兜底刷新静默降级为「只能重新扫码」。现按平台枚举系统浏览器（Chrome/Edge）、`PLAYWRIGHT_BROWSERS_PATH` 与用户级 Playwright 缓存（`%LOCALAPPDATA%\ms-playwright` 等），并按平台匹配 `chrome-win64/chrome.exe` 等相对路径；启动时做一次只读探测，找不到则明确告警并给出安装指引，新增 `isBrowserAvailable()` / `getDetectedBrowserPath()` 供健康检查使用。
-- **修复：改密口令策略弱于注册**：注册要求 8 位而改密仅要求 6 位，弱口令可从改密入口绕过。新增 `PasswordPolicy` 作为单一来源，注册与改密共用。
-- **修复：构建元数据白打进包**：`version.json` 由 Maven 过滤生成却无任何读取方。新增 `BuildInfoContributor` 把它输出到 `/actuator/info`（`build.version` / `build.time`），运维排查「跑的是哪次构建」不再只能看版本号。
-- **清理**：移除未使用的 Pinia 依赖与 `createPinia()` 注册（全仓 0 个 `defineStore`）、死代码 `BusinessMetricsService`（0 引用）、10 个无引用的 Vue 组件与其过时测试；`RefreshCookieDialog.vue` 因被前端安全回归测试作为把关目标引用而保留。
-- **CI**：前端任务新增 `npm run lint:check` 关卡（此前 lint 只在本地跑，规则可被长期违反）。
-- **测试**：新增 `VersionConsistencyTest`（pom 版本与 5 处 Java `@Value` 兜底、`application.yaml`、3 处前端 `__APP_VERSION__` 兜底逐一比对，防止 3.5.18 那类版本漂移复发）、`PasswordPolicyTest`、`GlobalExceptionHandlerTest` 增补 404 用例、`PlaywrightManagerTest` 增补跨平台路径断言。
-- **验证**：后端 688 项测试全绿（0 失败 / 0 错误 / 3 跳过）；前端 40 项 Vitest、type-check、ESLint、生产构建全部通过；Flutter 单测、Dart 静态分析和 Android debug APK 构建通过；临时端口实机启动确认启动日志 0 条 mapper 冲突、浏览器自动定位到本机 Chrome、未知 API 返回 404、`/actuator/info` 输出构建信息、prometheus 默认 404 且显式开启后返回 `text/plain` 指标、SPA 路由回退不受影响；现有 12400 实例未被触碰。
+账号隔离与批量操作修复。
+
+### 主要变化
+
+- 修复数据面板账号范围过滤失效：非管理员的统计、趋势、排行和操作数据按授权账号范围展示。
+- 批量擦亮增加每批 50 件上限及限流；一键擦亮串行分批提交。批量下架、擦亮和本地改价使用 120 秒请求超时，减少误判超时后的重复提交。
+- Windows/macOS 可探测系统 Chrome、Edge 和 Playwright 缓存，找不到浏览器时给出明确提示。
+- 注册与改密共用口令策略；未知 API 返回 HTTP 404，监控端点不再返回前端页面，构建信息可用于确认实际运行版本。
+
+### 升级说明
+
+- 无新增数据库迁移；批量改价仍只更新助手本地资料。Prometheus 默认不开放，需要时通过 XIANYU_ASSISTANT_ACTUATOR_EXPOSED_ENDPOINTS 显式配置。
+
+### 验证记录与边界
+
+- 历史记录包含后端、前端 40 项测试、Lint/类型检查/构建、Flutter 分析/测试和 Android 调试包构建，以及隔离实例的接口与监控检查；当时本机 Docker 验证受运行环境限制。
+
+### 下载 / Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar.sig)
+
+Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.21) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.21) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.20...v3.5.21)
+
+## English
+
+> Release: 2026-11-12
+
+Account isolation and batch-operation fixes.
+
+### Changes
+
+- Fix data-panel account filtering so non-admin statistics, trends, rankings and operations follow authorized account scope.
+- Batch polishing is limited to 50 items with rate limiting and serial batches. Off-shelf, polishing and local price updates use 120-second request timeouts to reduce duplicate submissions after premature timeouts.
+- Windows/macOS browser discovery checks installed Chrome, Edge and Playwright caches and reports missing-browser guidance.
+- Registration and password changes share one password policy. Unknown APIs return HTTP 404, monitoring endpoints no longer fall back to HTML, and build information identifies the running version.
+
+### Upgrade notes
+
+- No new database migration. Batch price updates still affect local assistant records only. Prometheus remains disabled unless explicitly exposed through XIANYU_ASSISTANT_ACTUATOR_EXPOSED_ENDPOINTS.
+
+### Verification and limits
+
+- Historical records cover backend checks, 40 frontend tests, lint/type/build checks, Flutter analysis/tests, an Android debug build and isolated API/monitoring checks. Local Docker verification was limited by the host environment.
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.21) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.21) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.20...v3.5.21)
 
 # Version 3.5.20
 
 > Release: 2026-11-08
 
-- **功能：待办中心**：新增聚合接口 `GET /api/todo/overview`，按当前用户 RBAC 账号范围汇总四类高频待办（待发货订单、待回复会话、发货待复核、自动评价待确认），单个数据源失败不影响其他类别；Web 控制台新增「待办中心」页面（工作台分组首位入口），提供四类统计卡片、分类 Tab、自动刷新与时间格式化，点击条目直达对应处理页。
-- **功能：商品批量下架**：新增 `POST /api/publish/batchOffShelf`，单批上限 50 件、逐件间隔 1 秒规避平台频控、独立限流桶（3 次/分钟）、逐件成功/失败明细，单件失败不中断批次；商品列表新增多选（仅在售可选，桌面表格与移动卡片均支持勾选与表头全选含半选态），切换账号、状态筛选或翻页自动清空选择以避免跨账号/跨页误操作，下架为危险操作需二次确认。
-- **功能：商品批量改价**：新增 `POST /api/items/batchUpdatePrice`，将选中商品统一更新为新售价（`goods:write` 权限 + RBAC 账号校验 + 独立限流桶，逐件返回成功/失败明细）；底层新增专用 `updateItemPrice` 只修改售价与更新时间，不覆盖标题、详情、图片，金额规则沿用既有校验（大于 0、最多两位小数、上限 1 亿）；界面与接口消息明确标注仅更新本地商品资料、闲鱼远程商品需在官方页面确认，不伪装远程改价成功。
-- **移动端：Flutter 原生工作台**：首页从纯 WebView 壳升级为原生工作台——服务在线状态与版本展示、服务地址配置与持久化、下拉刷新健康探测（`/api/system/health`）、待办中心入口、待发货/待回复/待复核/待评价四个快捷入口、「打开完整控制台」按钮；完整控制台支持按入口深链加载指定业务路由，WebView 导航白名单保持严格限制在配置服务的 scheme/host/port，原生层不存储登录 Token。
-- **验证**：新增 `TodoServiceImplTest`、`PublishServiceImplBatchOffShelfTest`、`ItemServiceImplBatchUpdatePriceTest` 三组回归测试；后端全量 662 项测试通过（0 失败 / 0 错误 / 3 跳过）；前端类型检查、34 项 Vitest 与 Vite 生产构建通过；Flutter `analyze`/`test` 全绿，Android debug APK 构建成功。
+待办中心与移动端原生工作台。
+
+### 主要变化
+
+- 待办中心汇总待发货、待回复、发货待复核和评价待确认，按授权账号过滤，可分类查看并跳转处理；单个来源失败不影响其他类别。
+- 商品支持批量下架，每批最多 50 件，逐件反馈结果；切换账号、筛选或翻页清空选择，下架前再次确认。
+- 批量改价只修改助手本地售价及更新时间，不覆盖商品标题、详情和图片；界面明确提醒到官方页面确认远程价格。
+- Flutter 首页新增服务地址保存、健康状态、版本展示、下拉刷新和四类待办快捷入口；完整控制台仍通过受服务地址白名单限制的 WebView 打开。
+
+### 升级说明
+
+- 无新增数据库迁移；移动端需要连接已部署的服务，原生层不保存登录 Token。Release 提供服务端 JAR，移动端需从源码构建。
+
+### 验证记录与边界
+
+- 历史发布记录包含后端、前端 34 项测试和构建、Flutter 分析与测试、Android 调试包构建通过。批量改价的本地成功不表示平台远程售价已修改。
+
+### 下载 / Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sig)
+
+Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.20) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.20) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.19...v3.5.20)
+
+## English
+
+> Release: 2026-11-08
+
+Todo center and native mobile dashboard.
+
+### Changes
+
+- The todo center groups pending shipments, replies, delivery reviews and rating confirmations within authorized accounts, with filtered lists and direct navigation. One failed source does not hide other categories.
+- Bulk off-shelf operations accept up to 50 items with per-item results. Account, filter or page changes clear selection, and destructive actions require confirmation.
+- Bulk price edits change only local price and update time, preserving titles, descriptions and images. The UI directs users to verify remote prices on the official platform.
+- The Flutter home screen adds a saved server address, health/version display, pull-to-refresh and four todo shortcuts. The full console opens in a WebView restricted to the configured server origin.
+
+### Upgrade notes
+
+- No new database migration. Mobile requires a deployed server and does not store login tokens in the native layer. The release supplies the server JAR; mobile builds require source.
+
+### Verification and limits
+
+- Historical release records report backend checks, 34 frontend tests/build, Flutter analysis/tests and an Android debug build passing. Local price-edit success does not mean the remote platform price changed.
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.20) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.20) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.19...v3.5.20)
 
 # Version 3.5.19
 
 > Release: 2026-11-07
 
-- **修复：Windows 独立 JAR 部署下在线自更新被误判为「IDE 开发模式」**：旧逻辑仅依赖 `ProcessHandle...arguments()` 从进程启动参数定位当前 JAR，而 Windows JVM 经常取不到自身启动参数（返回 empty），导致以 `java -jar` 方式运行的实例在「版本更新」弹窗中出现「未以独立 JAR 方式运行，在线更新不可用」的误报。现定位链扩展为：启动参数 → 环境变量 `XIANYU_ASSISTANT_JAR_PATH` → Spring Boot `ApplicationHome`（从类加载来源解析实际运行 JAR；IDE 模式解析出 classes 目录自动过滤不误判）。
-- **修复：自拉起命令的 java 可执行文件回退加固**：`restart-mode=self` 重启时若 `ProcessHandle...command()` 也不可得，回退目标从依赖 PATH 的裸 `java` 改为 `$JAVA_HOME/bin/java(.exe)`（即当前正在运行的这份 JVM），避免解析到错误版本的运行时。
-- **验证**：`SelfUpdateServiceTest` 新增 5 项（ApplicationHome 真实 JAR 兜底、classes 目录不误判、参数优先级、java 启动器回退），后端全量 655 项测试通过（0 失败 / 0 错误 / 3 跳过）；Windows 实机验证独立 JAR 启动日志出现「在线自更新已就绪: jarPath=...target\XianYuSellerConsole-3.5.19.jar」。
+Windows 独立 JAR 更新识别修复。
+
+### 主要变化
+
+- 修复 Windows 通过 java -jar 启动却被误判为 IDE 开发模式、在线更新不可用的问题。
+- JAR 定位依次使用进程参数、XIANYU_ASSISTANT_JAR_PATH 和 Spring Boot 应用来源，classes 目录仍不会被当作可更新安装包。
+- self 重启模式在无法取得启动命令时使用当前 Java 运行时的启动器，减少 PATH 指向不同 Java 版本导致的问题。
+
+### 升级说明
+
+- 无新增数据库迁移。旧 Windows 版本若无法使用在线更新，需要手动下载并替换 JAR 后启动；本版解决识别问题，运行中 JAR 替换加固在 v3.5.22 补充。
+
+### 验证记录与边界
+
+- 历史记录确认更新服务测试和 Windows 独立 JAR 启动时的就绪识别；不能据此声称完整下载、替换、重启链路已在所有平台实测。
+
+### 下载 / Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar.sig)
+
+Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.19) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.19) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.18...v3.5.19)
+
+## English
+
+> Release: 2026-11-07
+
+Windows standalone-JAR update detection.
+
+### Changes
+
+- Fix Windows instances started with java -jar being incorrectly classified as IDE mode with online updates unavailable.
+- JAR detection falls back from process arguments to XIANYU_ASSISTANT_JAR_PATH and the Spring Boot application location, while excluding classes directories.
+- Self-restart falls back to the launcher of the current Java runtime when the process command is unavailable, avoiding a different Java version from PATH.
+
+### Upgrade notes
+
+- No new database migration. If an older Windows version cannot start an online update, manually replace the JAR and restart. This release fixes detection; locked-JAR replacement was hardened in v3.5.22.
+
+### Verification and limits
+
+- Historical records confirm updater tests and readiness detection for a Windows standalone JAR. This is not evidence of a full download/replacement/restart test on every platform.
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.19) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.19) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.18...v3.5.19)
 
 # Version 3.5.18
 
 > Release: 2026-11-06
 
-- **功能：商品擦亮（Polishing）**：新增单品擦亮 `POST /api/items/polish` 与批量擦亮 `POST /api/items/batchPolish`，基于闲鱼 H5 端 `mtop.taobao.idle.item.polish`（协议版本 2.0）实现；批量模式可显式指定商品列表，留空时自动取该账号下全部在售商品，逐件间隔 1 秒以规避平台频控，并返回逐件成功/失败明细。
-- **功能：定时自动擦亮**：计划任务新增 `POLISH_GOODS` 任务类型，支持用 Cron 表达式定时批量擦亮账号商品（可指定商品 ID，留空则全量在售），配合平台每日擦亮次数上限实现长期免费曝光维护。
-- **前端：商品管理接入擦亮 UI**：商品列表操作列新增「擦亮」按钮（仅在售商品可见），页头新增「一键擦亮在售」批量按钮（含 Loading 态与结果提示）；计划任务新建/编辑弹窗新增「自动擦亮」类型与商品 ID 输入项。
-- **UI：深空赛博视觉体系全面升级**：重塑全局设计令牌（`tokens.css`）——新增霓虹电光青/赛博蓝/电离紫三色光效体系，深色模式升级为深空底色 + 青色霓虹描边 + 24px 高精磨砂玻璃；矩阵微光点阵背景、流光扫过按钮、卡片悬浮升维辉光、雷达呼吸状态灯、霓虹能量条侧边导航、渐变裁切标题、发光图表柱与发光滚动条。
-- **安全/防封：AI 回复延时拟人化抖动**：`ReplyConfigProvider.getDelaySeconds()` 引入高斯正态分布随机因子（σ=0.15，约 ±25% 波动，最低保底 3 秒），打散固定时间回复的机器行为指纹，降低触发平台自动化风控的概率。
-- **修复：版本号回退值漂移**：`application.yaml`、`SystemController`、`McpServerController`、`SelfUpdateService`、`UpdateCheckService` 及前端 `AppLayout.vue`、`UpdateDialog.vue`、`AboutPanel.vue` 中残留的旧版本回退值统一对齐当前版本，避免未注入 `app.version` 时自更新检查误判版本。
-- **代码质量**：`WebSocketController.CaptchaMouseReqDTO` 补充 `@EqualsAndHashCode(callSuper = false)` 消除 Lombok 编译告警；前端 `useGoodsManager.ts` 的 `catch (err: any)` 改为 `unknown` 严格收窄，ESLint 零告警。
-- **验证**：后端 651 项单元测试全绿（0 失败 / 0 错误 / 3 跳过）；前端 ESLint、TypeScript 类型检查、34 项 Vitest 用例与 Vite 生产构建全部通过；Flutter `analyze` 与 `flutter test` 全绿。
+商品擦亮与控制台视觉更新。
+
+### 主要变化
+
+- 商品管理新增单品擦亮和一键擦亮在售商品，返回逐件结果；计划任务支持 Cron 定时擦亮，可指定商品范围。
+- 统一深浅主题、玻璃面板、渐变按钮和导航状态，并适配减少动效与透明效果的系统偏好。
+- AI 回复在配置延时上加入随机波动，最低 3 秒；修复前后端版本回退值不一致导致的显示和更新检查偏差。
+
+### 升级说明
+
+- 无新增数据库迁移。擦亮是否成功及调用限制以平台响应为准；延时随机化不保证避免风控或提升曝光。大批量擦亮的数量与超时保护在 v3.5.21 补充。
+
+### 验证记录与边界
+
+- 历史发布记录包含后端、前端 34 项测试、Lint、类型检查、生产构建及 Flutter 分析/测试通过；未将平台曝光或风控效果作为已验证结果。
+
+### 下载 / Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sig)
+
+Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.18) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.18) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.17...v3.5.18)
+
+## English
+
+> Release: 2026-11-06
+
+Item polishing and console visual refresh.
+
+### Changes
+
+- Goods management adds single-item and bulk polishing with per-item results. Scheduled tasks support Cron-based polishing for selected items.
+- Refresh light/dark themes, translucent panels, gradient buttons and navigation states, respecting reduced-motion and transparency preferences.
+- AI replies add random variation to configured delays with a three-second minimum. Version fallbacks are aligned across the frontend and backend.
+
+### Upgrade notes
+
+- No new database migration. Polishing results and limits depend on platform responses; randomized timing does not guarantee risk-control avoidance or increased exposure. Large-batch limits and timeout protection were added in v3.5.21.
+
+### Verification and limits
+
+- Historical release records report backend checks, 34 frontend tests, lint/type/build checks and Flutter analysis/tests passing. Exposure gains and platform risk-control effects were not verified.
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.18) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.18) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.17...v3.5.18)
 
 # Version 3.5.17
 
 > Release: 2026-11-04
 
-- **功能：服务器无人值守自动更新**：新增 `SelfUpdateAutoScheduler` 定时调度器，默认每 6 小时（启动 5 分钟后首检）检查官方 GitHub Release，发现新版本自动执行 下载 → SHA-256 + Ed25519 验签 → 原子替换（失败回滚）→ 按 `restart-mode` 重启；`exit` 模式（默认）配合 systemd `Restart=always` 即可实现"自动更新 + 更新后自动重启"闭环。可通过 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false` 关闭，检查间隔/首检延迟分别由 `XIANYU_ASSISTANT_AUTO_UPDATE_CHECK_INTERVAL_MS` / `XIANYU_ASSISTANT_AUTO_UPDATE_INITIAL_DELAY_MS` 控制。
-- **重构：更新检查逻辑抽取为 `UpdateCheckService`**：原 `SystemController` 内的在线更新检查（GitHub/Gitee 源解析、主机白名单、5 分钟缓存、版本比较）整体迁移为独立服务，`/api/system/checkUpdate` 端点行为不变，供控制器与自动更新调度器共用。
-- **修复：自动发货 UNKNOWN 发送结果转「待人工复核」**：WebSocket 发送结果为 UNKNOWN（帧可能已写出、成败未确认）时不再按失败处理，统一持久化为 PENDING 待人工复核，并在复核状态持久化失败时主动告警；新增 `DeliveryOrderState` 集中管理发货订单状态与待复核判定，替换裸 -1/0/1 字面量；`MessageSendResult` 语义澄清为「结果未确认，调用方不得假定失败」。
-- **安全：CI 供应链加固**：`ci.yml` 的 `subosito/flutter-action` 固定为完整 commit SHA；Dockerfile 构建镜像时实际运行后端测试（移除 `-DskipTests`）；前端 `minimatch` 覆盖升级至 `^11.0.1` 修复 npm audit 漏洞；新增 `SECURITY.md`（漏洞报告政策）与 `security-audit-report.md`（安全审计报告）。
-- **开发者**：`start-dev.ps1` 正确引用 JAR 路径，兼容含空格的项目目录。
-- **文档**：`docs/production-deployment.md` 补充 systemd 单元自动重启要求（`Restart=always`）与应用内自动更新说明；`README` 配置参考补齐 `XIANYU_ASSISTANT_SELF_UPDATE_*` 与 `XIANYU_ASSISTANT_AUTO_UPDATE_*` 环境变量。
-- **验证**：新增 `SelfUpdateAutoSchedulerTest`（13 项：开关/互斥/失败/超时/manual 模式等分支）与 `UpdateCheckServiceTest`（自原 controller 测试迁移）；扩展 `AutoDeliveryServiceImplTest` 与 `XianyuWebSocketClientSendResultTest` 覆盖 UNKNOWN 结果分支；`WebMvcUpdateAuthenticationTest` 适配服务注入，鉴权行为断言不变。
+定时自动更新与发货待复核。
 
-# 发布源迁移说明（2026-11-03）
+### 主要变化
 
-- 官方仓库与 Release 已迁移到 GitHub：`yuchen0x1/Xianyu-Assistant`。
-- `install.sh` 默认读取 GitHub Release API；安装仍强制校验 JAR 的 SHA-256，并在支持 Ed25519 的 OpenSSL 上校验 `.jar.sig`。
-- `.github/workflows/release.yml` 使用 GitHub Actions 内置 `GITHUB_TOKEN` 创建/更新 Release 并上传资产；`scripts/publish-github.sh` 是正式发布入口，旧 `scripts/publish-gitee.sh` 保留为兼容包装脚本。
-- GitHub 默认发布整包 JAR，不再为 Gitee 的 100MB 单附件限制自动分卷；设置 `SPLIT_JAR=1` 可兼容历史分卷资产。
+- 新增定时自动更新：默认启动 5 分钟后首检、每 6 小时检查官方 Release，按配置执行下载、校验、替换和重启。
+- 自动发货结果 UNKNOWN 转为待人工复核，不再当作明确失败处理；复核状态保存失败时告警。
+- 手动和自动更新共享版本检查逻辑；开发启动脚本兼容含空格的 JAR 路径，构建流程补充依赖与供应链检查。
+
+### 升级说明
+
+- 无新增数据库迁移。自动更新仅适用于独立 JAR；可通过 XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false 关闭。默认 exit 模式须配置 systemd 等进程管理器自动拉起，manual 模式需人工重启。
+- 未知发货结果应先核对订单和聊天记录再决定是否重试；不能将“待复核”视为平台已确认失败。
+
+### 验证记录与边界
+
+- 历史记录覆盖自动更新调度开关、互斥、失败与超时分支，以及 UNKNOWN 发货结果和鉴权回归；跨版本自动安装仍取决于部署的进程管理与文件权限。
+
+### 下载 / Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sig)
+
+Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.17) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.17) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.16...v3.5.17)
+
+## English
+
+> Release: 2026-11-04
+
+Scheduled updates and uncertain-delivery review.
+
+### Changes
+
+- Scheduled updates check official releases five minutes after startup and every six hours thereafter, then download, verify, replace and restart according to configuration.
+- Unknown delivery outcomes enter manual review instead of being treated as confirmed failures, with warnings if review status cannot be persisted.
+- Manual and scheduled updates share version-check logic. Development startup handles JAR paths with spaces, and build checks strengthen dependency and supply-chain handling.
+
+### Upgrade notes
+
+- No new database migration. Scheduled updates require a standalone JAR and can be disabled with XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false. Default exit mode needs a restarting supervisor; manual mode requires a manual restart.
+- Review order and chat history before retrying an unknown delivery. Pending review does not mean the platform confirmed failure.
+
+### Verification and limits
+
+- Historical records cover scheduler switches, mutual exclusion, failures/timeouts, unknown-delivery handling and authentication regressions. Cross-version installation still depends on process supervision and file permissions.
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.17) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.17) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.16...v3.5.17)
 
 # Version 3.5.16
 
 > Release: 2026-11-03
 
-- **功能：任务调度增加租约围栏（防重复/脑裂执行）**：新增 V3_26 Flyway 迁移与 `JobDefinition` 租约字段，`JobEngine` 在运行任务前获取并定期续期租约，避免多实例或异常恢复下同一任务被重复执行或并发脑裂。
-- **发布：轮换 Ed25519 发布签名密钥**：原签名私钥已丢失（不在仓库亦不在 CI Secret），导致此前签名发布无法完成。本次生成全新 Ed25519 密钥对，新验证公钥已内置进客户端（`SelfUpdateService`）。**已在旧版本上的用户需重新下载 v3.5.16 安装包**以完成密钥信任轮换；自更新通道此后恢复强制验签。
-- **构建：三处版本坐标对齐到 3.5.16**（`pom.xml` 项目版本、前端 `vue-code/package.json`、移动端 `mobile/pubspec.yaml`），消除发布脚本的版本一致性校验失败。
-- **验证**：后端单元测试（含租约围栏与 V3_26 schema 迁移）、前端类型检查与构建全绿；`release.yml` 自动构建、签名并发布 Release（含 JAR、SHA-256 与 `.jar.sig`）。
+GitHub 发布迁移与任务租约保护。
+
+### 主要变化
+
+- 官方发布源迁至 yuchen0x1/Xianyu-Assistant 的 GitHub Releases，安装与更新使用完整 JAR、SHA-256 和 Ed25519 签名附件；保留历史分卷兼容入口。
+- 任务调度增加租约围栏，过期执行者无法续期或覆盖已被接管的任务状态，降低异常恢复时重复执行的风险。
+- 卡密状态区分预占待确认与已交付；已占用的旧数据按已交付保守回填，避免升级后被误释放。
+- 轮换发布签名密钥并内置新验证公钥；统一服务端、前端和移动端版本，更新相关依赖及发布校验。
+
+### 升级说明
+
+- 相对 v3.4.10 新增 V3_25 卡密交付时间与 V3_26 任务租约迁移。升级前备份数据库和密钥文件；历史已占用卡密不会因升级自动重新入库。
+- 旧版持有旧公钥或仅支持 Gitee 时，需从官方 GitHub 下载可信新包完成一次手动迁移；不要通过禁用签名校验绕过密钥轮换。
+
+### 验证记录与边界
+
+- 已核对标签代码、迁移文件与 GitHub 上现存的三个发布附件。历史记录包含后端及前端检查；本次未重新执行该旧版本或验证其跨版本安装。
+
+### 下载 / Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar.sig)
+
+Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.16) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.16) · [迁仓后提交历史 / Post-migration history](https://github.com/yuchen0x1/Xianyu-Assistant/commits/v3.5.16/)
+
+## English
+
+> Release: 2026-11-03
+
+GitHub release migration and job lease protection.
+
+### Changes
+
+- Official releases move to GitHub at yuchen0x1/Xianyu-Assistant, with a full JAR, SHA-256 and Ed25519 signature. Compatibility with historical split archives remains available.
+- Job lease fencing prevents stale workers from renewing or overwriting jobs already claimed by another worker, reducing duplicate-execution risks during recovery.
+- Card keys distinguish reservations awaiting confirmation from completed deliveries. Previously used keys are conservatively backfilled as delivered to prevent accidental release.
+- Rotate the release signing key and embed its new verification key. Align backend, frontend and mobile versions and update dependencies and release checks.
+
+### Upgrade notes
+
+- Compared with v3.4.10, migrations V3_25 and V3_26 add card-key delivery timestamps and job lease fencing. Back up the database and keys; old used keys are not automatically returned to available inventory.
+- Older clients using the old public key or Gitee-only source need a manual migration with a trusted package from official GitHub. Do not bypass key rotation by disabling signature verification.
+
+### Verification and limits
+
+- Tagged code, migrations and the three existing GitHub release assets were checked. Historical records include backend/frontend checks; this old version and its cross-version installation were not rerun.
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.16) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.16) · [迁仓后提交历史 / Post-migration history](https://github.com/yuchen0x1/Xianyu-Assistant/commits/v3.5.16/)
 
 # Version 3.4.10
 
@@ -179,7 +538,7 @@
 
 > Release: 2026-09-06
 
-- **本次为清理后的干净重发布版**（代码与 v3.4.2 一致），作为仓库唯一保留的 Release；历史版本（≤ v3.4.2）均存在已知缺陷，已全部下架。包含的关键修复与改进：
+- **本次为清理后的干净重发布版**（代码与 v3.4.2 一致），原日志称其为当时唯一保留的 Release，并曾下架更早版本；此处仅保留当时记录，不代表当前 GitHub Release 状态。包含的关键修复与改进：
 - **升级完成后自动重启（restart-mode=self）**：裸 `nohup java -jar` 部署升级后以相同命令行生成新进程接管服务，无需 systemd/Docker，不再"升级即停机"；握手机制避免端口竞争，自拉起失败保持旧进程运行。
 - **修复在线更新「下载地址主机不受信任: foruda.gitee.com」**：Gitee 附件下载 302 到官方存储网关被白名单拦截的问题，信任边界放宽为 Gitee 域名及其子域（严格标签边界，伪造后缀仍拒绝）。
 - Webhook 有界队列：端点全面变慢时不再无限堆积内存，队列打满转后台重投兜底。
@@ -292,89 +651,117 @@
 
 > Release: 2026-08-21
 
-- Align browser request headers with the current Chrome 147 fingerprint used by the reviewed XianYuApis flow.
-- Wait 15 seconds after a fresh QR credential update before requesting the WebSocket Token so the platform session can propagate.
-- Remove the duplicate frontend Token request that previously ran immediately after the backend reconnect request.
-- Replace the stale “same-session slider” instruction with the available official App verification and QR update workflow.
+## 主要变化
+
+- 统一浏览器请求头，与当时核对的 Chrome 147 请求指纹一致。
+- 新扫码凭据保存后等待 15 秒再请求 WebSocket Token，使平台会话有时间生效。
+- 移除后端重连后前端立即重复发起的 Token 请求。
+- 使用官方 App 验证及扫码更新指引替换过时的同会话滑块提示。
 
 # Version 3.3.15
 
 > Release: 2026-08-21
 
-- Complete the official Passport `login_token` exchange after QR confirmation instead of persisting temporary polling cookies.
-- Preserve one Cookie session through QR generation, polling, ticket exchange, and authenticated H5 refresh.
-- Refresh `_m_h5_tk`, `unb`, and related authenticated cookies before saving account credentials.
-- Continue surfacing official phone/security verification when required; no platform verification bypass is included.
+## 主要变化
+
+- 扫码确认后完成官方 Passport login_token 交换，不再保存轮询阶段临时 Cookie。
+- 二维码生成、轮询、票据交换及 H5 刷新保持同一 Cookie 会话。
+- 保存账号前刷新 _m_h5_tk、unb 等认证 Cookie。
+- 需要手机或安全验证时继续引导官方操作，不包含绕过。
 
 # Version 3.3.14
 
 > Release: 2026-08-21
 
-- Replace the expired server-side slider recovery path with the official Xianyu app QR flow for refreshing Cookie/Token credentials.
-- Stop automatic captcha clearing and repeated retry polling while platform risk verification is pending.
-- Guide users to complete phone/security verification in the official app before reconnecting.
+## 主要变化
+
+- 使用官方闲鱼 App 扫码流程刷新 Cookie/Token，替换失效的服务端滑块恢复路径。
+- 平台验证待处理时停止自动清除状态与反复轮询。
+- 引导用户先在官方 App 完成手机或安全验证，再恢复连接。
 
 # Version 3.3.13
 
 > Release: 2026-08-21
 
-- End remote verification sessions immediately when the platform returns an error page such as `M4HRm`.
-- Clear invalid captcha screenshots and reject further mouse events after a session ends.
-- Report the real session `active` state to the frontend so expired pages cannot remain interactive.
+## 主要变化
+
+- 平台返回 M4HRm 等错误页时立即结束远程验证会话。
+- 会话结束后清空失效截图并拒绝后续鼠标事件。
+- 向前端返回真实 active 状态，避免过期页面仍可交互。
 
 # Version 3.3.12
 
 > Release: 2026-08-21
 
-- Stop automatic captcha URL refresh after platform error pages such as `T73mam`.
-- Add a five-minute per-account cooldown to prevent repeated token probes from amplifying risk control.
-- Disable remote verification retry during cooldown and show a countdown in the dialog.
+## 主要变化
+
+- 平台返回 T73mam 等错误页后停止自动刷新验证链接。
+- 增加五分钟账号级冷却，避免反复 Token 探测。
+- 冷却期间禁用远程验证重试，并显示倒计时。
 
 # Version 3.3.11
 
 > Release: 2026-08-21
 
-- Clear stale remote captcha screenshots when a session expires or is reopened.
+## 主要变化
+
+- 验证会话过期或重新打开时清除旧截图。
 
 # Version 3.3.10
 
 > Release: 2026-08-21
 
-- Prevent initial risk-cookie changes from being mistaken for a completed slider.
-- Refresh generic error:xxxx captcha pages and clear stale screenshots in the remote dialog.
+## 主要变化
+
+- 避免把初始风控 Cookie 变化误判为滑块完成。
+- 刷新通用 error:xxxx 验证错误页，并清除远程弹窗的旧截图。
 
 # Version 3.3.9
 
 > Release: 2026-08-21
 
-- Detect expired challenge URLs before opening Playwright.
-- Refresh stale error:Lxvm captcha pages within the same session.
+## 主要变化
+
+- 打开 Playwright 前检测过期挑战链接。
+- 在同一会话内处理失效的 error:Lxvm 验证页面。
 
 # Version 3.3.8
 
 > Release: 2026-08-21
 
-- Fixed stale remote captcha sessions returning an empty verification window.
-- Reopening a closed verification window now creates a fresh session immediately.
+## 主要变化
+
+- 修复失效远程会话返回空白验证窗口的问题。
+- 重新打开已关闭的窗口时立即创建新会话。
 
 # Version 3.3.7
 
 > Release: 2026-08-21
 
-- Fixed remote captcha viewport coordinate mapping and serialized drag events.
+## 主要变化
+
+- 修正远程验证视口坐标映射，并按顺序处理拖动事件。
 
 # Version 3.3.2
 
-> 发布日期：2026-08-20
+> Release: 2026-08-20
 
 ## 新增
 
 - 计划任务管理：支持 Cron 定时发布、下架、同步商品，支持启停、立即执行、失败自动暂停和风控恢复。
 - 版本元数据与 GitHub Release 流程同步更新。
 
+# Version 3.3.1
+
+> Release: 2026-08-13
+
+## 主要变化
+
+- 统一版本号并准备发布；原记录没有列出新增业务功能。
+
 # Version 3.3.0
 
-> 发布日期：2026-08-02
+> Release: 2026-08-02
 
 ## 新增
 
@@ -384,7 +771,7 @@
 
 # Version 3.2.0
 
-> 发布日期：2026-08-02
+> Release: 2026-08-02
 
 ## 新增
 
@@ -395,7 +782,7 @@
 
 # Version 3.1.0
 
-> 发布日期：2026-08-02
+> Release: 2026-08-02
 
 ## 新增
 
@@ -412,6 +799,8 @@
 - `SysSettingServiceImpl` 中代理相关配置变更触发代理池热重载（仿 `AI_RELATED_KEYS` 模式）。
 
 # Version 3.0.0
+
+> Release: 日期未记载（历史文档未提供，未推算）
 
 ## 新增
 
@@ -431,6 +820,8 @@
 - 更新 `XianyuApiCallUtilsOutcomeTest`（适配 API 版本重载）、`XianyuAuthFailureGuardTest`（新增 RGV587 分级熔断用例）；全量回归 `Tests run: 292, Failures: 0, Errors: 0`，前端 type-check + build 通过。
 
 # Version 2.2.0
+
+> Release: 日期未记载（历史文档未提供，未推算）
 
 ## 新增
 
@@ -461,6 +852,8 @@
 
 # Version 2.1.11
 
+> Release: 日期未记载（历史文档未提供，未推算）
+
 ## 优化
 - 统一自动发货三条链路的行为说明：前台 WebSocket 事件/手动触发在断线时自动退回虚拟发货 API；后台 `ApiDeliveryScheduler` 作为额外可选轮询兜底，默认关闭。
 - 补充关键代码注释，明确 `executeDelivery(...)` 的 API 兜底不依赖后台调度器，避免把两层机制混为一个“默认总兜底”。
@@ -482,6 +875,8 @@
 - 修复手动确认后仍被 5 分钟滑块保持状态挡住，导致没有真实探测平台放行结果的问题。
 
 # Version 2.1.10
+
+> Release: 日期未记载（历史文档未提供，未推算）
 
 ## 新增
 
@@ -505,11 +900,74 @@
 - 修复握手成功但未收到 `reg-sid` ACK 仍被当作在线的问题。
 - 修复滑块邮件分支实际不发送或发送失败后无法重试的问题。
 
-# Version 3.3.1
+# Version 2.1.8
 
-> 发布日期�?2026-08-13
+> Release: 2026-07-18
 
-## 新增
+## 主要变化
 
-- Version number upgrade and release preparation
+- 启动和凭据恢复后自动恢复 WebSocket，明确手动断开则保持停用。
+- 发货文本支持 AI 润色，确认后再保存；默认每 12 小时本地全量备份，可配置保留份数和目录。
+- 当时统一为“豫晨咸鱼助手”品牌，并记录了标签发布流程建设。
 
+> 来源：原发布记录；未重新验证历史发布附件或测试结果。
+
+# Version 2.1.7
+
+> Release: 2026-07-18
+
+## 主要变化
+
+- WebSocket 连续重连失败 5 次后发送断开邮件，账号级邮件防抖保持 10 分钟。
+
+> 来源：原发布记录；未重新验证历史发布附件或测试结果。
+
+# Version 2.1.6
+
+> Release: 2026-07-18
+
+## 主要变化
+
+- 集中协议常量与请求指纹，修复认证刷新重试参数丢失，增加账号级失败冷却；不包含验证码绕过。
+
+> 来源：原发布记录；未重新验证历史发布附件或测试结果。
+
+# Version 2.1.5
+
+> Release: 2026-07-18
+
+## 主要变化
+
+- 补齐商品资料编辑、本地草稿和状态筛选，提供官方商品与发布页入口供人工确认。
+
+> 来源：原发布记录；未重新验证历史发布附件或测试结果。
+
+# Version 2.1.4
+
+> Release: 2026-07-18
+
+## 主要变化
+
+- 补充自动回复验证记录、QQ/Foxmail SMTP 配置说明，并统一版本元数据。
+
+> 来源：原发布记录；未重新验证历史发布附件或测试结果。
+
+# Version 2.1.3
+
+> Release: 2026-07-15
+
+## 主要变化
+
+- 增加健康检查、受控异步发货和人工核对队列，提供官方验证链接与快速导航，改善数据面板轮询。
+
+> 来源：原发布记录；未重新验证历史发布附件或测试结果。
+
+# Version 2.1.2
+
+> Release: 2026-07-15
+
+## 主要变化
+
+- 修复 Docker 复制旧 JAR 导致的发布问题，并同步版本回退值；更新相关依赖。
+
+> 来源：原发布记录；未重新验证历史发布附件或测试结果。

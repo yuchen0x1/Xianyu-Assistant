@@ -31,7 +31,7 @@
 - 修复“全部事件”配置不生效、成功后仍显示旧错误，以及后台投递覆盖刚修改配置的问题。
 - 减少重复投递，明确重试停止状态；保存和测试提供等待反馈，历史列表适配手机屏幕。
 
-完整历史见 [发布记录](docs/releases/release-notes.md)，使用说明见 [Webhook 投递与排障](docs/webhook-delivery.md)。
+逐版变化、升级影响与历史档案见 [发布记录](docs/releases/release-notes.md)，使用说明见 [Webhook 投递与排障](docs/webhook-delivery.md)。
 
 ## 技术栈与部署形态
 
@@ -323,8 +323,8 @@ export XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false
 | [`docs/multi-account-onboarding-2026-08-21.md`](docs/multi-account-onboarding-2026-08-21.md) | 多账号接入与并行验证 |
 | [`mobile/README.md`](mobile/README.md) | Flutter 移动端说明 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 完整版本历史 |
-| [`RELEASE_NOTES_CN.md`](RELEASE_NOTES_CN.md) | 当前版本中文发布说明 |
-| [`RELEASE_NOTES_EN.md`](RELEASE_NOTES_EN.md) | 当前版本英文发布说明 |
+| [`RELEASE_NOTES_CN.md`](RELEASE_NOTES_CN.md) | GitHub 正式版本逐版中文说明 |
+| [`RELEASE_NOTES_EN.md`](RELEASE_NOTES_EN.md) | GitHub 正式版本逐版英文说明 |
 | [`SECURITY.md`](SECURITY.md) | 漏洞报告与安全政策 |
 
 ## 常见问题
