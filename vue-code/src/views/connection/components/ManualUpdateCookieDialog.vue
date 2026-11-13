@@ -19,7 +19,7 @@ const emit = defineEmits<Emits>()
 
 const cookieText = ref('')
 const loading = ref(false)
-const showHelpImage = ref(false)
+const showHelpGuide = ref(false)
 
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
@@ -54,7 +54,7 @@ const handleSubmit = async () => {
 
 const handleClose = () => {
   emit('update:modelValue', false)
-  showHelpImage.value = false
+  showHelpGuide.value = false
 }
 </script>
 
@@ -66,13 +66,19 @@ const handleClose = () => {
           <div class="modal-header">
             <h2 class="modal-title">手动更新Cookie</h2>
             <div class="modal-header-actions">
-              <button class="help-link" @click="showHelpImage = !showHelpImage">不会获取Cookie？</button>
+              <button class="help-link" @click="showHelpGuide = !showHelpGuide">不会获取Cookie？</button>
               <button class="modal-close" @click="handleClose">×</button>
             </div>
           </div>
           <div class="modal-body">
-            <div v-if="showHelpImage" class="help-image-wrap">
-              <img src="/cookieGet.png" alt="Cookie获取指南" class="help-image" />
+            <div v-if="showHelpGuide" class="help-guide">
+              <ol>
+                <li>在浏览器中登录自己的闲鱼账号，按 F12 打开开发者工具。</li>
+                <li>选择「网络 / Network」，刷新页面并打开一个发往 goofish.com 的请求。</li>
+                <li>在「请求标头 / Request Headers」中找到 Cookie，复制它的完整值。</li>
+                <li>返回表单粘贴并确认更新；不要复制响应标头的 Set-Cookie。</li>
+              </ol>
+              <p>Cookie 是登录凭据，请仅使用自己的账号，不要截图或分享完整内容。</p>
             </div>
             <template v-else>
               <div class="form-row">
@@ -84,13 +90,13 @@ const handleClose = () => {
                 <p class="alert-text">请从浏览器中复制完整的Cookie字符串</p>
                 <p class="alert-text"><span class="highlight">重要字段：</span><code>unb</code>、<code>_m_h5_tk</code>、<code>cookie2</code>、<code>t</code></p>
                 <p class="alert-subtitle">格式示例：</p>
-                <p class="alert-code"><code>unb</code>=REDACTED_EXAMPLE; cookies=sgcookie=REDACTED_EXAMPLE; <code>t</code>=REDACTED_EXAMPLE; tracknick=xy246940070033; <code>_m_h5_tk</code>=REDACTED_EXAMPLE; <code>cookie2</code>=REDACTED_EXAMPLE</p>
+                <p class="alert-code"><code>unb=你的账号ID; _m_h5_tk=你的值; cookie2=你的值; t=你的值</code></p>
               </div>
             </template>
           </div>
           <div class="modal-footer">
-            <button class="btn btn-secondary" @click="handleClose">{{ showHelpImage ? '返回' : '取消' }}</button>
-            <button v-if="!showHelpImage" class="btn btn-primary" :class="{ 'is-loading': loading }" :disabled="loading" @click="handleSubmit">确定更新</button>
+            <button class="btn btn-secondary" @click="handleClose">{{ showHelpGuide ? '返回' : '取消' }}</button>
+            <button v-if="!showHelpGuide" class="btn btn-primary" :class="{ 'is-loading': loading }" :disabled="loading" @click="handleSubmit">确定更新</button>
           </div>
         </div>
       </div>
@@ -286,19 +292,16 @@ const handleClose = () => {
   border-radius: 3px;
 }
 
-.help-image-wrap {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 16px 0;
-  min-height: 300px;
+.help-guide {
+  padding: 12px 4px;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
 }
-
-.help-image {
-  max-width: 100%;
-  max-height: 500px;
-  border-radius: var(--radius-sm);
-}
+.help-guide ol { margin: 0; padding-left: 24px; }
+.help-guide li + li { margin-top: 12px; }
+.help-guide p { margin: 16px 0 0; color: var(--text-1); }
 
 .btn {
   padding: 8px 18px;

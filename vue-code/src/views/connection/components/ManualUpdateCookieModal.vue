@@ -21,12 +21,12 @@ const emit = defineEmits<Emits>()
 
 const cookieText = ref('')
 const loading = ref(false)
-const showHelpImage = ref(false)
+const showHelpGuide = ref(false)
 
 watch(() => props.modelValue, (newVal) => {
   if (newVal) {
     cookieText.value = props.currentCookie || ''
-    showHelpImage.value = false
+    showHelpGuide.value = false
   }
 })
 
@@ -57,11 +57,11 @@ const handleSubmit = async () => {
 
 const handleClose = () => {
   emit('update:modelValue', false)
-  showHelpImage.value = false
+  showHelpGuide.value = false
 }
 
-const toggleHelpImage = () => {
-  showHelpImage.value = !showHelpImage.value
+const toggleHelpGuide = () => {
+  showHelpGuide.value = !showHelpGuide.value
 }
 </script>
 
@@ -72,7 +72,7 @@ const toggleHelpImage = () => {
         <!-- Header -->
         <div class="modal-header">
           <h2 class="modal-title">手动更新Cookie</h2>
-          <button class="help-link" @click="toggleHelpImage">
+          <button class="help-link" @click="toggleHelpGuide">
             <IconHelp />
             <span>不会获取Cookie？</span>
           </button>
@@ -83,10 +83,16 @@ const toggleHelpImage = () => {
 
         <!-- Content -->
         <div class="modal-content">
-          <!-- Help Image -->
-          <div v-if="showHelpImage" class="help-image-container">
-            <img src="/cookieGet.png" alt="Cookie获取指南" class="help-image" />
-          </div>
+          <!-- Cookie instructions without captured credentials -->
+          <div v-if="showHelpGuide" class="help-guide">
+              <ol>
+                <li>在浏览器中登录自己的闲鱼账号，按 F12 打开开发者工具。</li>
+                <li>选择「网络 / Network」，刷新页面并打开一个发往 goofish.com 的请求。</li>
+                <li>在「请求标头 / Request Headers」中找到 Cookie，复制它的完整值。</li>
+                <li>返回表单粘贴并确认更新；不要复制响应标头的 Set-Cookie。</li>
+              </ol>
+              <p>Cookie 是登录凭据，请仅使用自己的账号，不要截图或分享完整内容。</p>
+            </div>
 
           <!-- Form -->
           <div v-else class="form-container">
@@ -113,20 +119,7 @@ const toggleHelpImage = () => {
                   <span class="tips-field">t</span>
                 </p>
                 <p class="tips-text tips-text--bold">格式示例：</p>
-                <p class="tips-example">
-                  <span class="tips-field">unb</span>=REDACTED_EXAMPLE; 
-                  cookies=sgcookie=REDACTED_EXAMPLE; 
-                  <span class="tips-field">t</span>=REDACTED_EXAMPLE; 
-                  tracknick=xy246940070033; 
-                  csg=f7aeab6d; 
-                  _m_h5_tk_enc=REDACTED_EXAMPLE; 
-                  XSRF-TOKEN=bb76b331-48fb-496b...; 
-                  _samesite_flag_=true; 
-                  mtop_partitioned_detect=1; 
-                  <span class="tips-field">_m_h5_tk</span>=REDACTED_EXAMPLE; 
-                  _tb_token_=REDACTED_EXAMPLE; 
-                  <span class="tips-field">cookie2</span>=REDACTED_EXAMPLE
-                </p>
+                <p class="tips-example"><code>unb=你的账号ID; _m_h5_tk=你的值; cookie2=你的值; t=你的值</code></p>
               </div>
             </div>
           </div>
@@ -135,9 +128,9 @@ const toggleHelpImage = () => {
         <!-- Footer -->
         <div class="modal-footer">
           <button class="btn btn--secondary" @click="handleClose">
-            {{ showHelpImage ? '返回' : '取消' }}
+            {{ showHelpGuide ? '返回' : '取消' }}
           </button>
-          <button v-if="!showHelpImage" class="btn btn--primary" :disabled="loading" @click="handleSubmit">
+          <button v-if="!showHelpGuide" class="btn btn--primary" :disabled="loading" @click="handleSubmit">
             {{ loading ? '更新中...' : '确定更新' }}
           </button>
         </div>
@@ -274,19 +267,16 @@ const toggleHelpImage = () => {
   display: none;
 }
 
-.help-image-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 300px;
+.help-guide {
+  padding: 12px 4px;
+  color: var(--text-2);
+  font-size: 14px;
+  line-height: 1.8;
+  overflow-wrap: anywhere;
 }
-
-.help-image {
-  max-width: 100%;
-  max-height: 600px;
-  border-radius: var(--radius-sm);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-}
+.help-guide ol { margin: 0; padding-left: 24px; }
+.help-guide li + li { margin-top: 12px; }
+.help-guide p { margin: 16px 0 0; color: var(--text-1); }
 
 .form-container {
   display: flex;
