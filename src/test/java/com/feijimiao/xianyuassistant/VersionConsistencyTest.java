@@ -15,7 +15,7 @@ import java.util.stream.Stream;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * 三端版本号一致性测试。
+ * Web 前端与服务端版本号一致性测试。
  *
  * <p>历史上出现过两次版本漂移事故：`pom.xml` 升版本后，`application.yaml`、
  * `@Value("${app.version:...}")` 兜底值、前端 `__APP_VERSION__` 兜底值仍是旧版本，

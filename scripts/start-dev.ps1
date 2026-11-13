@@ -11,7 +11,7 @@ $jar = Get-ChildItem -Path (Join-Path $root 'target') -Filter 'XianYuSellerConso
   Sort-Object LastWriteTime -Descending |
   Select-Object -First 1
 
-# Ì½²â¿ÉÓÃµÄ JDK£¨ÓÅÏÈÏîÄ¿ JDK£¬Æä´Î JAVA_HOME£¬×îºó»ØÍË Android Studio JBR£©
+# Locate Java for the web server: project JDK, JAVA_HOME, then PATH.
 $javaHome = $env:JAVA_HOME
 $projectJdk = Join-Path $env:USERPROFILE '.jdks\jdk-21.0.12+8'
 if (Test-Path (Join-Path $projectJdk 'bin\java.exe')) {
@@ -19,10 +19,13 @@ if (Test-Path (Join-Path $projectJdk 'bin\java.exe')) {
 }
 
 if (-not $javaHome -or -not (Test-Path (Join-Path $javaHome 'bin\java.exe'))) {
-  $javaHome = 'C:\Program Files\Android\Android Studio\jbr'
+  $javaCommand = Get-Command java -ErrorAction SilentlyContinue
+  if ($javaCommand) {
+    $javaHome = Split-Path -Parent (Split-Path -Parent $javaCommand.Source)
+  }
 }
 
-if (-not (Test-Path (Join-Path $javaHome 'bin\java.exe'))) {
+if (-not $javaHome -or -not (Test-Path (Join-Path $javaHome 'bin\java.exe'))) {
   throw 'No usable Java runtime found. Set JAVA_HOME to a JDK installation.'
 }
 
@@ -48,7 +51,7 @@ $backendErr = Join-Path $logDir 'backend-dev.err.log'
 $frontendOut = Join-Path $logDir 'frontend-dev.out.log'
 $frontendErr = Join-Path $logDir 'frontend-dev.err.log'
 
-# Æô¶¯ºó¶Ë£¨ºóÌ¨ÔËĞĞ£¬ÈÕÖ¾ÖØ¶¨Ïòµ½ÎÄ¼ş£©
+# å¯åŠ¨åç«¯ï¼ˆåå°è¿è¡Œï¼Œæ—¥å¿—é‡å®šå‘åˆ°æ–‡ä»¶ï¼‰
 $backendArgs = '--enable-native-access=ALL-UNNAMED -Dserver.port=' + $BackendPort + ' -jar "' + $jar + '"'
 
 $backend = Start-Process -FilePath (Join-Path $javaHome 'bin\java.exe') `
@@ -61,7 +64,7 @@ $backend = Start-Process -FilePath (Join-Path $javaHome 'bin\java.exe') `
 
 Write-Output "Backend PID: $($backend.Id) -> http://127.0.0.1:$BackendPort"
 
-# µÈ´ıºó¶ËÍê³É³õÊ¼»¯£¨×î¶à 40 Ãë£©£¬Ê§°ÜÔòÅ×³öÈÕÖ¾ÄÚÈİ
+# ç­‰å¾…åç«¯å®Œæˆåˆå§‹åŒ–ï¼ˆæœ€å¤š 40 ç§’ï¼‰ï¼Œå¤±è´¥åˆ™æŠ›å‡ºæ—¥å¿—å†…å®¹
 $deadline = (Get-Date).AddSeconds(40)
 while ((Get-Date) -lt $deadline -and -not $backend.HasExited) {
   $listener = Get-NetTCPConnection -LocalPort $BackendPort -State Listen -ErrorAction SilentlyContinue
@@ -81,8 +84,8 @@ if (-not (Get-NetTCPConnection -LocalPort $BackendPort -State Listen -ErrorActio
 
 Write-Output "Backend is ready on http://127.0.0.1:$BackendPort (logs: $backendOut)"
 
-# Ç°¶ËÇ°Ì¨ÔËĞĞ£¨Êä³öÖ±½ÓÏÔÊ¾ÔÚÖÕ¶Ë£©£¬½Å±¾±£³ÖÔËĞĞ£»
-# Ç°¶ËÍË³ö£¨Ctrl+C / Í£Ö¹ÃüÁî£©Ê±¶µµ×Í£µôºó¶Ë£¬±ÜÃâ²ĞÁô½ø³Ì¡£
+# å‰ç«¯å‰å°è¿è¡Œï¼ˆè¾“å‡ºç›´æ¥æ˜¾ç¤ºåœ¨ç»ˆç«¯ï¼‰ï¼Œè„šæœ¬ä¿æŒè¿è¡Œï¼›
+# å‰ç«¯é€€å‡ºï¼ˆCtrl+C / åœæ­¢å‘½ä»¤ï¼‰æ—¶å…œåº•åœæ‰åç«¯ï¼Œé¿å…æ®‹ç•™è¿›ç¨‹ã€‚
 try {
   Push-Location $frontendDir
   $env:VITE_API_PROXY_TARGET = "http://127.0.0.1:$BackendPort"

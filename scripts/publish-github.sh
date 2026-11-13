@@ -81,7 +81,6 @@ fi
 [ "$PROJECT_VERSION" = "$VERSION" ] || die "显式版本($VERSION)与 pom.xml 版本($PROJECT_VERSION)不一致"
 FRONTEND_VERSION="$(node -p "require('./vue-code/package.json').version")"
 [ "$FRONTEND_VERSION" = "$VERSION" ] || die "vue-code/package.json 版本($FRONTEND_VERSION)与 $VERSION 不一致"
-grep -q "^version: ${VERSION}+" mobile/pubspec.yaml || die "mobile/pubspec.yaml 版本与 $VERSION 不一致"
 TAG="v${VERSION}"
 log "发布版本 ${TAG} → ${API_BASE}"
 

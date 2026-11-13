@@ -1,5 +1,12 @@
 # 版本更新日志
 
+> 当前产品范围（2026-11-13）：仅维护网页版，Android/iOS 工程与独立桌面启动包装已移除。下文的原生移动端功能和检查结果仅为旧版本历史记录，不代表当前提供独立客户端。电脑和手机均通过浏览器访问。
+
+## 未发布（2026-11-13）
+
+- 产品统一为网页版：电脑与手机通过浏览器访问同一控制台，停止提供独立 Android/iOS 与桌面客户端。
+- 清理原生客户端源码和构建入口，服务端 JAR、Docker 部署及响应式网页继续保留。
+
 按版本倒序排列。面向使用者的完整历史见 [发布记录](docs/releases/release-notes.md)，[中文说明](RELEASE_NOTES_CN.md)与[English notes](RELEASE_NOTES_EN.md)覆盖当前 GitHub 的 9 个正式版本。
 
 日期沿用项目历史记录（北京时间），不把标签重建或迁仓日期当作原始发布日期。未记载的日期保持未知；旧版本功能和发布源描述仅反映当时状态。官方发布源在 2026-11-03 随 v3.5.16 迁至 GitHub，此前 Gitee 说明属于历史记录。旧测试记录不表示本轮重新执行或验证真实交易。v3.5 系列的原始实现记录保存在[技术档案](docs/releases/technical-history-v3.5.md)。
@@ -30,7 +37,7 @@ Webhook 投递历史与可靠性。
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sig)
 
-Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.24) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.24) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.23...v3.5.24)
 
@@ -84,7 +91,7 @@ Webhook history and delivery reliability.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sig)
 
-Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.23) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.23) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.22...v3.5.23)
 
@@ -138,7 +145,7 @@ Multi-part delivery templates and reply matching.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sig)
 
-Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.22) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.22) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.21...v3.5.22)
 
@@ -191,7 +198,7 @@ Update channels and Windows replacement fixes.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar.sig)
 
-Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.21) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.21) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.20...v3.5.21)
 
@@ -243,7 +250,7 @@ Account isolation and batch-operation fixes.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sig)
 
-Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.20) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.20) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.19...v3.5.20)
 
@@ -294,7 +301,7 @@ Windows 独立 JAR 更新识别修复。
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar.sig)
 
-Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.19) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.19) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.18...v3.5.19)
 
@@ -344,7 +351,7 @@ Windows standalone-JAR update detection.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sig)
 
-Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.18) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.18) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.17...v3.5.18)
 
@@ -395,7 +402,7 @@ Item polishing and console visual refresh.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sig)
 
-Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.17) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.17) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.16...v3.5.17)
 
@@ -448,7 +455,7 @@ GitHub 发布迁移与任务租约保护。
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar.sig)
 
-Java 21；JAR 内置 Web 控制台。此 Release 无预构建 APK 或 Docker 镜像，移动端与容器请按对应标签源码构建。
+Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.16) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.16) · [迁仓后提交历史 / Post-migration history](https://github.com/yuchen0x1/Xianyu-Assistant/commits/v3.5.16/)
 

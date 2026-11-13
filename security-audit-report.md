@@ -1,5 +1,7 @@
 # Project Security Audit and Release Readiness Report
 
+> Current product scope (2026-11-13): web only. Android/iOS sources and standalone desktop launch packaging have been removed. Native-mobile features and checks below are historical records, not current client offerings. Desktop and mobile users access the same web application in a browser.
+
 Audit date: 2026-11-03  
 Repository: `C:\Users\lenmo\Desktop\Xianyu Assistant`  
 Scope: static repository review and local automated checks. No third-party targets were tested.

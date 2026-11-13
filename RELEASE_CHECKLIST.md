@@ -5,8 +5,7 @@
 
 ## 一、版本一致性
 
-- [ ] 三端版本号已对齐（`pom.xml`、`vue-code/package.json`、`mobile/pubspec.yaml`）
-- [ ] `mobile/pubspec.yaml` 的 build number（`+N`）与版本号匹配
+- [ ] Web 前端与服务端版本号已对齐（`pom.xml`、`vue-code/package.json` 及版本回退值）
 - [ ] 版本号符合现有 MAJOR.MINOR.PATCH 惯例，与上一个发布版本（`git tag` 最新）不冲突
 - [ ] 无未提交的工作区改动（`git status` 干净）
 
@@ -28,6 +27,7 @@
 
 - [ ] Tag 已创建并推送（格式 `vMAJOR.MINOR.PATCH`），指向最终 release commit
 - [ ] GitHub Actions `release.yml` 构建成功
+- [ ] 产品仅包含网页版；仓库、构建流程与附件没有独立移动端或桌面客户端
 - [ ] Release 资产齐全：`XianYuSellerConsole-<版本>.jar`、`.jar.sha256`、`.jar.sig`
 - [ ] JAR 本地 SHA-256 与 `.sha256` 文件一致（`sha256sum -c`）
 - [ ] `.jar.sig` Ed25519 验签通过（CI 内置公钥）
@@ -37,7 +37,7 @@
 
 - [ ] 上一版本实例可正常在线更新到本版本（验签、原子替换、重启）
 - [ ] systemd `Restart=always` / `restart-mode` 行为在文档中说明
-- [ ] Flyway 数据库迁移随版本号正确递增（如新增）
+- [ ] SchemaMigrator 数据库迁移随版本号正确递增（如新增）
 - [ ] 发布签名私钥在 CI Secret 中可用（`RELEASE_SIGN_PRIVATE_KEY`）；如发生密钥轮换，已在 Release 说明中提示用户重新下载
 
 ## 六、发布后

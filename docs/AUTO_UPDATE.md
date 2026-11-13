@@ -7,7 +7,7 @@
 - **后端与 Web 控制台**：以独立 Spring Boot JAR 运行时支持在线检查、下载、校验、替换和重启。
 - **Docker / systemd / 守护循环**：推荐使用 `restart-mode=exit`，由外部进程管理器重新拉起进程。
 - **IDE 开发模式**：不会误判为可更新；此时只能查看 GitHub Release 并手动部署。
-- **Flutter 移动端**：当前 Release 不上传 APK，移动端更新仍由应用商店或人工安装负责。
+- **浏览器访问**：电脑与手机使用同一个 Web 服务，更新服务端后重新加载网页即可，无需安装独立客户端。
 
 ## 更新流程
 
@@ -47,7 +47,6 @@
 
 - `pom.xml`
 - `vue-code/package.json`
-- `mobile/pubspec.yaml`
 - Git 标签 `vMAJOR.MINOR.PATCH`
 
 GitHub Actions 的 `release.yml` 只响应符合 `v1.2.3` 的标签。工作流会先执行后端和前端发布前检查，再构建前端静态资源和后端 JAR，生成 `.jar.sha256`，并使用 `RELEASE_SIGN_PRIVATE_KEY` 生成 `.jar.sig`。官方仓库没有签名私钥时会直接失败，不会发布无签名安装包。
@@ -93,6 +92,5 @@ npm run build
 ## 当前限制
 
 - GitHub 私有仓库需要额外的受控认证配置；默认客户端只访问公开 Release API。
-- Windows 代码签名证书不包含在仓库中，未配置证书时系统仍可能显示 SmartScreen 警告。
-- 移动端没有接入商店内更新 API，Release 不提供预构建 APK。
+- 本项目仅提供网页版；JAR 的 Ed25519 签名用于服务端发布包验证，不涉及原生客户端安装包或应用商店更新。
 - GitHub Release 的强制更新和安全修复标记使用发布说明中的 `<!-- mandatory -->` 与 `<!-- security-fix -->` 标记；未标记时按可选更新处理。

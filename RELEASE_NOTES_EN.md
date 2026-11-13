@@ -1,5 +1,7 @@
 # Release notes
 
+> Current product scope (2026-11-13): web only. Android/iOS sources and standalone desktop launch packaging have been removed. Native-mobile features and checks below are historical records, not current client offerings. Desktop and mobile users access the same web application in a browser.
+
 Version-by-version notes for v3.5.16–v3.5.24. See the [complete history](docs/releases/release-notes.md) for older versions. Dates follow the project’s Asia/Shanghai convention; historical verification records were not rerun for this documentation update.
 
 ## v3.5.24
@@ -28,7 +30,7 @@ Webhook history and delivery reliability.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sig)
 
-Java 21 is required; the JAR includes the web console. This release has no prebuilt APK or Docker image; build those from the corresponding source tag.
+Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.24) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.24) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.23...v3.5.24)
 
@@ -58,7 +60,7 @@ Multi-part delivery templates and reply matching.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sig)
 
-Java 21 is required; the JAR includes the web console. This release has no prebuilt APK or Docker image; build those from the corresponding source tag.
+Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.23) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.23) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.22...v3.5.23)
 
@@ -88,7 +90,7 @@ Update channels and Windows replacement fixes.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sig)
 
-Java 21 is required; the JAR includes the web console. This release has no prebuilt APK or Docker image; build those from the corresponding source tag.
+Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.22) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.22) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.21...v3.5.22)
 
@@ -117,7 +119,7 @@ Account isolation and batch-operation fixes.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar.sig)
 
-Java 21 is required; the JAR includes the web console. This release has no prebuilt APK or Docker image; build those from the corresponding source tag.
+Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.21) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.21) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.20...v3.5.21)
 
@@ -146,7 +148,7 @@ Todo center and native mobile dashboard.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sig)
 
-Java 21 is required; the JAR includes the web console. This release has no prebuilt APK or Docker image; build those from the corresponding source tag.
+Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.20) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.20) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.19...v3.5.20)
 
@@ -174,7 +176,7 @@ Windows standalone-JAR update detection.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar.sig)
 
-Java 21 is required; the JAR includes the web console. This release has no prebuilt APK or Docker image; build those from the corresponding source tag.
+Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.19) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.19) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.18...v3.5.19)
 
@@ -202,7 +204,7 @@ Item polishing and console visual refresh.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sig)
 
-Java 21 is required; the JAR includes the web console. This release has no prebuilt APK or Docker image; build those from the corresponding source tag.
+Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.18) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.18) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.17...v3.5.18)
 
@@ -231,7 +233,7 @@ Scheduled updates and uncertain-delivery review.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sig)
 
-Java 21 is required; the JAR includes the web console. This release has no prebuilt APK or Docker image; build those from the corresponding source tag.
+Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.17) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.17) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.16...v3.5.17)
 
@@ -261,6 +263,6 @@ GitHub release migration and job lease protection.
 
 [JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar.sig)
 
-Java 21 is required; the JAR includes the web console. This release has no prebuilt APK or Docker image; build those from the corresponding source tag.
+Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
 [Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.16) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.16) · [迁仓后提交历史 / Post-migration history](https://github.com/yuchen0x1/Xianyu-Assistant/commits/v3.5.16/)

@@ -9,6 +9,8 @@
 
 ## 项目简介
 
+本项目仅提供网页版，电脑和手机均通过浏览器访问。JAR 与 Docker 用于部署同一个 Web 服务，不提供 Android/iOS App 或独立桌面客户端。
+
 「闲鱼卖家运营控制台」历史名称为「闲鱼自动发货助手」，是一套部署在自己电脑或服务器上的卖家运营工具。它将账号连接、商品资料、消息处理、自动回复、自动发货、卡密库存、任务调度、Webhook、备份和监控集中到一个控制台中。
 
 核心数据默认保存在本地 SQLite，不依赖本项目提供的第三方业务服务器。AI、邮件、Webhook、代理池等能力是否启用，由你的配置决定。
@@ -39,7 +41,6 @@
 | --- | --- |
 | 后端 | Java 21、Spring Boot 3.5、MyBatis-Plus、SQLite、WebSocket、Playwright、OkHttp、JJWT、EasyExcel |
 | Web 前端 | Vue 3.5、TypeScript、Vite、Vitest |
-| 移动端 | Flutter 工程，当前版本 `3.5.24+3524` |
 | AI | Spring AI，支持 OpenAI 兼容接口；默认配置指向 DashScope 兼容接口 |
 | 可观测性 | Spring Boot Actuator、Micrometer、Prometheus |
 | 部署 | 官方 Release JAR、源码构建 JAR、Docker、本机开发、systemd + Nginx |
@@ -138,7 +139,7 @@ bash install.sh
 - [XianYuSellerConsole-3.5.24.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sha256)
 - [XianYuSellerConsole-3.5.24.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sig)
 
-移动端目前随仓库提供 Flutter 源码，Release 不提供预构建 APK。
+以上 JAR 是网页版的服务端安装包，启动后在浏览器中访问；手机直接访问同一个 Web 地址。
 
 ### 方式三：Windows 本地开发
 
@@ -182,7 +183,6 @@ java -jar target/XianYuSellerConsole-*.jar
 - Java 21（后端和 JAR 运行必需）
 - Node.js `20.19+` 或 `22.12+`（前端构建）
 - Docker 20.10+（仅容器部署）
-- Flutter stable 工具链（移动端开发；CI 当前使用 Flutter `3.47.1`）
 
 ### 分项检查
 
@@ -197,14 +197,6 @@ npm test
 npm run type-check
 npm run build
 cd ..
-
-# 移动端
-cd mobile
-flutter pub get
-flutter analyze --no-pub
-flutter test --no-pub
-flutter build apk --debug --no-pub --android-skip-build-dependency-validation
-cd ..
 ```
 
 Windows 可运行统一验收脚本：
@@ -213,13 +205,7 @@ Windows 可运行统一验收脚本：
 .\scripts\check-project.ps1
 ```
 
-如果只想跳过耗时的 Android 构建：
-
-```powershell
-.\scripts\check-project.ps1 -SkipAndroidBuild
-```
-
-脚本不会删除或覆盖 `dbdata/`。
+验收脚本只检查 Web 前端和服务端，不会删除或覆盖 `dbdata/`。
 
 ## 生产部署、自动更新与升级
 
@@ -321,7 +307,6 @@ export XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false
 | [`docs/production-deployment.md`](docs/production-deployment.md) | systemd、Nginx、自动部署、自动更新与回退 |
 | [`docs/local-browser-login.md`](docs/local-browser-login.md) | 本机浏览器登录接管 |
 | [`docs/multi-account-onboarding-2026-08-21.md`](docs/multi-account-onboarding-2026-08-21.md) | 多账号接入与并行验证 |
-| [`mobile/README.md`](mobile/README.md) | Flutter 移动端说明 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 完整版本历史 |
 | [`RELEASE_NOTES_CN.md`](RELEASE_NOTES_CN.md) | GitHub 正式版本逐版中文说明 |
 | [`RELEASE_NOTES_EN.md`](RELEASE_NOTES_EN.md) | GitHub 正式版本逐版英文说明 |
@@ -380,7 +365,6 @@ cd .. && ./mvnw -B -ntp -DskipTests clean package
 src/main/java/com/feijimiao/xianyuassistant/  # 后端源码
 src/main/resources/                           # 应用配置与资源
 vue-code/                                     # Vue 3 + TypeScript 前端
-mobile/                                       # Flutter 移动端
 scripts/                                      # Windows 开发与验收脚本
 docs/                                         # 部署、登录和运维文档
 dbdata/                                       # SQLite、密钥和备份（运行时生成）
