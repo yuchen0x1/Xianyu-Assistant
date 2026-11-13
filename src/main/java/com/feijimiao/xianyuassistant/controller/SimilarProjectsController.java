@@ -54,7 +54,7 @@ public class SimilarProjectsController {
             entry("xianyu-super-butler", "23Star/xianyu-super-butler", "github",
                     "闲鱼超级管家：滑块/发货/评价/擦亮", "v3.1.0", "2026-08-16", false),
             entry("XianYu Assistant (当前发布仓库)", "yuchen0x1/Xianyu-Assistant", "github",
-                    "当前项目的公开发布仓库；用于核对本地功能同步后的发布版本", "v3.5.23", "2026-11-12", false)
+                    "当前项目的公开发布仓库；用于核对本地功能同步后的发布版本", "v3.5.24", "2026-11-13", false)
     );
 
     private final ObjectMapper objectMapper;

@@ -1,6 +1,8 @@
 package com.feijimiao.xianyuassistant.webhook.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.FieldStrategy;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -20,11 +22,15 @@ public class WebhookDelivery {
     private String event;
     private String payloadJson;
     private String status;          // PENDING / SUCCESS / FAILED / UNKNOWN
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private Integer httpStatus;
     private Integer attempts;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private LocalDateTime nextAttemptAt;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private String lastError;
     private String idempotencyKey;
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private LocalDateTime deliveredAt;
     private LocalDateTime createdTime;
 }

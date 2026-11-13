@@ -1,6 +1,7 @@
 package com.feijimiao.xianyuassistant.webhook.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.feijimiao.xianyuassistant.exception.BusinessException;
@@ -147,12 +148,20 @@ public class WebhookService {
      * 交给 {@link #redeliverFailedDeliveries()} 兜底，不让投递记录悬挂在 PENDING。
      */
     private void submitDelivery(WebhookConfig hook, String event, Long deliveryId, Runnable task) {
+        if (!inFlightDeliveries.add(deliveryId)) return;
         try {
-            CompletableFuture.runAsync(task, executor);
+            CompletableFuture.runAsync(() -> {
+                try {
+                    task.run();
+                } finally {
+                    inFlightDeliveries.remove(deliveryId);
+                }
+            }, executor);
         } catch (RejectedExecutionException e) {
+            inFlightDeliveries.remove(deliveryId);
             log.warn("Webhook 投递队列已满，转后台重试: hookId={}, event={}, deliveryId={}",
                     hook.getId(), event, deliveryId);
-            updateDelivery(deliveryId, "FAILED", null, 1, "投递队列已满，等待重试", null);
+            updateDelivery(deliveryId, "FAILED", null, 0, "投递队列已满，等待重试", null);
         }
     }
 
@@ -281,7 +290,7 @@ public class WebhookService {
             log.warn("Webhook 测试被拒绝: {}", e.getMessage());
             return false;
         } catch (Exception e) {
-            log.warn("Webhook 测试失败: url={}, error={}", redactUrl(url, e.getMessage()), e.getMessage());
+            log.warn("Webhook 测试失败: hookId={}, error={}", webhookId, safeRequestError(e));
             return false;
         }
     }
@@ -360,7 +369,13 @@ public class WebhookService {
         String minuteSlice = LocalDateTime.now().truncatedTo(ChronoUnit.MINUTES)
                 .format(DateTimeFormatter.ofPattern("yyyyMMddHHmm"));
         String key = webhookId + ":" + event + ":" + businessKey + ":" + minuteSlice;
-        return key.length() > IDEMPOTENCY_KEY_MAX ? key.substring(0, IDEMPOTENCY_KEY_MAX) : key;
+        if (key.length() <= IDEMPOTENCY_KEY_MAX) return key;
+        try {
+            return java.util.HexFormat.of().formatHex(java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(key.getBytes(StandardCharsets.UTF_8)));
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
     }
 
     /**
@@ -377,6 +392,14 @@ public class WebhookService {
      */
     private void sendWebhook(WebhookConfig hook, String event, Map<String, Object> payload, Long deliveryId) {
         int maxAttempts = Math.max(1, clampRetry(hook.getRetryCount() != null ? hook.getRetryCount() : 3));
+        WebhookDelivery stored = deliveryMapper.selectById(deliveryId);
+        if (stored == null || "SUCCESS".equals(stored.getStatus())) return;
+        int previousAttempts = stored.getAttempts() == null ? 0 : stored.getAttempts();
+        if (previousAttempts >= maxAttempts) {
+            updateDelivery(deliveryId, "FAILED", stored.getHttpStatus(), 0,
+                    stored.getLastError(), null, maxAttempts);
+            return;
+        }
         int timeout = clampTimeout(hook.getTimeoutSeconds() != null ? hook.getTimeoutSeconds() : 10);
         String lastError = null;
         Integer httpStatus = null;
@@ -403,7 +426,8 @@ public class WebhookService {
             String body = objectMapper.writeValueAsString(enrichedPayload);
             Map<String, List<String>> headers = new LinkedHashMap<>();
             headers.put("X-Webhook-Event", List.of(event));
-            headers.put("X-Webhook-Attempt", List.of("1"));
+            headers.put("X-Webhook-Attempt", List.of(String.valueOf(previousAttempts + 1)));
+            headers.put("X-Webhook-Id", List.of(String.valueOf(deliveryId)));
             if (hook.getSecret() != null && !hook.getSecret().isBlank()) {
                 headers.put("X-Webhook-Signature", List.of(sign(body, hook.getSecret())));
             }
@@ -416,17 +440,13 @@ public class WebhookService {
                 log.warn("Webhook 返回非成功状态码: hookId={}, status={}", hook.getId(), statusCode);
             }
         } catch (Exception e) {
-            lastError = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
-            if (lastError.length() > LAST_ERROR_MAX) {
-                lastError = lastError.substring(0, LAST_ERROR_MAX);
-            }
+            lastError = safeRequestError(e);
             log.warn("Webhook 发送失败: hookId={}, error={}", hook.getId(), lastError);
         }
 
         String status = success ? "SUCCESS" : "FAILED";
-        // 成功时清空历史失败次数；失败时只累加真实的 1 次尝试，由 updateDelivery
-        // 负责按累计次数算退避，累计到 maxAttempts 后不再安排重投。
-        updateDelivery(deliveryId, status, httpStatus, success ? 0 : 1, lastError,
+        // 无论成功或失败，都保留累计尝试次数，供接收方和投递历史核对。
+        updateDelivery(deliveryId, status, httpStatus, 1, lastError,
                 success ? LocalDateTime.now() : null, maxAttempts);
 
         recordResult(hook, success, success ? null : lastError);
@@ -481,9 +501,8 @@ public class WebhookService {
             Map<String, Object> payload = parsePayload(delivery.getPayloadJson());
             if (payload == null) {
                 inFlightDeliveries.remove(delivery.getId());
-                updateDelivery(delivery.getId(), "FAILED", null,
-                        delivery.getAttempts() == null ? 1 : delivery.getAttempts() + 1,
-                        "payload 已损坏，停止重投", null);
+                updateDelivery(delivery.getId(), "FAILED", null, 0,
+                        "payload 已损坏，停止重投", null, 0);
                 continue;
             }
             // 队列打满时保持 FAILED 原样，下轮扫描自然重试；记录不会被吞。
@@ -536,20 +555,19 @@ public class WebhookService {
             if (delivery == null) return;
             delivery.setStatus(status);
             delivery.setHttpStatus(httpStatus);
+            int existing = delivery.getAttempts() == null ? 0 : delivery.getAttempts();
+            int cumulative = existing + attempts;
+            delivery.setAttempts(cumulative);
             if (!"SUCCESS".equals(status)) {
                 // 失败时累计尝试次数（跨轮重投），退避随累计次数增长
-                int existing = delivery.getAttempts() == null ? 0 : delivery.getAttempts();
-                int cumulative = existing + attempts;
-                delivery.setAttempts(cumulative);
                 delivery.setLastError(truncate(lastError, LAST_ERROR_MAX));
                 delivery.setDeliveredAt(null);
                 // 达到上限就不再安排下一次：next_attempt_at 为 NULL 时重投扫描
                 // 的 `isNotNull` 条件会直接跳过，不需要额外的状态位。
-                delivery.setNextAttemptAt(cumulative >= maxAttempts
+                delivery.setNextAttemptAt(cumulative >= Math.min(maxAttempts, MAX_RETRY_COUNT)
                         ? null
                         : LocalDateTime.now().plusSeconds(backoffSeconds(cumulative)));
             } else {
-                delivery.setAttempts(attempts);
                 delivery.setLastError(null);
                 delivery.setDeliveredAt(deliveredAt);
                 delivery.setNextAttemptAt(null);
@@ -619,20 +637,22 @@ public class WebhookService {
     }
 
     private void recordResult(WebhookConfig hook, boolean success, String lastError) {
-        hook.setLastTriggerAt(LocalDateTime.now());
-        hook.setLastTriggerStatus(success ? "SUCCESS" : "FAILED");
-        hook.setLastError(success ? null : truncate(lastError, 500));
-        hook.setUpdatedTime(LocalDateTime.now());
-        configMapper.updateById(hook);
+        // 只写运行状态，避免异步发送持有的旧配置覆盖用户刚编辑的 URL、密钥或启停状态。
+        configMapper.update(null, new LambdaUpdateWrapper<WebhookConfig>()
+                .eq(WebhookConfig::getId, hook.getId())
+                .set(WebhookConfig::getLastTriggerAt, LocalDateTime.now())
+                .set(WebhookConfig::getLastTriggerStatus, success ? "SUCCESS" : "FAILED")
+                .set(WebhookConfig::getLastError, success ? null : truncate(lastError, LAST_ERROR_MAX))
+                .set(WebhookConfig::getUpdatedTime, LocalDateTime.now()));
     }
 
     private boolean matchesEvent(WebhookConfig hook, String event) {
         if (hook.getEvents() == null || hook.getEvents().isBlank()) return true;
         try {
-            List<String> events = objectMapper.readValue(hook.getEvents(), List.class);
-            return events.contains(event) || events.contains("*");
+            List<String> events = objectMapper.readValue(hook.getEvents(), new TypeReference<List<String>>() {});
+            return events != null && (events.isEmpty() || events.contains(event) || events.contains("*"));
         } catch (Exception e) {
-            return hook.getEvents().contains(event);
+            return false;
         }
     }
 
@@ -781,7 +801,8 @@ public class WebhookService {
         return Math.max(MIN_TIMEOUT_SECONDS, Math.min(value, MAX_TIMEOUT_SECONDS));
     }
 
-    private static String redactUrl(String url, String message) {
-        return message == null ? "" : message;
+    private static String safeRequestError(Exception error) {
+        // HTTP 客户端异常可能携带完整 URL（含查询参数密钥），不可直接落库或返回界面。
+        return "请求失败（" + error.getClass().getSimpleName() + "），请检查地址、网络和证书";
     }
 }

@@ -44,3 +44,21 @@ export function toggleWebhook(id: number, enabled: boolean) {
 export function testWebhook(url: string, secret?: string, id?: number) {
   return request<boolean>({ url: '/webhooks/test', method: 'POST', data: { url, secret: secret || '', ...(id ? { id } : {}) } })
 }
+
+export interface WebhookDelivery {
+  id: number
+  webhookId: number
+  event: string
+  status: string
+  httpStatus: number | null
+  attempts: number
+  nextAttemptAt: string | null
+  lastError: string | null
+  payloadSummary: string
+  deliveredAt: string | null
+  createdTime: string
+}
+
+export function getWebhookDeliveries(id: number, limit = 50) {
+  return request<WebhookDelivery[]>({ url: `/webhooks/${id}/deliveries`, method: 'GET', params: { limit } })
+}

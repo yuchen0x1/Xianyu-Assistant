@@ -35,6 +35,8 @@ build/
 
 ### Database ###
 /dbdata/
+# 本地备份含凭据密钥及业务数据，不能随源码提交。
+/dbdata.backup-*/
 *.db
 *.db-journal
 /logs/

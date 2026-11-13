@@ -1,3 +1,20 @@
+# Xianyu Seller Console v3.5.24
+
+> Release: 2026-11-13
+
+This release improves Webhook delivery reliability and troubleshooting.
+
+- Inspect the latest 100 deliveries, filter by status, and refresh attempt counts, failure reasons and retry times.
+- Empty event selections now subscribe to all events. Successful deliveries clear previous errors while retaining attempt counts.
+- Reduce duplicate dispatch between initial queues and retries. Delivery results no longer overwrite newly edited endpoint settings.
+- Loading feedback and mobile-friendly history make operations clearer. Request errors no longer expose URL credentials.
+
+## Upgrade notes
+
+No dependency upgrades or database migrations. Existing configuration and signature formats remain compatible. Stable delivery IDs help receivers deduplicate requests; receiver-side deduplication is still required. Live marketplace transactions, public callback delivery and full old-client update installation are outside this verification scope.
+
+Usage and verification: [Webhook delivery guide](docs/webhook-delivery.md).
+
 # Xianyu Assistant (Xianyu Seller Console) v3.5.23
 
 > Release: 2026-11-12

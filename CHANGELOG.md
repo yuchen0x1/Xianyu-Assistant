@@ -1,3 +1,23 @@
+# Version 3.5.24
+
+> Release: 2026-11-13
+
+- Webhook 新增持久化投递历史面板：最近 100 条、状态筛选、加载/失败恢复、累计尝试次数和下次重试时间；适配窄屏。
+- 修复空事件数组被视为“不监听任何事件”，使“不选择则全部监听”的界面与后端一致；格式损坏的订阅不再按子串误匹配。
+- 修复成功后尝试次数清零、空值未落库导致旧错误/重试时间残留；损坏载荷明确停止重试，队列拒绝不消耗发送次数。
+- 首次排队与重投共用进程内占用保护；执行前复核成功状态与尝试上限；异步结果仅更新运行字段，避免覆盖用户新配置。
+- 增加 `X-Webhook-Id` 与准确的 `X-Webhook-Attempt`；过长幂等键改为 SHA-256 摘要，避免截断丢失业务标识和时间片。
+- HTTP 异常只记录异常类型及安全提示，避免 URL 查询参数中的凭据进入日志和历史。
+- 无依赖升级或数据库结构迁移，旧配置保持兼容；版本统一为 3.5.24。
+
+## English
+
+- View and filter persisted Webhook delivery history, including attempt counts, HTTP status, failure reasons and retry times.
+- Fix all-event subscriptions, stale failure state after success, and asynchronous delivery results overwriting newly edited settings.
+- Improve duplicate-delivery protection and stable delivery identifiers, stop corrupt payload retries, and keep URL credentials out of request-error messages.
+- Add loading feedback and mobile-friendly history; no dependency upgrades or database migrations.
+- See `docs/webhook-delivery.md` for compatibility and remaining end-to-end validation boundaries.
+
 # Version 3.5.23
 
 > Release: 2026-11-12

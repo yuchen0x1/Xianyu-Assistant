@@ -7,6 +7,7 @@ import { toast } from '@/utils/toast'
 import { showConfirm } from '@/utils/confirm'
 import { formatTime } from '@/utils'
 import IconLink from '@/components/icons/IconLink.vue'
+import WebhookDeliveryHistory from './WebhookDeliveryHistory.vue'
 
 defineOptions({ name: 'WebhooksView' })
 
@@ -16,6 +17,10 @@ const showForm = ref(false)
 const editing = ref<Partial<WebhookConfig> | null>(null)
 const showTestResult = ref(false)
 const testResultOk = ref(false)
+const historyId = ref<number | null>(null)
+const saving = ref(false)
+const testingId = ref<number | null>(null)
+const loadError = ref('')
 
 const eventOptions = [
   { value: 'delivery.completed', label: '发货完成' },
@@ -44,10 +49,12 @@ const parseEvents = (value?: string): string[] => {
 
 const loadData = async () => {
   loading.value = true
+  loadError.value = ''
   try {
     const res = await getWebhookList()
     if (res.code === 200) hooks.value = res.data || []
   } catch (e) {
+    loadError.value = e instanceof Error ? e.message : '加载失败'
     toast.error(e instanceof Error ? e.message : '加载失败')
   } finally {
     loading.value = false
@@ -67,7 +74,12 @@ const openEdit = (hook: WebhookConfig) => {
 }
 
 const saveHook = async () => {
-  if (!editing.value) return
+  if (!editing.value || saving.value) return
+  if (!editing.value.name?.trim() || !editing.value.url?.trim()) {
+    toast.error('请填写名称与回调 URL')
+    return
+  }
+  saving.value = true
   editing.value.events = JSON.stringify(selectedEvents.value)
   try {
     if (!editing.value.id) {
@@ -82,6 +94,8 @@ const saveHook = async () => {
     await loadData()
   } catch (e) {
     toast.error(e instanceof Error ? e.message : '保存失败')
+  } finally {
+    saving.value = false
   }
 }
 
@@ -107,6 +121,8 @@ const handleToggle = async (hook: WebhookConfig) => {
 }
 
 const handleTest = async (hook: WebhookConfig) => {
+  if (testingId.value !== null) return
+  testingId.value = hook.id
   try {
     const res = await testWebhook(hook.url, '', hook.id)
     testResultOk.value = res.data === true
@@ -114,6 +130,8 @@ const handleTest = async (hook: WebhookConfig) => {
   } catch {
     testResultOk.value = false
     showTestResult.value = true
+  } finally {
+    testingId.value = null
   }
 }
 
@@ -133,6 +151,7 @@ onMounted(loadData)
     </template>
 
     <div v-if="loading" class="loading">加载中...</div>
+    <div v-else-if="loadError" role="alert" class="empty">{{ loadError }} <UiButton @click="loadData">重试加载</UiButton></div>
     <div v-else-if="hooks.length === 0" class="empty">暂无 Webhook 配置</div>
 
     <div v-else class="hook-list">
@@ -140,7 +159,7 @@ onMounted(loadData)
         <div class="hook-header">
           <div class="hook-name"><IconLink /><span>{{ hook.name }}</span></div>
           <label class="toggle-switch">
-            <input type="checkbox" :checked="hook.enabled === 1" @change="handleToggle(hook)" />
+            <input type="checkbox" :aria-label="`启用 ${hook.name}`" :checked="hook.enabled === 1" @change="handleToggle(hook)" />
             <span class="toggle-slider"></span>
           </label>
         </div>
@@ -151,33 +170,36 @@ onMounted(loadData)
           <span v-if="!hook.events || hook.events === '[]'" class="event-tag all">全部事件</span>
         </div>
         <div class="hook-meta">
-          <span>重试 {{ hook.retryCount }} 次</span>
+          <span>最多尝试 {{ Math.max(1, hook.retryCount) }} 次（含首次）</span>
           <span>超时 {{ hook.timeoutSeconds }}s</span>
           <span v-if="hook.lastTriggerAt">上次: {{ formatTime(hook.lastTriggerAt) }}</span>
           <span v-if="hook.lastTriggerStatus" :class="hook.lastTriggerStatus === 'SUCCESS' ? 'status-ok' : 'status-fail'">{{ hook.lastTriggerStatus }}</span>
         </div>
         <div v-if="hook.lastError" class="hook-error">{{ hook.lastError }}</div>
         <div class="hook-actions">
-          <UiButton size="small" @click="handleTest(hook)">测试</UiButton>
+          <UiButton size="small" :loading="testingId === hook.id" :disabled="testingId !== null" @click="handleTest(hook)">测试</UiButton>
+          <UiButton size="small" :aria-expanded="historyId === hook.id" @click="historyId = historyId === hook.id ? null : hook.id">{{ historyId === hook.id ? '收起历史' : '投递历史' }}</UiButton>
           <UiButton size="small" @click="openEdit(hook)">编辑</UiButton>
           <UiButton size="small" variant="danger" @click="handleDelete(hook)">删除</UiButton>
         </div>
+        <WebhookDeliveryHistory v-if="historyId === hook.id" :webhook-id="hook.id" />
       </div>
     </div>
 
     <!-- 表单弹窗 -->
     <Teleport to="body">
-      <div v-if="showForm" class="dialog-overlay" @click.self="showForm = false">
+      <div v-if="showForm" class="dialog-overlay" @click.self="!saving && (showForm = false)">
         <div class="dialog">
           <h3>{{ editing?.id ? '编辑 Webhook' : '新建 Webhook' }}</h3>
           <div class="form-field"><label>名称</label><input v-model="editing!.name" placeholder="如：通知服务器" /></div>
           <div class="form-field"><label>回调 URL</label><input v-model="editing!.url" placeholder="https://example.com/webhook" /></div>
           <div class="form-field"><label>Secret 签名密钥（可选）</label><input v-model="editing!.secret" placeholder="留空则保持原密钥" /></div>
           <div class="form-row">
-            <div class="form-field half"><label>重试次数</label><input type="number" v-model.number="editing!.retryCount" /></div>
-            <div class="form-field half"><label>超时（秒）</label><input type="number" v-model.number="editing!.timeoutSeconds" /></div>
+            <div class="form-field half"><label>最多尝试次数（含首次）</label><input type="number" min="1" max="10" v-model.number="editing!.retryCount" /></div>
+            <div class="form-field half"><label>超时（秒）</label><input type="number" min="1" max="60" v-model.number="editing!.timeoutSeconds" /></div>
           </div>
           <div class="form-field"><label>监听事件</label>
+            <p>不选择时监听全部事件。</p>
             <div class="event-selector">
               <label v-for="ev in eventOptions" :key="ev.value" class="event-checkbox">
                 <input type="checkbox" :checked="selectedEvents.includes(ev.value)" @change="toggleEvent(ev.value)" />
@@ -186,7 +208,7 @@ onMounted(loadData)
               </label>
             </div>
           </div>
-          <div class="dialog-actions"><UiButton @click="showForm = false">取消</UiButton><UiButton @click="saveHook" variant="primary">保存</UiButton></div>
+          <div class="dialog-actions"><UiButton :disabled="saving" @click="showForm = false">取消</UiButton><UiButton :loading="saving" @click="saveHook" variant="primary">保存</UiButton></div>
         </div>
       </div>
     </Teleport>
@@ -333,6 +355,7 @@ onMounted(loadData)
 
 .hook-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: var(--space-2);
   margin-top: var(--space-2);
 }
@@ -499,6 +522,11 @@ onMounted(loadData)
 
 .toggle-switch input:checked + .toggle-slider {
   background: var(--success-500);
+}
+
+.toggle-switch input:focus-visible + .toggle-slider {
+  outline: 2px solid var(--brand-600);
+  outline-offset: 3px;
 }
 
 .toggle-switch input:checked + .toggle-slider::before {

@@ -5,7 +5,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/yuchen0x1/Xianyu-Assistant?display_name=tag&sort=semver)](https://github.com/yuchen0x1/Xianyu-Assistant/releases)
 
-当前版本：**v3.5.23** · [GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
+当前版本：**v3.5.24** · [GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
 
 ## 项目简介
 
@@ -25,31 +25,13 @@
 
 ## 最新更新
 
-### v3.5.23（2026-11-12）
+### v3.5.24（2026-11-13）
 
-- 新增有序多段自动发货模板：支持商品/SKU 绑定、订单/买家/卡密变量、WebSocket 顺序发送、断点恢复和卡密预占回滚。
-- 备份支持导入导出发货模板与模板消息；旧的单段自动发货配置继续兼容。
-- 自动回复支持多关键词，以及模糊、精确和正则匹配；同类资源检测支持强制刷新并纳入当前发布仓库基线。
-- 新增 `V3_27` 增量迁移，保留既有业务数据；后端 703 项测试、前端 40 项测试及类型检查、Lint、生产构建通过。
+- Webhook 现在可以查看投递历史，按状态筛选，直接了解失败原因、累计尝试次数和下次重试时间。
+- 修复“全部事件”配置不生效、成功后仍显示旧错误，以及后台投递覆盖刚修改配置的问题。
+- 减少重复投递，明确重试停止状态；保存和测试提供等待反馈，历史列表适配手机屏幕。
 
-完整说明见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`docs/releases/release-notes.md`](docs/releases/release-notes.md)。
-
-### v3.5.22（2026-11-12）
-
-- 接入可验证的在线自动更新：下载重试、取消、空间检查、速度/ETA、SHA-256 与 Ed25519 校验、原子替换和失败恢复。
-- 支持稳定版、Beta 和 Dev 更新通道，并在控制台显示安装包信息与更新状态。
-- GitHub Release 工作流增加发布前后端测试、前端测试和类型检查。
-
-完整说明见 [`docs/AUTO_UPDATE.md`](docs/AUTO_UPDATE.md)。
-
-### v3.5.21（2026-11-12）
-
-- 修复数据面板账号范围过滤失效，非管理员只能看到授权账号的数据。
-- 加固批量擦亮、批量下架和批量改价的数量限制、限流与超时处理。
-- 修复 Windows / macOS 浏览器探测、未知 API 返回码和 Actuator 路由回退问题。
-- 统一注册与改密口令策略，并在 `/actuator/info` 提供构建版本与时间。
-
-完整说明见 [`CHANGELOG.md`](CHANGELOG.md) 与 [`docs/releases/release-notes.md`](docs/releases/release-notes.md)。
+完整历史见 [发布记录](docs/releases/release-notes.md)，使用说明见 [Webhook 投递与排障](docs/webhook-delivery.md)。
 
 ## 技术栈与部署形态
 
@@ -57,7 +39,7 @@
 | --- | --- |
 | 后端 | Java 21、Spring Boot 3.5、MyBatis-Plus、SQLite、WebSocket、Playwright、OkHttp、JJWT、EasyExcel |
 | Web 前端 | Vue 3.5、TypeScript、Vite、Vitest |
-| 移动端 | Flutter 工程，当前版本 `3.5.23+3523` |
+| 移动端 | Flutter 工程，当前版本 `3.5.24+3524` |
 | AI | Spring AI，支持 OpenAI 兼容接口；默认配置指向 DashScope 兼容接口 |
 | 可观测性 | Spring Boot Actuator、Micrometer、Prometheus |
 | 部署 | 官方 Release JAR、源码构建 JAR、Docker、本机开发、systemd + Nginx |
@@ -150,11 +132,11 @@ bash install.sh
 
 安装脚本从 GitHub Release 获取最新 JAR，并校验 SHA-256 与官方 Ed25519 签名。默认安装目录为 `~/xianyu-seller-console`，端口可通过 `PORT` 环境变量覆盖。
 
-当前 v3.5.23 资产：
+当前 v3.5.24 资产：
 
-- [XianYuSellerConsole-3.5.23.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar)
-- [XianYuSellerConsole-3.5.23.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sha256)
-- [XianYuSellerConsole-3.5.23.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sig)
+- [XianYuSellerConsole-3.5.24.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar)
+- [XianYuSellerConsole-3.5.24.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sha256)
+- [XianYuSellerConsole-3.5.24.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sig)
 
 移动端目前随仓库提供 Flutter 源码，Release 不提供预构建 APK。
 
@@ -273,12 +255,12 @@ export XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false
 
 自动更新与手动在线更新共用更新状态机，同一时间只允许一个更新流程执行。完整配置见下方环境变量表和 `docs/production-deployment.md`。
 
-### 从 v3.5.22 升级
+### 从 v3.5.23 升级
 
 - 推荐使用应用内在线更新、自动更新或重新执行 `bash install.sh`。
 - 升级前备份 `dbdata/`，尤其是 SQLite 数据库、JWT 密钥和凭据密钥文件。
 - 使用默认 `exit` 模式时，确认 systemd / Docker / 守护循环具备自动重启能力。
-- v3.5.23 会执行 `V3_27` 增量迁移，为有序多段自动发货模板增加表和配置字段；不会清空或覆盖既有业务数据。
+- v3.5.24 不新增数据库迁移；从更早版本升级时仍会执行既有增量迁移，保留业务数据。
 - 旧的单段自动发货配置继续可用；模板发货支持在后台按商品或 SKU 绑定后启用。
 - 不需要自动更新时设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false`。
 
