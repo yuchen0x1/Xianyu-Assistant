@@ -47,8 +47,6 @@ build/
 /.codeartsdoer/
 /.arts/
 /.qoder/
-/.qoder/
-/.arts/
 
 # 前端构建产物：不入库，发布时由 CI/Docker 构建（cd vue-code && npm ci && npm run build）
 /src/main/resources/static/
@@ -76,3 +74,45 @@ vue-code/.vitest/
 
 # ZCode session workspace config
 /.zcode/
+
+# Local reports, caches and one-off session output
+/.evolution/
+/PROJECT_AUDIT_REPORT.md
+/docs/升级方案-v3.6-2026-11-10.md
+*.log
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+.DS_Store
+Thumbs.db
+
+# SQLite sidecars and local database variants
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+
+# Local signing keys/certificates (public verification keys live in source)
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Downloaded release artifacts at the workspace root
+/*.jar
+/*.jar.*
+/*.zip
+/*.7z
+/*.apk
+/*.aab
+/*.ipa
+
+/secrets/
+*.sqlite3-wal
+*.sqlite3-shm

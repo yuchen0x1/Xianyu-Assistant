@@ -1,178 +1,51 @@
-# 闲鱼自动化管理系统 - Vue3 前端
+# 闲鱼卖家运营控制台 Web 前端
 
-这是闲鱼自动化管理系统的 Vue3 + TypeScript 前端项目，从原有的静态 HTML/JS 项目迁移而来。
+本目录是项目唯一的用户界面，电脑和手机均通过浏览器使用。完整功能、服务端部署与升级说明见[项目 README](../README.md)。
 
-## 技术栈
+## 环境与依赖
 
-- **Vue 3** - 渐进式 JavaScript 框架
-- **TypeScript** - 类型安全
-- **Vue Router** - 路由管理
-- **Pinia** - 状态管理
-- **Element Plus** - UI 组件库
-- **Axios** - HTTP 请求
-- **Vite** - 构建工具
+- Node.js 20.19+ 或 22.12+（以 `package.json` 的 engines 为准）。
+- Vue 3、TypeScript、Vue Router、Axios、Vite；页面使用项目自己的样式与组件。
+- 使用 `npm ci` 按已提交的 `package-lock.json` 安装依赖，无需额外安装 Element Plus 或 Pinia。
 
-## 项目结构
+## 开发
 
-```
-vue-code/
-├── src/
-│   ├── api/                    # API 接口模块
-│   │   ├── account.ts         # 账号相关 API
-│   │   ├── goods.ts           # 商品相关 API
-│   │   ├── websocket.ts       # WebSocket 相关 API
-│   │   ├── message.ts         # 消息相关 API
-│   │   └── qrlogin.ts         # 二维码登录 API
-│   ├── types/                  # TypeScript 类型定义
-│   │   └── index.ts           # 全局类型
-│   ├── utils/                  # 工具函数
-│   │   ├── index.ts           # 通用工具
-│   │   └── request.ts         # HTTP 请求封装
-│   ├── router/                 # 路由配置
-│   │   └── index.ts           # 路由定义
-│   ├── views/                  # 页面组件（细粒度结构）
-│   │   ├── dashboard/         # 仪表板
-│   │   │   ├── index.vue      # 页面组件
-│   │   │   ├── dashboard.css  # 页面样式
-│   │   │   └── useDashboard.ts # 业务逻辑
-│   │   ├── accounts/          # 账号管理
-│   │   │   ├── index.vue
-│   │   │   ├── accounts.css
-│   │   │   ├── useAccountManager.ts
-│   │   │   └── components/    # 子组件
-│   │   ├── connection/        # 连接管理
-│   │   ├── goods/             # 商品管理
-│   │   ├── messages/          # 消息管理
-│   │   ├── auto-delivery/     # 自动发货
-│   │   ├── auto-reply/        # 自动回复
-│   │   ├── records/           # 操作记录
-│   │   └── qrlogin/           # 扫码登录
-│   ├── App.vue                 # 根组件
-│   └── main.ts                 # 入口文件
-├── public/                     # 公共资源
-├── vite.config.ts             # Vite 配置
-├── package.json               # 依赖配置
-├── PROJECT_STRUCTURE.md       # 项目结构详细说明
-├── MIGRATION_GUIDE.md         # 迁移指南
-└── QUICK_START.md             # 快速开始
-
-## 快速开始
-
-### 1. 安装依赖
+先启动 Java 服务端（默认 `http://127.0.0.1:12400`），再从项目根目录执行：
 
 ```bash
 cd vue-code
-npm install
-```
-
-### 2. 启动开发服务器
-
-```bash
+npm ci
 npm run dev
 ```
 
-访问 `http://localhost:5173`
+开发页面默认地址为 `http://localhost:5173`。`/api` 和 `/ai` 由 Vite 代理到后端；可通过 `VITE_API_PROXY_TARGET` 指定后端地址。生产环境由 Spring Boot 提供静态页面和接口，不依赖 Vite 开发代理。
 
-### 3. 构建生产版本
+Windows 也可使用根目录的 `scripts/start-dev.ps1` 同时运行前后端，具体前置构建和端口说明见项目 README。
 
-```bash
-npm run build
-```
-
-### 4. 部署到 Spring Boot
+## 验证与构建
 
 ```bash
-# Windows
-xcopy /E /I /Y dist\* ..\src\main\resources\static\
-
-# Linux/Mac
-cp -r dist/* ../src/main/resources/static/
-```
-
-## 开发指南
-
-### 页面结构规范
-
-每个页面遵循以下细粒度结构：
-
-```
-views/[page]/
-├── index.vue              # 页面主组件
-├── [page].css            # 页面样式
-├── use[Page]Manager.ts   # 业务逻辑（Composable）
-└── components/           # 页面子组件
-    ├── [Component].vue
-    └── ...
-```
-
-### 已完成的页面
-
-- ✅ Dashboard（仪表板）- 完整实现
-- ✅ Accounts（账号管理）- 基础结构完成
-
-### 待完成的页面
-
-参考 `PROJECT_STRUCTURE.md` 查看详细的待办事项和开发指南。
-
-## 功能模块
-
-- 📊 **仪表板** - 系统概览和统计信息
-- 👤 **闲鱼账号管理** - 账号的增删改查
-- 🔗 **WebSocket 连接管理** - 管理 WebSocket 连接状态
-- 📦 **商品管理** - 商品列表和配置
-- 💬 **消息管理** - 聊天消息查看
-- 🤖 **自动发货** - 配置和记录
-- 💭 **自动回复** - 配置和记录
-- 📝 **操作记录** - 查看历史操作
-- 📱 **扫码登录** - 二维码登录添加账号
-
-## 后端 API
-
-- **开发环境**: `http://localhost:8080/api`
-- **生产环境**: 通过 Vite 代理自动转发
-
-## 开发命令
-
-```bash
-# 安装依赖
-npm install
-
-# 启动开发服务器
-npm run dev
-
-# 构建生产版本
-npm run build
-
-# 预览生产构建
-npm run preview
-
-# 类型检查
+npm test
+npm run lint:check
 npm run type-check
-
-# 代码检查
-npm run lint
+npm run build
 ```
 
-## 注意事项
+`npm run build` 包含类型检查，并直接把页面输出到 `../src/main/resources/static/`；无需从 `dist` 手工复制。Vite 会清理旧输出，生产构建不生成 source map。
 
-1. **API 响应格式**: 后端返回 `code: 200` 或 `code: 0` 表示成功
-2. **类型安全**: 充分利用 TypeScript 的类型检查
-3. **组件复用**: 将重复的 UI 抽取为公共组件
-4. **样式规范**: 使用 scoped 样式，遵循 BEM 命名
-5. **错误处理**: 统一的错误提示机制
+在项目根目录继续执行 `./mvnw -B -ntp clean package`（Windows 使用 `mvnw.cmd`），即可将页面与后端一起打包。Docker 和正式发布流水线会自动完成这两个步骤。
 
-## 文档
+## 目录
 
-- [项目结构详细说明](./PROJECT_STRUCTURE.md)
-- [迁移指南](./MIGRATION_GUIDE.md)
-- [快速开始](./QUICK_START.md)
+| 路径 | 用途 |
+| --- | --- |
+| `src/api/` | 业务 API |
+| `src/utils/request.ts` | 请求、认证与错误处理 |
+| `src/router/` | 页面路由与权限守卫 |
+| `src/views/` | 业务页面 |
+| `src/components/` | 布局与共用组件 |
+| `src/styles/` | 主题、基础样式与设计令牌 |
+| `public/` | 页面实际使用的静态资源 |
+| `tests/` | Vitest 测试 |
 
-## 下一步
-
-1. 完成 Accounts 页面的所有子组件
-2. 参考已完成的页面，创建其他页面
-3. 测试所有功能
-4. 优化样式和交互
-5. 构建并部署
-
-需要帮助时，参考已完成的 Dashboard 和 Accounts 页面作为模板。
+`node_modules/`、构建产物、缓存、日志和本地环境文件不提交；数据库与密钥由服务端保存在忽略的运行目录中。

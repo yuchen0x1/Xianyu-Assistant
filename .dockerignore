@@ -54,3 +54,73 @@ docs/
 
 # Demo (已删除)
 demo/
+
+# Credentials and database backups must never enter the build context
+.env
+.env.*
+!.env.example
+dbdata.backup-*/
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite-wal
+*.sqlite-shm
+*.key
+*.pem
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Local agent/tool state and generated reports
+.evolution/
+.autonomous-upgrade/
+.workbuddy/
+.zcode/
+.mimosa/
+.screenshots/
+gui-test-screenshots/
+.arts/
+.qoder/
+
+# Rebuild web assets in the frontend stage; do not copy stale local output
+src/main/resources/static/
+src/main/resources/pythondemo/
+vue-code/.eslintcache
+vue-code/.vitest/
+vue-code/coverage/
+**/*.tsbuildinfo
+*.bak
+*.orig
+*.rej
+/*.jar
+/*.jar.*
+/*.zip
+/*.7z
+/*.apk
+/*.aab
+/*.ipa
+
+# Apply sensitive-file exclusions to nested paths as well
+**/.env
+**/.env.*
+!**/.env.example
+**/*.key
+**/*.pem
+**/*.p12
+**/*.pfx
+**/*.jks
+**/*.keystore
+**/*.db
+**/*.db-journal
+**/*.db-wal
+**/*.db-shm
+**/*.sqlite
+**/*.sqlite3
+**/*.sqlite-wal
+**/*.sqlite-shm
+**/*.sqlite3-wal
+**/*.sqlite3-shm
+**/node_modules/
+secrets/
