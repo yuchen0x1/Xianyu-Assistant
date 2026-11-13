@@ -5,7 +5,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/yuchen0x1/Xianyu-Assistant?display_name=tag&sort=semver)](https://github.com/yuchen0x1/Xianyu-Assistant/releases)
 
-当前版本：**v3.5.24** · [GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
+当前版本：**v3.5.25** · [GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
 
 ## 项目简介
 
@@ -27,12 +27,12 @@
 
 ## 最新更新
 
-### 未发布（2026-11-13，main）
+### v3.5.25（2026-11-13）
 
 - 产品统一为网页版，电脑和手机通过浏览器访问；清理原生客户端与旧桌面包装。
 - Cookie 获取帮助改为文字步骤和占位示例，避免教程图片带出登录凭据。
 
-当前正式发布版本仍为 v3.5.24。逐版变化和升级影响见[发布记录](docs/releases/release-notes.md)。
+旧版本 v3.5.16–v3.5.24 的下载附件已撤回，请使用 v3.5.25 或更新版本。逐版变化和升级影响见[发布记录](docs/releases/release-notes.md)。
 
 ## 技术栈与部署形态
 
@@ -132,11 +132,11 @@ bash install.sh
 
 安装脚本从 GitHub Release 获取最新 JAR，并校验 SHA-256 与官方 Ed25519 签名。默认安装目录为 `~/xianyu-seller-console`，端口可通过 `PORT` 环境变量覆盖。
 
-当前 v3.5.24 资产：
+当前 v3.5.25 资产：
 
-- [XianYuSellerConsole-3.5.24.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar)
-- [XianYuSellerConsole-3.5.24.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sha256)
-- [XianYuSellerConsole-3.5.24.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sig)
+- [XianYuSellerConsole-3.5.25.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.25/XianYuSellerConsole-3.5.25.jar)
+- [XianYuSellerConsole-3.5.25.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.25/XianYuSellerConsole-3.5.25.jar.sha256)
+- [XianYuSellerConsole-3.5.25.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.25/XianYuSellerConsole-3.5.25.jar.sig)
 
 以上 JAR 是网页版的服务端安装包，启动后在浏览器中访问；手机直接访问同一个 Web 地址。
 
@@ -245,7 +245,7 @@ export XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false
 - 推荐使用应用内在线更新、自动更新或重新执行 `bash install.sh`。
 - 升级前备份 `dbdata/`，尤其是 SQLite 数据库、JWT 密钥和凭据密钥文件。
 - 使用默认 `exit` 模式时，确认 systemd / Docker / 守护循环具备自动重启能力。
-- v3.5.24 不新增数据库迁移；从更早版本升级时仍会执行既有增量迁移，保留业务数据。
+- v3.5.25 不新增数据库迁移；从更早版本升级时仍会执行既有增量迁移，保留业务数据。
 - 旧的单段自动发货配置继续可用；模板发货支持在后台按商品或 SKU 绑定后启用。
 - 不需要自动更新时设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false`。
 

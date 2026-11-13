@@ -8,7 +8,7 @@ import IconSparkle from '@/components/icons/IconSparkle.vue'
 
 declare const __APP_VERSION__: string
 
-const appVersion = __APP_VERSION__ || '3.5.24'
+const appVersion = __APP_VERSION__ || '3.5.25'
 
 const visible = ref(false)
 const loading = ref(false)

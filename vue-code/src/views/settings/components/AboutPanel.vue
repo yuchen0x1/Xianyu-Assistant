@@ -3,7 +3,7 @@ declare const __APP_VERSION__: string
 
 defineOptions({ name: 'AboutPanel' })
 
-const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '3.5.24'
+const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '3.5.25'
 // 动态绑定资源路径，避免测试环境（Windows jsdom）对静态 src 的 file URL 解析问题
 const brandMark = '/brand-mark.svg'
 </script>

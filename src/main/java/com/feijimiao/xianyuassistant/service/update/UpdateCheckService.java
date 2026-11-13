@@ -31,7 +31,7 @@ import java.util.regex.Pattern;
 @Service
 public class UpdateCheckService {
 
-    @Value("${app.version:3.5.24}")
+    @Value("${app.version:3.5.25}")
     private String currentVersion;
 
     @Value("${app.update-check.enabled:false}")

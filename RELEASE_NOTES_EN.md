@@ -2,7 +2,33 @@
 
 > Current product scope (2026-11-13): web only. Android/iOS sources and standalone desktop launch packaging have been removed. Native-mobile features and checks below are historical records, not current client offerings. Desktop and mobile users access the same web application in a browser.
 
-Version-by-version notes for v3.5.16–v3.5.24. See the [complete history](docs/releases/release-notes.md) for older versions. Dates follow the project’s Asia/Shanghai convention; historical verification records were not rerun for this documentation update.
+Version-by-version notes for v3.5.16–v3.5.25. See the [complete history](docs/releases/release-notes.md) for older versions. Dates follow the project’s Asia/Shanghai convention; historical verification records were not rerun for this documentation update.
+
+## v3.5.25
+
+> Release: 2026-11-13
+
+Safer Cookie instructions and a web-only release.
+
+### Changes
+
+- Replace the captured Cookie tutorial with text instructions and placeholder examples. Release packages no longer include the credential-bearing screenshot.
+- Provide one web application for desktop and mobile browsers. JAR and Docker deploy the same web service.
+- Remove obsolete native clients, desktop wrappers and unused resources while preserving account, order, Webhook and automation features.
+- Withdraw download assets for v3.5.16–v3.5.24 while retaining their release notes as historical records. Use v3.5.25 or later.
+
+### Upgrade notes
+
+- No new database migration or dependency upgrade. Back up dbdata, including its database and key files. The signing public key and verification format remain compatible.
+- Branch and tag history has been sanitized. Re-clone old source workspaces and migrate runtime data separately instead of merging old history.
+- If the Cookie in the old screenshot belongs to your account, invalidate the old session through the platform. Removing files does not revoke leaked sessions.
+- Existing downloads, read-only GitHub PR references and cached views are outside the scope of a repository push. GitHub Support must handle platform cache removal.
+
+### 下载 / Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.25/XianYuSellerConsole-3.5.25.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.25/XianYuSellerConsole-3.5.25.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.25/XianYuSellerConsole-3.5.25.jar.sig)
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.25) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.24...v3.5.25)
 
 ## v3.5.24
 
@@ -28,7 +54,7 @@ Webhook history and delivery reliability.
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
@@ -58,7 +84,7 @@ Multi-part delivery templates and reply matching.
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
@@ -88,7 +114,7 @@ Update channels and Windows replacement fixes.
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
@@ -117,7 +143,7 @@ Account isolation and batch-operation fixes.
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
@@ -146,7 +172,7 @@ Todo center and native mobile dashboard.
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
@@ -174,7 +200,7 @@ Windows standalone-JAR update detection.
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
@@ -202,7 +228,7 @@ Item polishing and console visual refresh.
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
@@ -231,7 +257,7 @@ Scheduled updates and uncertain-delivery review.
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 
@@ -261,7 +287,7 @@ GitHub release migration and job lease protection.
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21 is required; the JAR includes the web console for desktop and mobile browsers. Build Docker images from source. Native mobile clients are discontinued and removed from the current branch.
 

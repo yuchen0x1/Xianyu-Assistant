@@ -2,7 +2,33 @@
 
 > 当前产品范围（2026-11-13）：仅维护网页版，Android/iOS 工程与独立桌面启动包装已移除。下文的原生移动端功能和检查结果仅为旧版本历史记录，不代表当前提供独立客户端。电脑和手机均通过浏览器访问。
 
-v3.5.16–v3.5.24 的逐版说明。更早版本见[完整历史](docs/releases/release-notes.md)。日期使用北京时间；历史验证记录不代表本次重测。
+v3.5.16–v3.5.25 的逐版说明。更早版本见[完整历史](docs/releases/release-notes.md)。日期使用北京时间；历史验证记录不代表本次重测。
+
+## v3.5.25
+
+> Release: 2026-11-13
+
+Cookie 教程安全修复与网页版统一发布。
+
+### 主要变化
+
+- Cookie 获取帮助改为文字步骤，只使用占位示例；发布包不再携带含登录凭据的旧截图。
+- 产品仅提供网页版，电脑和手机通过浏览器访问同一控制台；JAR 与 Docker 用于部署 Web 服务。
+- 清理旧原生客户端、桌面包装及过时资源，保留现有账号、订单、Webhook 和自动化能力。
+- v3.5.16–v3.5.24 的旧下载附件撤回，发布说明保留为历史记录；请使用 v3.5.25 或更新版本。
+
+### 升级说明
+
+- 无新增数据库迁移或依赖升级；升级前备份 dbdata，并保留数据库与密钥文件。签名公钥和校验格式保持兼容。
+- Git 分支及标签历史已清理。旧源码工作区应重新克隆并单独迁移运行数据，避免合并旧历史。
+- 如果旧截图中的 Cookie 属于你的账号，请在平台端使旧会话失效；移除文件不能撤销已经泄露的会话。
+- 已下载的旧包及 GitHub 的只读 PR 引用、缓存不受本次仓库推送控制；平台缓存清理由 GitHub 支持处理。
+
+### 下载 / Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.25/XianYuSellerConsole-3.5.25.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.25/XianYuSellerConsole-3.5.25.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.25/XianYuSellerConsole-3.5.25.jar.sig)
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.25) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.24...v3.5.25)
 
 ## v3.5.24
 
@@ -28,7 +54,7 @@ Webhook 投递历史与可靠性。
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.24/XianYuSellerConsole-3.5.24.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
@@ -58,7 +84,7 @@ Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。�
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.23/XianYuSellerConsole-3.5.23.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
@@ -88,7 +114,7 @@ Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。�
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.22/XianYuSellerConsole-3.5.22.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
@@ -117,7 +143,7 @@ Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。�
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.21/XianYuSellerConsole-3.5.21.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
@@ -146,7 +172,7 @@ Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。�
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.20/XianYuSellerConsole-3.5.20.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
@@ -174,7 +200,7 @@ Windows 独立 JAR 更新识别修复。
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.19/XianYuSellerConsole-3.5.19.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
@@ -202,7 +228,7 @@ Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。�
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.18/XianYuSellerConsole-3.5.18.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
@@ -231,7 +257,7 @@ Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。�
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.17/XianYuSellerConsole-3.5.17.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 
@@ -261,7 +287,7 @@ GitHub 发布迁移与任务租约保护。
 
 ### 下载 / Downloads
 
-[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.16/XianYuSellerConsole-3.5.16.jar.sig)
+> **已撤回 / Withdrawn (2026-11-13)**：旧下载附件因 Cookie 教程泄露风险撤回；请使用 [v3.5.25](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.25) 或更新版本。Old downloads were withdrawn because the Cookie tutorial exposed credentials.
 
 Java 21；JAR 内置 Web 控制台，电脑和手机均通过浏览器访问。此 Release 无预构建 Docker 镜像，容器部署请从源码构建；独立移动端已停止维护并从当前分支移除。
 

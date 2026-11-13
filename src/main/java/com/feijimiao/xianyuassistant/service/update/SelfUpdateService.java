@@ -99,7 +99,7 @@ public class SelfUpdateService {
     static final String OFFICIAL_RELEASE_PUBLIC_KEY =
             "MCowBQYDK2VwAyEAsstW68X2ZMRu5o2ZVHwBiV3m4YezlHuScQy3Jo/Lie4=";
 
-    @Value("${app.version:3.5.24}")
+    @Value("${app.version:3.5.25}")
     private String currentVersion;
 
     @Value("${app.self-update.enabled:true}")

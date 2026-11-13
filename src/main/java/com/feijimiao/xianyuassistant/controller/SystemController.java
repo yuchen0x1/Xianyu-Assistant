@@ -30,7 +30,7 @@ import java.util.Map;
 @RequestMapping("/api/system")
 public class SystemController {
 
-    @Value("${app.version:3.5.24}")
+    @Value("${app.version:3.5.25}")
     private String currentVersion;
 
     @Autowired
