@@ -46,7 +46,7 @@ FROM eclipse-temurin:21-jre-jammy AS java-runtime
 # 阶段4: 运行时镜像
 # 必须与 pom.xml 中的 Playwright Java 版本严格匹配，镜像内含对应 Chromium 及系统依赖。
 # 从上一阶段覆盖 Java 运行时，确保应用固定使用 Java 21。
-FROM mcr.microsoft.com/playwright/java:v1.64.0-noble AS runtime
+FROM mcr.microsoft.com/playwright/java:v1.65.0-noble AS runtime
 
 LABEL maintainer="IAMLZY"
 LABEL description="XianYu Seller Console - local seller operations console"
