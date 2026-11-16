@@ -10,24 +10,38 @@ export interface PermissionState {
 let cache: PermissionState | null = null
 let cacheToken: string | null = null
 let loading: Promise<PermissionState> | null = null
+let loadingToken: string | null = null
 
 /** 加载当前用户权限（带缓存，token 变化时自动失效） */
 export function loadPermissions(): Promise<PermissionState> {
   const token = getAuthToken()
   if (cache && cacheToken === token) return Promise.resolve(cache)
   cache = null
-  if (!loading) {
+  // Do not share an in-flight request across token changes.  A logout/login
+  // race must never expose the previous account's permission response to the
+  // newly authenticated account.
+  if (!loading || loadingToken !== token) {
+    loadingToken = token
     loading = getMyPermissions()
       .then((res) => {
-        cache = {
+        const state = {
           permissions: Array.isArray(res?.data?.permissions) ? res.data.permissions : [],
           roles: Array.isArray(res?.data?.roles) ? res.data.roles : []
         }
-        cacheToken = token
-        return cache
+        // An older request can finish after a newer login.  Keep returning its
+        // result to its original caller, but never let it overwrite the cache
+        // belonging to the currently authenticated token.
+        if (getAuthToken() === token) {
+          cache = state
+          cacheToken = token
+        }
+        return state
       })
       .finally(() => {
-        loading = null
+        if (loadingToken === token) {
+          loading = null
+          loadingToken = null
+        }
       })
   }
   return loading

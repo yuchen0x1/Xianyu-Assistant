@@ -2,7 +2,31 @@
 
 > 当前产品范围（2026-11-13）：仅维护网页版，Android/iOS 工程与独立桌面启动包装已移除。下文的原生移动端功能和检查结果仅为旧版本历史记录，不代表当前提供独立客户端。电脑和手机均通过浏览器访问。
 
-v3.5.16–v3.5.25 的逐版说明。更早版本见[完整历史](docs/releases/release-notes.md)。日期使用北京时间；历史验证记录不代表本次重测。
+v3.5.16–v3.5.26 的逐版说明。更早版本见[完整历史](docs/releases/release-notes.md)。日期使用北京时间；历史验证记录不代表本次重测。
+
+## v3.5.26
+
+> Release: 2026-11-16
+
+会话边界与并发连接可靠性修复。
+
+### 主要变化
+
+- 重新登录或会话续期后，后续会话过期仍能正常跳转登录页。
+- 账号切换期间，旧账号权限请求不会复用到新账号，也不会污染新账号的权限缓存。
+- 多账号并发建立 WebSocket 连接时，协议 UUID 保持唯一，减少同毫秒标识碰撞。
+- 补充项目审计、竞品对标、升级路线图和验收报告，明确真实平台与生产部署仍需外部验证。
+
+### 升级说明
+
+- 无新增数据库迁移或运行时依赖；升级前仍建议备份 `dbdata/` 中的数据库、配置和密钥文件。
+- 本版本的本地测试、真实账号交易、公网 Webhook 和多实例部署验证边界见 [UPGRADE_REPORT.md](UPGRADE_REPORT.md)。
+
+### 下载 / Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.26/XianYuSellerConsole-3.5.26.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.26/XianYuSellerConsole-3.5.26.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.26/XianYuSellerConsole-3.5.26.jar.sig)
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.26) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.26) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.25...v3.5.26)
 
 ## v3.5.25
 

@@ -6,6 +6,30 @@
 
 日期沿用项目历史记录（北京时间），不把标签重建或迁仓日期当作原始发布日期。未记载的日期保持未知；旧版本功能和发布源描述仅反映当时状态。官方发布源在 2026-11-03 随 v3.5.16 迁至 GitHub，此前 Gitee 说明属于历史记录。旧测试记录不表示本轮重新执行或验证真实交易。v3.5 系列的原始实现记录保存在[技术档案](docs/releases/technical-history-v3.5.md)。
 
+# Version 3.5.26
+
+> Release: 2026-11-16
+
+会话边界与并发连接可靠性修复。
+
+- 修复前端重新登录后过期跳转闸不复位的问题。
+- 修复权限请求在账号切换竞态下复用旧 Token 响应并污染缓存的问题，并新增回归测试。
+- 修复 WebSocket 协议 UUID 在并发生成时可能重复的问题，改用线程本地随机源和原子单调时间戳，并新增并发测试。
+- 新增项目审计、竞品对标、升级路线图和交付报告，明确当前能力、外部验证边界与后续计划。
+- 本版本未修改数据库 schema 或运行时依赖；真实闲鱼账号、公网 Webhook、多实例部署和旧客户端升级仍需外部验收。
+
+### 验证记录
+
+- 前端 10 个测试文件、44 个测试通过；类型检查、Lint 和生产构建通过。
+- 后端 711 个测试通过，0 失败、0 错误、3 个既有条件跳过。
+- 本地发布前未执行真实账号交易、副作用回调或生产升级安装。
+
+### 下载 / Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.26/XianYuSellerConsole-3.5.26.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.26/XianYuSellerConsole-3.5.26.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.26/XianYuSellerConsole-3.5.26.jar.sig)
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.26) · [源码 / Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.26) · [提交对比 / Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.25...v3.5.26)
+
 # Version 3.5.25
 
 > Release: 2026-11-13

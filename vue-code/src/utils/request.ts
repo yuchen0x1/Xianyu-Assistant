@@ -45,6 +45,10 @@ export function getAuthToken(): string | null {
 
 /** 设置Token */
 export function setAuthToken(token: string, username: string) {
+  // A successful login or session refresh starts a new redirect window.  Without
+  // resetting this guard, the first expired session could permanently suppress
+  // later redirects after the user logs in again within the same SPA runtime.
+  redirectingToLogin = false
   localStorage.setItem(TOKEN_KEY, token)
   localStorage.setItem(USERNAME_KEY, username)
 }

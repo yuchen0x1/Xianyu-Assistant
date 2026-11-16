@@ -2,7 +2,8 @@ package com.feijimiao.xianyuassistant.utils;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Random;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 闲鱼设备工具类
@@ -12,7 +13,12 @@ import java.util.Random;
 public class XianyuDeviceUtils {
 
     private static final String CHARS = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-    private static final Random random = new Random();
+    /**
+     * WebSocket registration can be initiated concurrently for multiple accounts.
+     * Keep the UUID-like value monotonic so two registrations in the same
+     * millisecond do not receive the same protocol identifier.
+     */
+    private static final AtomicLong LAST_UUID_TIMESTAMP = new AtomicLong();
 
     /**
      * 生成设备ID
@@ -32,7 +38,7 @@ public class XianyuDeviceUtils {
             } else if (i == 14) {
                 result[i] = '4';
             } else {
-                int randomValue = random.nextInt(16);
+                int randomValue = ThreadLocalRandom.current().nextInt(16);
                 if (i == 19) {
                     // 第19位特殊处理: 3 & randomValue | 8
                     result[i] = CHARS.charAt((3 & randomValue) | 8);
@@ -54,7 +60,7 @@ public class XianyuDeviceUtils {
      * @return 消息ID
      */
     public static String generateMid() {
-        int randomPart = random.nextInt(1000);
+        int randomPart = ThreadLocalRandom.current().nextInt(1000);
         long timestamp = System.currentTimeMillis();
         return randomPart + String.valueOf(timestamp) + " 0";
     }
@@ -68,7 +74,8 @@ public class XianyuDeviceUtils {
      * @return UUID
      */
     public static String generateUuid() {
-        long timestamp = System.currentTimeMillis();
+        long now = System.currentTimeMillis();
+        long timestamp = LAST_UUID_TIMESTAMP.updateAndGet(previous -> Math.max(now, previous + 1));
         return "-" + timestamp + "1";
     }
 

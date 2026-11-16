@@ -2,7 +2,31 @@
 
 > Current product scope (2026-11-13): web only. Android/iOS sources and standalone desktop launch packaging have been removed. Native-mobile features and checks below are historical records, not current client offerings. Desktop and mobile users access the same web application in a browser.
 
-Version-by-version notes for v3.5.16–v3.5.25. See the [complete history](docs/releases/release-notes.md) for older versions. Dates follow the project’s Asia/Shanghai convention; historical verification records were not rerun for this documentation update.
+Version-by-version notes for v3.5.16–v3.5.26. See the [complete history](docs/releases/release-notes.md) for older versions. Dates follow the project’s Asia/Shanghai convention; historical verification records were not rerun for this documentation update.
+
+## v3.5.26
+
+> Release: 2026-11-16
+
+Session-boundary and concurrent-connection reliability fixes.
+
+### Changes
+
+- Re-login and session refresh now reset the expired-session redirect guard, so a later expiry can still route to the login page.
+- Permission requests are isolated by authentication token, preventing an older account response from populating the new account’s cache during a switch.
+- Concurrent WebSocket registrations now use unique protocol UUID values, reducing same-millisecond identifier collisions across accounts.
+- Added project audit, competitor comparison, upgrade roadmap and verification reports, with external-platform and production limits stated explicitly.
+
+### Upgrade notes
+
+- No database migration or runtime dependency was added. Back up `dbdata/`, including database, configuration and key files, before upgrading.
+- Local checks pass; real account transactions, public Webhook delivery and multi-instance deployment still require external verification. See [UPGRADE_REPORT.md](UPGRADE_REPORT.md).
+
+### Downloads
+
+[JAR](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.26/XianYuSellerConsole-3.5.26.jar) · [SHA-256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.26/XianYuSellerConsole-3.5.26.jar.sha256) · [Ed25519](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.26/XianYuSellerConsole-3.5.26.jar.sig)
+
+[Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.26) · [Source](https://github.com/yuchen0x1/Xianyu-Assistant/tree/v3.5.26) · [Changes](https://github.com/yuchen0x1/Xianyu-Assistant/compare/v3.5.25...v3.5.26)
 
 ## v3.5.25
 
