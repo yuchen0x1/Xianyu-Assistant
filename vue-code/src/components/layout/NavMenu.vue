@@ -15,6 +15,7 @@ import IconShield from '@/components/icons/IconShield.vue'
 import IconRocket from '@/components/icons/IconRocket.vue'
 import IconCode from '@/components/icons/IconCode.vue'
 import IconAlert from '@/components/icons/IconAlert.vue'
+import { useLocale, type LocaleMessageKey } from '@/composables/useLocale'
 
 const emit = defineEmits<{
   select: [path: string]
@@ -77,12 +78,22 @@ const groups: NavGroup[] = [
 ]
 
 const { hasPermission, refresh } = usePermissions()
+const { t } = useLocale()
+
+const labelKeys: Record<string, LocaleMessageKey> = {
+  '工作台': 'dashboardGroup', '自动化': 'automationGroup', '系统': 'systemGroup', '运维与集成': 'opsGroup',
+  '待办中心': 'todo', '数据面板': 'dashboard', '闲鱼账号': 'accounts', '连接管理': 'connection', '商品管理': 'goods', '消息管理': 'messages',
+  '卡密仓库': 'kami', '自动发货': 'autoDelivery', '发货模板': 'deliveryTemplates', '发货记录': 'orders', '待发货订单': 'pendingOrders', '自动回复': 'autoReply', '自动评价': 'reviews',
+  '操作日志': 'operationLog', '命令中心': 'commands', '任务中心': 'jobs', '计划任务': 'scheduleTasks', '系统设置': 'settings', '监控中心': 'monitoring', '同类资源': 'similar', 'Webhook': 'webhooks',
+}
 
 const visibleGroups = computed(() =>
   groups
     .map((group) => ({
       ...group,
+      label: t(labelKeys[group.label]),
       items: group.items.filter((item) => hasPermission(item.permission))
+        .map((item) => ({ ...item, label: t(labelKeys[item.label]) })),
     }))
     .filter((group) => group.items.length > 0)
 )
@@ -95,7 +106,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <nav class="nav-menu" aria-label="主导航">
+  <nav class="nav-menu" :aria-label="t('mainNav')">
     <section v-for="group in visibleGroups" :key="group.label" class="nav-group">
       <div class="nav-group__label">{{ group.label }}</div>
       <router-link

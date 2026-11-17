@@ -7,6 +7,7 @@ import CommandPalette from './CommandPalette.vue'
 import NotificationBell from '@/components/notification/NotificationBell.vue'
 import { checkUpdate, getSystemHealth } from '@/api/system'
 import { useTheme } from '@/composables/useTheme'
+import { useLocale } from '@/composables/useLocale'
 
 import IconChart from '@/components/icons/IconChart.vue'
 import IconAccount from '@/components/icons/IconAccount.vue'
@@ -29,6 +30,7 @@ declare const __APP_VERSION__: string
 
 const route = useRoute()
 const { resolvedTheme, toggleTheme } = useTheme()
+const { localeSetting, setLocaleSetting, t } = useLocale()
 const drawerVisible = ref(false)
 const isCompactLayout = ref(false)
 const sidebar = ref<HTMLElement | null>(null)
@@ -62,10 +64,14 @@ const currentPageIcon = computed(() => pageIconMap[String(route.name || '')] || 
 const drawerIsHidden = computed(() => isCompactLayout.value && !drawerVisible.value)
 const workspaceIsHidden = computed(() => isCompactLayout.value && drawerVisible.value)
 const serviceStatusText = computed(() => {
-  if (serviceStatus.value === 'checking') return '正在检测本机服务'
-  return serviceStatus.value === 'available' ? '本机服务运行中' : '本机服务不可用'
+  if (serviceStatus.value === 'checking') return t('serviceChecking')
+  return serviceStatus.value === 'available' ? t('serviceRunning') : t('serviceUnavailable')
 })
-const themeToggleLabel = computed(() => resolvedTheme.value === 'dark' ? '切换到浅色模式' : '切换到深色模式')
+const themeToggleLabel = computed(() => resolvedTheme.value === 'dark' ? t('light') : t('dark'))
+const handleLocaleChange = (event: Event) => {
+  const value = (event.target as HTMLSelectElement | null)?.value
+  setLocaleSetting(value === 'zh-CN' || value === 'en-US' ? value : 'auto')
+}
 
 const setHeaderContent = (content: Component | null) => {
   headerContent.value = content
@@ -208,7 +214,7 @@ onUnmounted(() => {
       :class="{ 'sidebar--open': drawerVisible }"
       :inert="drawerIsHidden"
       :aria-hidden="drawerIsHidden ? 'true' : undefined"
-      aria-label="主导航侧栏"
+      :aria-label="t('mainNav')"
       tabindex="-1"
     >
       <div class="sidebar__header">
@@ -228,8 +234,8 @@ onUnmounted(() => {
           ref="drawerCloseButton"
           class="sidebar__close"
           type="button"
-          aria-label="关闭导航菜单"
-          title="关闭导航菜单"
+          :aria-label="t('closeNav')"
+          :title="t('closeNav')"
           @click="closeDrawer"
         >
           <IconClose aria-hidden="true" />
@@ -256,7 +262,7 @@ onUnmounted(() => {
           @click="openUpdateDialog"
         >
           <IconRefresh aria-hidden="true" />
-          <span>{{ hasNewVersion ? '发现新版本' : '检查更新' }}</span>
+          <span>{{ hasNewVersion ? t('newVersion') : t('checkUpdate') }}</span>
         </button>
         <button
           class="theme-toggle"
@@ -267,8 +273,16 @@ onUnmounted(() => {
         >
           <IconSun v-if="resolvedTheme === 'dark'" aria-hidden="true" />
           <IconMoon v-else aria-hidden="true" />
-          <span>{{ resolvedTheme === 'dark' ? '深色' : '浅色' }}</span>
+          <span>{{ resolvedTheme === 'dark' ? t('dark') : t('light') }}</span>
         </button>
+        <label class="theme-toggle" :aria-label="t('language')">
+          <span>{{ t('language') }}</span>
+          <select :value="localeSetting" @change="handleLocaleChange">
+            <option value="auto">{{ t('auto') }}</option>
+            <option value="zh-CN">简体中文</option>
+            <option value="en-US">English</option>
+          </select>
+        </label>
       </div>
     </aside>
 
@@ -282,7 +296,7 @@ onUnmounted(() => {
           ref="menuToggle"
           class="menu-toggle"
           type="button"
-          :aria-label="drawerVisible ? '关闭导航菜单' : '打开导航菜单'"
+          :aria-label="drawerVisible ? t('closeNav') : t('openNav')"
           aria-controls="app-sidebar"
           :aria-expanded="drawerVisible"
           @click="drawerVisible ? closeDrawer() : openDrawer()"
@@ -308,11 +322,11 @@ onUnmounted(() => {
           <button
             class="command-trigger"
             type="button"
-            aria-label="打开快速导航"
-            title="快速导航（Ctrl + K）"
+            :aria-label="t('quickNav')"
+            :title="`${t('quickNav')} (Ctrl + K)`"
             @click="commandPaletteOpen = true"
           >
-            <IconSearch aria-hidden="true" /><span class="command-trigger__label">快速导航</span><kbd>Ctrl K</kbd>
+            <IconSearch aria-hidden="true" /><span class="command-trigger__label">{{ t('quickNav') }}</span><kbd>Ctrl K</kbd>
           </button>
           <button
             class="theme-toggle theme-toggle--header"
