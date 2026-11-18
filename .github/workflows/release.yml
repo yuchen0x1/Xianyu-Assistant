@@ -1,69 +1,47 @@
 name: Release
 
-# 构建并发布到 GitHub Release（唯一发布源）。
-# 需要 GitHub Actions Secrets 配置：
-#   RELEASE_SIGN_PRIVATE_KEY    发布物 Ed25519 签名私钥（PKCS#8 DER Base64）
-#                               scripts/sign-release.sh gen-key 生成，官方渠道必须配置。
-# GITHUB_TOKEN 由 GitHub Actions 自动注入，无需另建 Secret。
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    tags: ['v*.*.*']
 
-permissions: {}
+permissions:
+  contents: read
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: publish-stable-release
   cancel-in-progress: false
 
 jobs:
+  verify:
+    name: Verify release candidate
+    uses: ./.github/workflows/ci.yml
+
   publish:
-    name: Build and publish to GitHub Release
+    name: Sign, validate draft, and publish
+    needs: verify
     runs-on: ubuntu-22.04
-    timeout-minutes: 30
+    timeout-minutes: 20
     permissions:
       contents: write
-
     steps:
-      - name: Check out repository
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      - name: Set up Java 21
-        uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
         with:
           distribution: temurin
           java-version: '21'
-          cache: maven
-
-      - name: Set up Node.js
-        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22.12.0'
-          cache: npm
-          cache-dependency-path: vue-code/package-lock.json
-
-      - name: Verify tag format
-        shell: bash
-        run: |
-          if [[ ! "$GITHUB_REF_NAME" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Release tag must use the vMAJOR.MINOR.PATCH format"
-            exit 1
-          fi
-
-      - name: Run release preflight checks
-        shell: bash
-        run: |
-          ./mvnw --batch-mode --no-transfer-progress test
-          (cd vue-code && npm ci && npm test && npm run type-check)
-
-      - name: Build and publish to GitHub Release
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: web-server-jar
+          path: target/
+      - name: Publish the signed JAR and update manifest
         env:
-          GITHUB_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ github.token }}
           GITHUB_REPO: ${{ github.repository }}
           RELEASE_SIGN_PRIVATE_KEY: ${{ secrets.RELEASE_SIGN_PRIVATE_KEY }}
-        shell: bash
-        run: |
-          version="${GITHUB_REF_NAME#v}"
-          bash scripts/publish-github.sh "$version"
+          SKIP_BUILD: '1'
+        run: bash scripts/publish-github.sh "${GITHUB_REF_NAME#v}"

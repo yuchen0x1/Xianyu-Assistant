@@ -38,6 +38,8 @@ import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.jar.Attributes;
+import java.util.jar.JarFile;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -99,7 +101,7 @@ public class SelfUpdateService {
     static final String OFFICIAL_RELEASE_PUBLIC_KEY =
             "MCowBQYDK2VwAyEAsstW68X2ZMRu5o2ZVHwBiV3m4YezlHuScQy3Jo/Lie4=";
 
-    @Value("${app.version:3.5.27}")
+    @Value("${app.version:3.5.28}")
     private String currentVersion;
 
     @Value("${app.self-update.enabled:true}")
@@ -516,7 +518,7 @@ public class SelfUpdateService {
         }
         long deadline = System.nanoTime() + RESTART_HANDSHAKE_TIMEOUT.toNanos();
         while (System.nanoTime() < deadline) {
-            if (ProcessHandle.of(parentPid).isEmpty()) {
+            if (ProcessHandle.of(parentPid).filter(ProcessHandle::isAlive).isEmpty()) {
                 completePendingSwap();
                 return;
             }
@@ -527,8 +529,7 @@ public class SelfUpdateService {
                 return;
             }
         }
-        System.err.println("[restart] 等待旧进程(pid=" + parentPid + ")退出超时(15s)，继续启动");
-        completePendingSwap();
+        System.err.println("[restart] 等待旧进程(pid=" + parentPid + ")退出超时(15s)，保留当前安装包");
     }
 
     /** 启动早期执行 Windows 暂存包的后置置换。 */
@@ -541,11 +542,22 @@ public class SelfUpdateService {
         Path pending = Path.of(pendingValue);
         Path target = Path.of(targetValue);
         try {
-            Files.copy(pending, target, StandardCopyOption.REPLACE_EXISTING);
-            System.err.println("[restart] Windows 新包已复制到目标路径: " + target);
+            installPendingJar(pending, target);
+            System.err.println("[restart] Windows 新包已替换到目标路径: " + target);
         } catch (Exception e) {
             System.err.println("[restart] Windows 新包置换失败: " + e.getClass().getSimpleName()
                     + ": " + e.getMessage());
+        }
+    }
+
+    static void installPendingJar(Path pending, Path target) throws IOException {
+        // The helper can be running from the pending JAR, which keeps it locked on Windows.
+        Path staging = Files.createTempFile(target.toAbsolutePath().getParent(), "xianyu-update-", ".jar");
+        try {
+            Files.copy(pending, staging, StandardCopyOption.REPLACE_EXISTING);
+            Files.move(staging, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+        } finally {
+            Files.deleteIfExists(staging);
         }
     }
 
@@ -593,6 +605,8 @@ public class SelfUpdateService {
 
             checkCancelled();
             verifyReleaseSignature(assets, newJar);
+            verifyJarVersion(newJar, targetVersion);
+            checkCancelled();
 
             swapJars(newJar);
             status = new Status(PHASE_SWAPPED, 100, downloaded, downloaded, targetVersion,
@@ -617,6 +631,17 @@ public class SelfUpdateService {
             }
             log.error("在线更新失败: target={}, errorType={}", targetVersion, e.getClass().getSimpleName());
             status = failed(safeUpdateFailureMessage(e));
+        }
+    }
+
+    static void verifyJarVersion(Path candidate, String expectedVersion) throws IOException {
+        try (JarFile jar = new JarFile(candidate.toFile())) {
+            var manifest = jar.getManifest();
+            String version = manifest == null ? null
+                    : manifest.getMainAttributes().getValue(Attributes.Name.IMPLEMENTATION_VERSION);
+            if (!expectedVersion.equals(VersionUtils.normalize(version))) {
+                throw new IOException("安装包内版本与发布标签不一致");
+            }
         }
     }
 
@@ -1319,6 +1344,7 @@ public class SelfUpdateService {
         if (detail.contains("HTTP 404")) return "GitHub Release 或发布资产不存在，请确认目标标签和资产已发布";
         if (detail.contains("磁盘空间不足")) return "磁盘空间不足，在线更新未开始，请清理空间后重试";
         if (detail.contains("JAR 发布资产")) return "GitHub Release 未找到安装包资产，请确认已上传 JAR";
+        if (detail.contains("安装包内版本")) return "安装包内版本与发布标签不一致，已拒绝更新";
         if (detail.contains("签名") || detail.contains("验签")) return "GitHub Release 发布物签名校验失败，已拒绝更新";
         if (detail.contains("SHA-256") || detail.contains("校验")) return "GitHub Release 校验文件不可用，无法验证安装包完整性";
         if (detail.contains("下载") || detail.contains("连接") || detail.contains("超时")) return "GitHub 安装包下载失败，请检查网络后重试";

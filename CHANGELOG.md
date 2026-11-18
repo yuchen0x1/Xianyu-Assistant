@@ -6,7 +6,21 @@
 
 日期沿用项目历史记录（北京时间），不把标签重建或迁仓日期当作原始发布日期。未记载的日期保持未知；旧版本功能和发布源描述仅反映当时状态。官方发布源在 2026-11-03 随 v3.5.16 迁至 GitHub，此前 Gitee 说明属于历史记录。旧测试记录不表示本轮重新执行或验证真实交易。v3.5 系列的原始实现记录保存在[技术档案](docs/releases/technical-history-v3.5.md)。
 
-## Unreleased
+# Version 3.5.28
+
+## 版本概述
+
+Docker 部署可通过 Compose 管理健康检查、数据卷和镜像升级。独立 JAR 更新会核对包内版本与发布标签，Windows 暂存换包会在同目录原子替换。
+
+- GitHub Release 在签名、SHA-256、更新清单和服务启动验证通过后开放下载。
+- 容器默认通过镜像升级。已有 `docker run` 部署可继续挂载原数据目录；切换 Compose 前请备份，详见 [Compose 指南](https://github.com/yuchen0x1/Xianyu-Assistant/blob/main/docs/compose-deployment.md)。
+- 沿用现有 SQLite schema。桌面和手机继续从浏览器访问同一个控制台。
+
+## Release overview
+
+Docker Compose adds health checks, persistent volumes, and image-based upgrades. The standalone JAR updater verifies the embedded version against the release tag and stages Windows replacements atomically. This release uses the existing SQLite schema.
+
+# Version 3.5.27
 
 - 网页控制台侧栏和核心工作区支持简体中文/English 手动切换与自动语言检测，自动模式按浏览器/系统语言匹配并在无法识别时回退到简体中文。
 - 语言选择保存到浏览器本地存储并设置 `document.lang`；业务账号、商品、订单和消息内容保持原文。

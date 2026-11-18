@@ -1,0 +1,16 @@
+name: xianyu-seller-console
+
+services:
+  console:
+    build: .
+    image: xianyu-seller-console:${XIANYU_IMAGE_TAG:-local}
+    ports:
+      - "127.0.0.1:${XIANYU_HOST_PORT:-12400}:12400"
+    restart: unless-stopped
+    volumes:
+      - data:/app/dbdata
+      - logs:/app/logs
+
+volumes:
+  data:
+  logs:

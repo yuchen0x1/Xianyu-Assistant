@@ -13,6 +13,7 @@ concurrency:
 jobs:
   verify-build-deploy:
     name: Verify, build and deploy
+    if: github.ref == 'refs/heads/main' && vars.PRODUCTION_DEPLOY_ENABLED == 'true'
     runs-on: [self-hosted, Linux, X64, xianyu-production]
     timeout-minutes: 40
     environment: production
@@ -20,6 +21,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Verify production toolchain
         shell: bash

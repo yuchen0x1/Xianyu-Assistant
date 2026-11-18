@@ -1,0 +1,5 @@
+/.github/ @yuchen0x1
+/scripts/publish-github.sh @yuchen0x1
+/scripts/sign-release.sh @yuchen0x1
+/install.sh @yuchen0x1
+/src/main/java/com/feijimiao/xianyuassistant/service/update/ @yuchen0x1

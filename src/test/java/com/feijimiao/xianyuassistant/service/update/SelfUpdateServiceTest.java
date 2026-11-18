@@ -2,10 +2,16 @@ package com.feijimiao.xianyuassistant.service.update;
 
 import com.feijimiao.xianyuassistant.common.VersionUtils;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.io.IOException;
 import java.net.URI;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.jar.Attributes;
+import java.util.jar.JarOutputStream;
+import java.util.jar.Manifest;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -14,6 +20,34 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
  * 在线自更新的纯逻辑单元测试：JAR 定位、校验文件解析、下载主机白名单、状态机守卫。
  */
 class SelfUpdateServiceTest {
+
+    @Test
+    void requiresPackagedVersionToMatchTag(@TempDir Path directory) throws IOException {
+        Path candidate = directory.resolve("candidate.jar");
+        Manifest manifest = new Manifest();
+        manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0");
+        manifest.getMainAttributes().put(Attributes.Name.IMPLEMENTATION_VERSION, "3.6.0-beta.2");
+        try (var jar = new JarOutputStream(Files.newOutputStream(candidate), manifest)) {
+            jar.finish();
+        }
+
+        SelfUpdateService.verifyJarVersion(candidate, "3.6.0-beta.2");
+        assertThatThrownBy(() -> SelfUpdateService.verifyJarVersion(candidate, "3.6.0"))
+                .isInstanceOf(IOException.class).hasMessageContaining("版本与发布标签不一致");
+    }
+
+    @Test
+    void installsStagedJarWithoutRemovingTheOldFileWhenCopyFails(@TempDir Path directory) throws IOException {
+        Path target = Files.writeString(directory.resolve("app.jar"), "current");
+        Path pending = directory.resolve("app.jar.pending");
+        assertThatThrownBy(() -> SelfUpdateService.installPendingJar(pending, target)).isInstanceOf(IOException.class);
+        assertThat(Files.readString(target)).isEqualTo("current");
+
+        Files.writeString(pending, "new");
+        SelfUpdateService.installPendingJar(pending, target);
+        assertThat(Files.readString(target)).isEqualTo("new");
+        assertThat(Files.readString(pending)).isEqualTo("new");
+    }
 
     private SelfUpdateService newService() {
         return new SelfUpdateService();

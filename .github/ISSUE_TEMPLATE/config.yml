@@ -1,0 +1,5 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 私密安全报告
+    url: https://github.com/yuchen0x1/Xianyu-Assistant/security/advisories/new
+    about: 通过 GitHub 私密报告凭据泄露或安全问题。

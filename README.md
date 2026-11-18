@@ -4,6 +4,7 @@
 
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/yuchen0x1/Xianyu-Assistant?display_name=tag&sort=semver)](https://github.com/yuchen0x1/Xianyu-Assistant/releases)
+[![CI](https://github.com/yuchen0x1/Xianyu-Assistant/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/yuchen0x1/Xianyu-Assistant/actions/workflows/ci.yml)
 
 [GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
 
@@ -20,7 +21,8 @@
 ## 产品预览
 
 <p align="center">
-  <img src="docs/images/xianyu-seller-console-dashboard-v3.5.21.png" alt="闲鱼卖家运营控制台数据面板" width="1200">
+  <img src="docs/images/dashboard-desktop-2026-11-18.png" alt="桌面 Web 数据面板，使用未接入闲鱼账号的本地实例" width="850">
+  <img src="docs/images/dashboard-mobile-2026-11-18.png" alt="390 像素宽的移动 Web 数据面板" width="225">
 </p>
 
 <p align="center"><em>账号、商品、消息与自动化任务集中管理的本地化运营控制台。</em></p>
@@ -29,17 +31,9 @@
 
 ## 最新更新
 
-<!-- github-release:start -->
+**v3.5.28 · 部署与更新可靠性**。Docker Compose 保留数据库和日志并提供健康检查。独立 JAR 更新会核对包内版本，Windows 重启换包时先准备完整文件再替换。
 
-**[v3.5.27](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.27)** · 2026-11-17
-
-v3.5.27 是 Java/Vue 网页控制台的壳层多语言维护版本。本次为网页控制台增加浏览器/系统语言自动识别、中文/English 手动切换和持久化；账号、商品、订单和消息等业务数据保持原样。项目仍仅提供网页版，JAR 用于部署同一个 Web 服务。
-
-[全部发行记录](https://github.com/yuchen0x1/Xianyu-Assistant/releases)
-
-<!-- github-release:end -->
-
-旧版本 v3.5.16–v3.5.25 的下载附件及历史说明请见[发布记录](docs/releases/release-notes.md)。
+[下载最新正式版](https://github.com/yuchen0x1/Xianyu-Assistant/releases/latest) · [完整发布记录](docs/releases/release-notes.md)
 
 ## 技术栈与部署形态
 
@@ -108,8 +102,9 @@ v3.5.27 是 Java/Vue 网页控制台的壳层多语言维护版本。本次为�
 
 | 方式 | 适合场景 | 需要准备 |
 | --- | --- | --- |
-| Docker | 生产容器、希望自动构建前后端 | Docker 20.10+ |
-| 官方 Release + `install.sh` | Linux / macOS / Termux 快速安装 | Java 21；脚本可协助安装 |
+| Docker Compose | Linux 容器、自托管 | Docker Engine 与 Compose v2 |
+| 官方 Release JAR | Windows、Linux、macOS 运行 Web 服务 | Java 21 |
+| `install.sh` | Linux 的快速安装与守护循环 | Java 21、OpenSSL |
 | Windows 开发脚本 | 本地开发和调试 | Java 21、Node.js |
 | 源码构建 JAR | 自定义构建或二次开发 | Java 21、Node.js |
 
@@ -117,18 +112,14 @@ v3.5.27 是 Java/Vue 网页控制台的壳层多语言维护版本。本次为�
 
 ### 方式一：Docker
 
-仓库没有预构建 Docker 镜像；使用仓库内的多阶段 `Dockerfile` 本地构建：
+在目标版本的源码目录构建并启动：
 
 ```bash
-docker build -t xianyu-seller-console:local .
-docker run -d \
-  --name xianyu-seller-console \
-  -p 127.0.0.1:12400:12400 \
-  -v "$(pwd)/dbdata:/app/dbdata" \
-  xianyu-seller-console:local
+docker compose build
+docker compose up -d --wait
 ```
 
-容器使用 Java 21 运行时，默认将应用绑定到 `0.0.0.0:12400`，并将 `dbdata/` 挂载到容器内 `/app/dbdata`。容器场景保持 `XIANYU_ASSISTANT_SELF_UPDATE_RESTART_MODE=exit`，由 Docker 重启策略负责拉起进程。
+访问 `http://127.0.0.1:12400`。Compose 使用独立数据卷保存 SQLite、密钥与日志。要从旧的 `docker run -v …:/app/dbdata` 迁入，请先备份，并为 Compose 指定原来的宿主机目录。镜像构建、版本切换和回退见 [Docker Compose 指南](docs/compose-deployment.md)。
 
 ### 方式二：官方 Release + 一键安装
 
@@ -141,7 +132,7 @@ bash install.sh
 
 手动部署请从[最新 Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/latest) 下载同一版本的 JAR、`.sha256` 校验文件和 `.sig` 签名文件。
 
-以上 JAR 是网页版的服务端安装包，启动后在浏览器中访问；手机直接访问同一个 Web 地址。
+Windows、Linux 和 macOS 可用 Java 21 启动同一个服务 JAR。把文件保存到专用目录，在该目录运行 `java --enable-native-access=ALL-UNNAMED -jar XianYuSellerConsole-3.5.28.jar`，再打开 `http://127.0.0.1:12400`。手机需通过有访问权限的 HTTPS 部署地址连接。
 
 ### 方式三：Windows 本地开发
 
@@ -227,7 +218,7 @@ RestartSec=5
 
 ### 应用内自动更新
 
-v3.5.17 起，应用内定时自动更新默认开启：
+独立 JAR 默认启用定时自动更新。Docker 由部署者通过已选定的源码版本重建镜像：
 
 1. 启动约 5 分钟后首次检查官方 GitHub Release。
 2. 默认每 6 小时检查一次。
@@ -243,12 +234,12 @@ export XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false
 
 自动更新与手动在线更新共用更新状态机，同一时间只允许一个更新流程执行。完整配置见下方环境变量表和 `docs/production-deployment.md`。
 
-### 从 v3.5.23 升级
+### 数据与升级
 
 - 推荐使用应用内在线更新、自动更新或重新执行 `bash install.sh`。
 - 升级前备份 `dbdata/`，尤其是 SQLite 数据库、JWT 密钥和凭据密钥文件。
-- 使用默认 `exit` 模式时，确认 systemd / Docker / 守护循环具备自动重启能力。
-- v3.5.26 不新增数据库迁移；从更早版本升级时仍会执行既有增量迁移，保留业务数据。
+- 独立 JAR 使用默认 `exit` 模式时，确认 systemd 或守护循环具备自动重启能力。
+- v3.5.28 沿用原有数据库结构。从更早版本启动时，服务仍会执行所需的既有增量迁移。
 - 旧的单段自动发货配置继续可用；模板发货支持在后台按商品或 SKU 绑定后启用。
 - 不需要自动更新时设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false`。
 
@@ -307,6 +298,9 @@ export XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false
 | 文档 | 内容 |
 | --- | --- |
 | [`docs/production-deployment.md`](docs/production-deployment.md) | systemd、Nginx、自动部署、自动更新与回退 |
+| [`docs/compose-deployment.md`](docs/compose-deployment.md) | Compose 安装、数据卷迁移与镜像回退 |
+| [平台与维护状态](docs/platforms.md) | 支持范围、功能矩阵、验证入口与路线图 |
+| [贡献指南](CONTRIBUTING.md) | 开发、PR 和发布流程 |
 | [`docs/local-browser-login.md`](docs/local-browser-login.md) | 本机浏览器登录接管 |
 | [`docs/multi-account-onboarding-2026-08-21.md`](docs/multi-account-onboarding-2026-08-21.md) | 多账号接入与并行验证 |
 | [`CHANGELOG.md`](CHANGELOG.md) | 完整版本历史 |

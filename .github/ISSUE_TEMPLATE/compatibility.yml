@@ -1,0 +1,17 @@
+name: 平台兼容性
+description: 报告浏览器、系统、Java 或 Docker 兼容性。
+body:
+  - type: input
+    id: environment
+    attributes:
+      label: 系统、架构、部署方式和相关版本
+      placeholder: macOS arm64 / Java 21 / 控制台版本 / Safari 版本
+    validations:
+      required: true
+  - type: textarea
+    id: result
+    attributes:
+      label: 操作步骤与终端或浏览器反馈
+      description: 附件和日志请先脱敏。
+    validations:
+      required: true

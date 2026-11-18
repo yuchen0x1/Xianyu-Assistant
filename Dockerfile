@@ -56,7 +56,7 @@ WORKDIR /app
 # 覆盖官方镜像中的JDK 17；Playwright浏览器固定安装在/ms-playwright。
 COPY --from=java-runtime /opt/java/openjdk /opt/java/openjdk
 
-# 容器内必须由 Docker 重启策略拉起（restart-mode=self 会让容器主进程退出）
+# 容器通过重建镜像升级，持久化的数据目录与应用镜像分离。
 ENV JAVA_HOME=/opt/java/openjdk \
     PATH="/opt/java/openjdk/bin:${PATH}" \
     PLAYWRIGHT_BROWSERS_PATH=/ms-playwright \
@@ -65,10 +65,13 @@ ENV JAVA_HOME=/opt/java/openjdk \
     SERVER_PORT=12400 \
     XIANYU_ASSISTANT_BIND_ADDRESS=0.0.0.0 \
     XIANYU_ASSISTANT_PRINT_RAW_MESSAGE=false \
-    XIANYU_ASSISTANT_SELF_UPDATE_RESTART_MODE=exit
+    XIANYU_ASSISTANT_SELF_UPDATE_ENABLED=false \
+    XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false
 
 # 在镜像构建期验证Java主版本和Chromium目录，防止基础镜像漂移后静默缺失依赖。
-RUN mkdir -p /app/dbdata /app/logs \
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /app/dbdata /app/logs \
     && java -XshowSettings:properties -version 2>&1 | grep -q "java.specification.version = 21" \
     && find "${PLAYWRIGHT_BROWSERS_PATH}" -mindepth 1 -maxdepth 1 -type d -name 'chromium-*' | grep -q . \
     && chown -R pwuser:pwuser /app
@@ -80,6 +83,9 @@ COPY --from=backend-build --chown=pwuser:pwuser /app/target/XianYuSellerConsole-
 EXPOSE 12400
 
 USER pwuser
+
+HEALTHCHECK --interval=15s --timeout=5s --start-period=60s --retries=3 \
+    CMD curl -fsS --max-time 4 "http://127.0.0.1:${SERVER_PORT}/actuator/health" > /dev/null || exit 1
 
 # 启动命令
 ENTRYPOINT ["sh", "-c", "exec java ${JAVA_OPTS} -Dserver.port=${SERVER_PORT} -jar app.jar"]
