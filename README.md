@@ -5,7 +5,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/License-Apache--2.0-blue.svg)](LICENSE)
 [![Release](https://img.shields.io/github/v/release/yuchen0x1/Xianyu-Assistant?display_name=tag&sort=semver)](https://github.com/yuchen0x1/Xianyu-Assistant/releases)
 
-当前版本：**v3.5.26** · [GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
+[GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
 
 项目审计与持续升级资料： [项目审计](PROJECT_AUDIT.md) · [竞品对标](COMPETITOR_ANALYSIS.md) · [升级路线图](UPGRADE_ROADMAP.md) · [升级报告](UPGRADE_REPORT.md)
 
@@ -29,16 +29,15 @@
 
 ## 最新更新
 
-### v3.5.27（2026-11-17）
+<!-- github-release:start -->
 
-- 网页控制台支持按浏览器或系统语言自动选择中文/English，也可手动切换并保存。
-- 侧栏、更新、主题和快捷入口即时更新；账号、商品、订单和消息内容保持原样。
+**[v3.5.27](https://github.com/yuchen0x1/Xianyu-Assistant/releases/tag/v3.5.27)** · 2026-11-17
 
-### v3.5.26（2026-11-16）
+v3.5.27 是 Java/Vue 网页控制台的壳层多语言维护版本。本次为网页控制台增加浏览器/系统语言自动识别、中文/English 手动切换和持久化；账号、商品、订单和消息等业务数据保持原样。项目仍仅提供网页版，JAR 用于部署同一个 Web 服务。
 
-- 修复重新登录后的过期跳转状态、权限请求跨账号竞态，以及 WebSocket 协议 UUID 在并发生成时的碰撞风险。
-- 新增对应前后端回归测试；本版本未修改数据库 schema 或运行时依赖。
-- 完整验证结果和未完成的外部环境检查见[升级报告](UPGRADE_REPORT.md)。
+[全部发行记录](https://github.com/yuchen0x1/Xianyu-Assistant/releases)
+
+<!-- github-release:end -->
 
 旧版本 v3.5.16–v3.5.25 的下载附件及历史说明请见[发布记录](docs/releases/release-notes.md)。
 
@@ -140,11 +139,7 @@ bash install.sh
 
 安装脚本从 GitHub Release 获取最新 JAR，并校验 SHA-256 与官方 Ed25519 签名。默认安装目录为 `~/xianyu-seller-console`，端口可通过 `PORT` 环境变量覆盖。
 
-当前 v3.5.26 资产：
-
-- [XianYuSellerConsole-3.5.26.jar](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.26/XianYuSellerConsole-3.5.26.jar)
-- [XianYuSellerConsole-3.5.26.jar.sha256](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.26/XianYuSellerConsole-3.5.26.jar.sha256)
-- [XianYuSellerConsole-3.5.26.jar.sig](https://github.com/yuchen0x1/Xianyu-Assistant/releases/download/v3.5.26/XianYuSellerConsole-3.5.26.jar.sig)
+手动部署请从[最新 Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/latest) 下载同一版本的 JAR、`.sha256` 校验文件和 `.sig` 签名文件。
 
 以上 JAR 是网页版的服务端安装包，启动后在浏览器中访问；手机直接访问同一个 Web 地址。
 
