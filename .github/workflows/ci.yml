@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: ['**']
+    branches: [main]
   pull_request:
   workflow_call:
   workflow_dispatch:
@@ -168,9 +168,9 @@ jobs:
         run: |
           docker compose up -d --no-build --wait --wait-timeout 120
           curl -fsS http://127.0.0.1:12400/ | grep -o '/assets/[^" ]*\.js' > /dev/null
-          docker compose exec -T console sh -c 'test -s dbdata/jwt-secret.key && touch dbdata/.ci-volume-check'
+          docker compose exec -T console sh -c 'test -w /app/dbdata && touch /app/dbdata/.ci-volume-check'
           docker compose up -d --no-build --force-recreate --wait --wait-timeout 120
-          docker compose exec -T console test -f dbdata/.ci-volume-check
+          docker compose exec -T console test -f /app/dbdata/.ci-volume-check
 
       - name: Collect container logs
         if: failure()

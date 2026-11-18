@@ -8,7 +8,7 @@
 
 [GitHub 仓库](https://github.com/yuchen0x1/Xianyu-Assistant) · [更新日志](CHANGELOG.md)
 
-项目审计与持续升级资料： [项目审计](PROJECT_AUDIT.md) · [竞品对标](COMPETITOR_ANALYSIS.md) · [升级路线图](UPGRADE_ROADMAP.md) · [升级报告](UPGRADE_REPORT.md)
+项目审计与持续升级资料： [项目审计](PROJECT_AUDIT.md) · [竞品对标](COMPETITOR_ANALYSIS.md) · [升级路线图](UPGRADE_ROADMAP.md) · [升级报告](UPGRADE_REPORT.md) · [本批次交付报告](docs/ecosystem-delivery-2026-11-18.md)
 
 ## 项目简介
 
@@ -299,6 +299,8 @@ export XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false
 | --- | --- |
 | [`docs/production-deployment.md`](docs/production-deployment.md) | systemd、Nginx、自动部署、自动更新与回退 |
 | [`docs/compose-deployment.md`](docs/compose-deployment.md) | Compose 安装、数据卷迁移与镜像回退 |
+| [`docs/ecosystem-delivery-2026-11-18.md`](docs/ecosystem-delivery-2026-11-18.md) | 本批次生态、CI、发布、部署与验证结果 |
+| [`docs/competitor-snapshot-2026-11-18.md`](docs/competitor-snapshot-2026-11-18.md) | 31 个公开仓库的竞品与技术参考快照 |
 | [平台与维护状态](docs/platforms.md) | 支持范围、功能矩阵、验证入口与路线图 |
 | [贡献指南](CONTRIBUTING.md) | 开发、PR 和发布流程 |
 | [`docs/local-browser-login.md`](docs/local-browser-login.md) | 本机浏览器登录接管 |

@@ -4,6 +4,10 @@ on:
   schedule:
     - cron: '21 3 4 * *'
   workflow_dispatch:
+    inputs:
+      previous_tag:
+        description: 'Optional stable tag to upgrade to the currently published version'
+        type: string
 
 permissions:
   contents: read
@@ -47,3 +51,31 @@ jobs:
                 --jq '"| [\(.nameWithOwner)](\(.url)) | \(.pushedAt) | \(.latestRelease.tagName // "—") |"'
             done
           } >> "$GITHUB_STEP_SUMMARY"
+
+  upgrade:
+    name: Upgrade an isolated instance from GitHub Releases
+    if: github.event_name == 'workflow_dispatch' && inputs.previous_tag != '' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Download signed baseline
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_TAG: ${{ inputs.previous_tag }}
+        run: |
+          [[ "$PREVIOUS_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          version="${PREVIOUS_TAG#v}"
+          jar="XianYuSellerConsole-$version.jar"
+          gh release download "$PREVIOUS_TAG" --pattern "$jar" --pattern "$jar.sha256" --pattern "$jar.sig"
+          sha256sum --check "$jar.sha256"
+      - name: Verify update discovery, download, restart and persisted login
+        env:
+          PREVIOUS_TAG: ${{ inputs.previous_tag }}
+        run: bash scripts/smoke-upgrade.sh "${PREVIOUS_TAG#v}"

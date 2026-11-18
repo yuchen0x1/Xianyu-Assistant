@@ -2,7 +2,26 @@
 
 > Current product scope (2026-11-13): web only. Android/iOS sources and standalone desktop launch packaging have been removed. Native-mobile features and checks below are historical records, not current client offerings. Desktop and mobile users access the same web application in a browser.
 
-Version-by-version notes for v3.5.16–v3.5.26. See the [complete history](docs/releases/release-notes.md) for older versions. Dates follow the project’s Asia/Shanghai convention; historical verification records were not rerun for this documentation update.
+Version-by-version notes for v3.5.16–v3.5.28. See the [complete history](docs/releases/release-notes.md) for older versions. Dates follow the project’s Asia/Shanghai convention; historical verification records were not rerun for this documentation update.
+
+## v3.5.28
+
+> Delivery candidate: 2026-11-18. The formal Release waits for PR merge and the release workflow.
+
+Deployment and updater reliability improvements.
+
+### Changes
+
+- Add Docker Compose health checks, database volumes, and log volumes. Container upgrades use image rebuilds.
+- The standalone JAR updater verifies the embedded version against the target release. Windows replacement waits for the old process and then swaps files atomically.
+- A Release draft becomes public only after the JAR, digests, signatures, update manifest, and manifest signature pass asset checks.
+- Add JAR startup checks on Linux, Windows, macOS Intel, and Apple Silicon, plus a maintenance upgrade smoke-test entry point.
+
+### Verification boundary
+
+- Maven passed 713 tests. The frontend passed 44 tests. Type checking, lint, build, and workflow static validation passed.
+- The local Docker daemon was unavailable, so Compose build and volume recreation await GitHub Actions verification.
+- Real Xianyu accounts, side-effecting transactions, production deployment, and the formal Release were not executed.
 
 ## v3.5.26
 

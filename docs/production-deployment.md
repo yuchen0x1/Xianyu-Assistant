@@ -24,7 +24,7 @@
 
 ## 自动部署
 
-`Deploy production` 工作流（`.github/workflows/deploy-production.yml`）为手动触发（`workflow_dispatch`），在 GitHub Actions 页面选择运行后依次执行：
+`Deploy production` 工作流（`.github/workflows/deploy-production.yml`）仅接受 `main` 的手动触发。确认专用 Runner 已连接、`production` 环境仅允许 `main` 且部署脚本与备份策略可用后，维护者设置仓库变量 `PRODUCTION_DEPLOY_ENABLED=true`。启用后工作流依次执行：
 
 1. `xianyu-production` Runner 检出触发提交。
 2. 前端安装锁定依赖，执行测试、类型检查和生产构建。
@@ -56,7 +56,7 @@ RestartSec=5
 
 除 CI 部署外，应用自身会定时检查官方 GitHub Release（默认每 6 小时，启动 5 分钟后首检）：发现新版本即自动下载 → SHA-256 + Ed25519 验签 → 原子替换（失败自动回滚）→ 按 `restart-mode` 重启，实现无人值守升级。相关开关见 `application.yaml` 的 `app.self-update.auto-update` 与环境变量 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED`（默认开启）。
 
-与 CI 部署并存时的互斥：两条链路共用 `SelfUpdateService` 状态机，同一时间只允许一个更新流程；一方进行中时另一方自动跳过，先完成者生效。若希望服务器完全跟随 Release 标签由 CI 部署，可设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false` 关闭应用内自动更新。
+外部部署脚本与进程内更新器各有自己的状态。采用 CI 部署的服务器应设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false`，维护窗口内先确认控制台没有正在进行的手动 JAR 更新，再启动部署工作流。
 
 ## 人工复核
 
