@@ -6,10 +6,12 @@ import com.feijimiao.xianyuassistant.entity.XianyuAccount;
 import com.feijimiao.xianyuassistant.mapper.XianyuAccountMapper;
 import com.feijimiao.xianyuassistant.service.AccountService;
 import com.feijimiao.xianyuassistant.service.ImageUploadService;
+import com.feijimiao.xianyuassistant.security.PublicAddressPolicy;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.Call;
+import okhttp3.HttpUrl;
 import okhttp3.OkHttpClient;
 import okhttp3.ResponseBody;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,11 +26,9 @@ import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.net.IDN;
-import java.net.Inet4Address;
-import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.Proxy;
 import java.net.UnknownHostException;
 import java.time.Duration;
 import java.util.Arrays;
@@ -64,6 +64,8 @@ public class ImageUploadServiceImpl implements ImageUploadService {
     private final OkHttpClient remoteImageHttpClient = new OkHttpClient.Builder()
             .connectTimeout(Duration.ofSeconds(30))
             .readTimeout(Duration.ofSeconds(30))
+            // DNS pinning must also apply when the JVM has a system proxy configured.
+            .proxy(Proxy.NO_PROXY)
             .followRedirects(false)
             .followSslRedirects(false)
             .build();
@@ -340,7 +342,7 @@ public class ImageUploadServiceImpl implements ImageUploadService {
     byte[] downloadImage(String imageUrl) throws IOException {
         ValidatedRemoteImage target = validateRemoteImage(imageUrl);
         okhttp3.Request request = new okhttp3.Request.Builder()
-                .url(target.uri().toString())
+                .url(target.url())
                 .header("User-Agent", XianyuProtocolProfile.WEB_USER_AGENT)
                 .header("Accept", "image/*")
                 .get()
@@ -376,7 +378,7 @@ public class ImageUploadServiceImpl implements ImageUploadService {
     }
 
     URI validateRemoteImageUri(String imageUrl) throws UnknownHostException {
-        return validateRemoteImage(imageUrl).uri();
+        return validateRemoteImage(imageUrl).url().uri();
     }
 
     private ValidatedRemoteImage validateRemoteImage(String imageUrl) throws UnknownHostException {
@@ -396,37 +398,28 @@ public class ImageUploadServiceImpl implements ImageUploadService {
             throw new IllegalArgumentException("仅支持可信HTTPS图片地址");
         }
 
-        String host;
-        try {
-            host = IDN.toASCII(uri.getHost()).toLowerCase(Locale.ROOT);
-        } catch (IllegalArgumentException e) {
-            throw new IllegalArgumentException("图片URL域名无效");
-        }
+        HttpUrl url = HttpUrl.get(uri.toString());
+        String host = url.host();
         if (!isAllowedImageHost(host)) {
             throw new IllegalArgumentException("图片域名不在允许列表中");
         }
 
         InetAddress[] addresses = hostResolver.resolve(host);
-        if (addresses.length == 0 || Arrays.stream(addresses).anyMatch(this::isPrivateOrSpecialAddress)) {
-            throw new IllegalArgumentException("图片地址不能指向本机或私有网络");
+        if (addresses == null || addresses.length == 0
+                || Arrays.stream(addresses).anyMatch(address -> !PublicAddressPolicy.isPublic(address))) {
+            throw new IllegalArgumentException("图片地址不能指向本机、私有或特殊用途网络");
         }
-        return new ValidatedRemoteImage(uri, host, List.copyOf(Arrays.asList(addresses)));
+        return new ValidatedRemoteImage(url, host, List.copyOf(Arrays.asList(addresses)));
     }
 
-    private Call.Factory createPinnedClient(String expectedHost, List<InetAddress> addresses) {
+    /**
+     * Fetch the canonical URL over a direct connection only. Redirects are rejected;
+     * all DNS answers must be public, and only this immutable answer set is used for the request.
+     * Custom image hosts still use app.image-download.allowed-hosts (including subdomains).
+     */
+    Call.Factory createPinnedClient(String expectedHost, List<InetAddress> addresses) {
         return remoteImageHttpClient.newBuilder()
-                .dns(hostname -> {
-                    String normalizedHost;
-                    try {
-                        normalizedHost = IDN.toASCII(hostname).toLowerCase(Locale.ROOT);
-                    } catch (IllegalArgumentException e) {
-                        throw new UnknownHostException("无效的图片域名");
-                    }
-                    if (!expectedHost.equals(normalizedHost)) {
-                        throw new UnknownHostException("拒绝解析非目标图片域名");
-                    }
-                    return addresses;
-                })
+                .dns(PublicAddressPolicy.pinnedDns(expectedHost, addresses))
                 .build();
     }
 
@@ -446,40 +439,6 @@ public class ImageUploadServiceImpl implements ImageUploadService {
         return allowedHosts.stream().anyMatch(allowed -> host.equals(allowed) || host.endsWith("." + allowed));
     }
 
-    private boolean isPrivateOrSpecialAddress(InetAddress address) {
-        if (address.isAnyLocalAddress() || address.isLoopbackAddress()
-                || address.isLinkLocalAddress() || address.isSiteLocalAddress()
-                || address.isMulticastAddress()) {
-            return true;
-        }
-
-        byte[] bytes = address.getAddress();
-        if (address instanceof Inet4Address && bytes.length == 4) {
-            int first = Byte.toUnsignedInt(bytes[0]);
-            int second = Byte.toUnsignedInt(bytes[1]);
-            return first == 0
-                    || first == 100 && second >= 64 && second <= 127
-                    || first == 198 && (second == 18 || second == 19);
-        }
-        if (address instanceof Inet6Address && bytes.length == 16) {
-            boolean mappedIpv4 = true;
-            for (int i = 0; i < 10; i++) {
-                mappedIpv4 &= bytes[i] == 0;
-            }
-            mappedIpv4 &= bytes[10] == (byte) 0xff && bytes[11] == (byte) 0xff;
-            if (mappedIpv4) {
-                byte[] ipv4Bytes = Arrays.copyOfRange(bytes, 12, 16);
-                try {
-                    return isPrivateOrSpecialAddress(InetAddress.getByAddress(ipv4Bytes));
-                } catch (UnknownHostException impossible) {
-                    return true;
-                }
-            }
-            return (bytes[0] & 0xfe) == 0xfc;
-        }
-        return false;
-    }
-
     @FunctionalInterface
     interface HostResolver {
         InetAddress[] resolve(String host) throws UnknownHostException;
@@ -490,6 +449,6 @@ public class ImageUploadServiceImpl implements ImageUploadService {
         Call.Factory create(String host, List<InetAddress> addresses);
     }
 
-    private record ValidatedRemoteImage(URI uri, String host, List<InetAddress> addresses) {
+    private record ValidatedRemoteImage(HttpUrl url, String host, List<InetAddress> addresses) {
     }
 }

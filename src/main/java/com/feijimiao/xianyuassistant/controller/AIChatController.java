@@ -46,22 +46,8 @@ import java.util.regex.Pattern;
 public class AIChatController {
     private static final int MAX_DELIVERY_CONTENT_LENGTH = 200;
     private static final String PROTECTED_DELIVERY_TOKEN_PREFIX = "__XY_DELIVERY_LITERAL_";
-    private static final Pattern PROTECTED_DELIVERY_FRAGMENT = Pattern.compile(
-            "(?:https?://|www\\.)[^\\s，。；！？]+"
-                    + "|\\{[^{}\\r\\n]+}"
-                    + "|(?:卡密|提取码|账号|密码|订单号|兑换码)(?:\\s*[：:]\\s*|\\s+)[^\\r\\n，。；！？;]+?(?=[,.!?](?:\\s|$)|\\r?\\n|$|\\s+(?:卡密|提取码|账号|密码|订单号|兑换码)(?:\\s*[：:]|\\s+))"
-                    + "|[A-Za-z0-9][A-Za-z0-9._~:/?#\\[\\]@!$&'()*+,;=%+\\-]*",
-            Pattern.CASE_INSENSITIVE);
     private static final Pattern PROTECTED_DELIVERY_TOKEN = Pattern.compile(
-            Pattern.quote(PROTECTED_DELIVERY_TOKEN_PREFIX) + "(\\d+)__");
-    private static final Pattern SENSITIVE_DELIVERY_FRAGMENT = Pattern.compile(
-            "(?:https?://|www\\.)[^\\s，。；！？]+"
-                    + "|\\{[^{}\\r\\n]+}"
-                    + "|(?:卡密|提取码|账号|密码|订单号|兑换码)(?:\\s*[：:]\\s*|\\s+)[^\\r\\n，。；！？;]+?(?=[,.!?](?:\\s|$)|\\r?\\n|$|\\s+(?:卡密|提取码|账号|密码|订单号|兑换码)(?:\\s*[：:]|\\s+))"
-                    + "|(?<![A-Za-z0-9])[A-Za-z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Za-z0-9-]+(?:\\.[A-Za-z0-9-]+)+[.,!?;]?(?![A-Za-z0-9])"
-                    + "|(?<![A-Za-z0-9])(?:[A-Za-z0-9-]+\\.)+[A-Za-z]{2,}(?:/[A-Za-z0-9._~:/?#\\[\\]@!$&'()*+,;=%+\\-]*)?[.,!?;]?(?![A-Za-z0-9])"
-                    + "|(?<![A-Za-z0-9])[A-Za-z0-9]*\\d[A-Za-z0-9._~:/?#\\[\\]@!$&'()*+,;=%+\\-]*(?![A-Za-z0-9])",
-            Pattern.CASE_INSENSITIVE);
+            Pattern.quote(PROTECTED_DELIVERY_TOKEN_PREFIX) + "([0-9]++)__");
     private static final String UNSAFE_PROTECTED_NEIGHBORS = "._~/:?#[]@!$&'()*+,;=%+\\-";
     private final Semaphore deliveryPolishSlots = new Semaphore(1);
 
@@ -234,6 +220,11 @@ public class AIChatController {
             return ResultObject.failed("AI 润色失败或请求超时，请稍后重试");
         }
 
+        // A valid <=200-character result can grow only by the literal-token replacement overhead.
+        // Bound model output before token or sensitive-fragment scanning.
+        if (polished.length() > MAX_DELIVERY_CONTENT_LENGTH + protectedContent.maskedContent().length()) {
+            return ResultObject.failed("AI 润色结果超过200字，已保留原文");
+        }
         String restored = restoreDeliveryContent(polished.strip(), protectedContent);
         if (restored == null) {
             return ResultObject.failed("AI 未能完整保留链接、卡密或占位符，已保留原文");
@@ -254,17 +245,18 @@ public class AIChatController {
     }
 
     private ProtectedDeliveryContent protectDeliveryContent(String content) {
-        Matcher matcher = PROTECTED_DELIVERY_FRAGMENT.matcher(content);
         StringBuilder masked = new StringBuilder();
         List<ProtectedFragment> fragments = new ArrayList<>();
-        while (matcher.find()) {
+        int previousEnd = 0;
+        for (DeliveryContentScanner.Fragment fragment : DeliveryContentScanner.scan(content, false)) {
             String token = protectedToken(fragments.size());
-            Character previous = matcher.start() > 0 ? content.charAt(matcher.start() - 1) : null;
-            Character next = matcher.end() < content.length() ? content.charAt(matcher.end()) : null;
-            fragments.add(new ProtectedFragment(matcher.group(), previous, next));
-            matcher.appendReplacement(masked, Matcher.quoteReplacement(token));
+            Character previous = fragment.start() > 0 ? content.charAt(fragment.start() - 1) : null;
+            Character next = fragment.end() < content.length() ? content.charAt(fragment.end()) : null;
+            fragments.add(new ProtectedFragment(fragment.value(content), previous, next));
+            masked.append(content, previousEnd, fragment.start()).append(token);
+            previousEnd = fragment.end();
         }
-        matcher.appendTail(masked);
+        masked.append(content, previousEnd, content.length());
         return new ProtectedDeliveryContent(masked.toString(), fragments);
     }
 
@@ -310,15 +302,16 @@ public class AIChatController {
             String restored, ProtectedDeliveryContent protectedContent) {
         Map<String, Integer> expected = new HashMap<>();
         for (ProtectedFragment fragment : protectedContent.fragments()) {
-            if (SENSITIVE_DELIVERY_FRAGMENT.matcher(fragment.value()).matches()) {
+            List<DeliveryContentScanner.Fragment> sensitive = DeliveryContentScanner.scan(fragment.value(), true);
+            if (sensitive.size() == 1 && sensitive.getFirst().start() == 0
+                    && sensitive.getFirst().end() == fragment.value().length()) {
                 expected.merge(fragment.value(), 1, Integer::sum);
             }
         }
 
         Map<String, Integer> actual = new HashMap<>();
-        Matcher matcher = SENSITIVE_DELIVERY_FRAGMENT.matcher(restored);
-        while (matcher.find()) {
-            actual.merge(matcher.group(), 1, Integer::sum);
+        for (DeliveryContentScanner.Fragment fragment : DeliveryContentScanner.scan(restored, true)) {
+            actual.merge(fragment.value(restored), 1, Integer::sum);
         }
         return !expected.equals(actual);
     }

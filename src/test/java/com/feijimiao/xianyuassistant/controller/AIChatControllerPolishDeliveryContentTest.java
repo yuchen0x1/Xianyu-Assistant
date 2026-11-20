@@ -216,6 +216,32 @@ class AIChatControllerPolishDeliveryContentTest {
         assertThat(overlong.getMsg()).contains("超过200字");
     }
 
+    @Test
+    void acceptsExpandedMaskTokensWhenRestoredContentFitsTheLimit() {
+        String original = "A1 B2 C3 D4 E5 F6 G7 H8 I9 J0";
+        when(dynamicAIChatClientManager.isAvailable()).thenReturn(true);
+        when(aiService.polishDeliveryContent(anyString())).thenAnswer(invocation -> {
+            String masked = invocation.getArgument(0);
+            assertThat(masked.length()).isGreaterThan(200);
+            return masked;
+        });
+        ResultObject<AIChatController.PolishDeliveryContentRespDTO> result =
+                controller.polishDeliveryContent(request(original));
+        assertThat(result.getCode()).isEqualTo(200);
+        assertThat(result.getData().getContent()).isEqualTo(original);
+    }
+
+    @Test
+    void rejectsVerboseOrdinaryModelOutputBeforeFragmentProcessing() {
+        String paragraph = "您的资料已经准备好，请按说明领取并妥善保管，如需帮助请联系卖家。";
+        when(dynamicAIChatClientManager.isAvailable()).thenReturn(true);
+        when(aiService.polishDeliveryContent(anyString())).thenReturn(paragraph.repeat(12));
+        ResultObject<AIChatController.PolishDeliveryContentRespDTO> result =
+                controller.polishDeliveryContent(request("请查收"));
+        assertThat(result.getCode()).isEqualTo(500);
+        assertThat(result.getMsg()).contains("超过200字");
+    }
+
     private AIChatController.PolishDeliveryContentReqDTO request(String content) {
         AIChatController.PolishDeliveryContentReqDTO req =
                 new AIChatController.PolishDeliveryContentReqDTO();

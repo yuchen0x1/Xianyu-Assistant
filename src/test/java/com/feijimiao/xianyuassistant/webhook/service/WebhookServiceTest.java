@@ -9,6 +9,7 @@ import com.feijimiao.xianyuassistant.webhook.entity.WebhookDelivery;
 import com.feijimiao.xianyuassistant.webhook.mapper.WebhookConfigMapper;
 import com.feijimiao.xianyuassistant.webhook.mapper.WebhookDeliveryMapper;
 import okhttp3.Call;
+import okhttp3.Dns;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
@@ -20,6 +21,10 @@ import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.net.InetAddress;
+import java.net.Proxy;
+import java.net.UnknownHostException;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 
@@ -27,9 +32,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -42,7 +51,14 @@ class WebhookServiceTest {
     private WebhookDeliveryMapper deliveryMapper;
 
     private WebhookService service() {
-        return new WebhookService(configMapper, deliveryMapper, new ObjectMapper());
+        WebhookService service = new WebhookService(configMapper, deliveryMapper, new ObjectMapper());
+        // The only hostname fixtures are localhost and an unresolvable example name; all others are numeric.
+        ReflectionTestUtils.setField(service, "hostResolver", (Dns) host -> {
+            if ("example.invalid".equals(host)) throw new UnknownHostException("offline fixture");
+            if ("localhost".equals(host)) return List.of(InetAddress.getLoopbackAddress());
+            return List.of(InetAddress.getByName(host));
+        });
+        return service;
     }
 
     @Test
@@ -158,7 +174,7 @@ class WebhookServiceTest {
         when(configMapper.selectById(3L)).thenReturn(saved);
 
         WebhookService svc = Mockito.spy(service());
-        doReturn(httpClient).when(svc).clientFor(any(), anyInt());
+        doReturn(httpClient).when(svc).clientFor(anyString(), any(), anyInt());
 
         boolean ok = svc.test("https://93.184.216.34/ok", "", 3L);
 
@@ -175,6 +191,8 @@ class WebhookServiceTest {
         OkHttpClient client = (OkHttpClient) ReflectionTestUtils.getField(svc, "baseClient");
         assertThat(client).isNotNull();
         assertThat(client.followRedirects()).isFalse();
+        assertThat(client.followSslRedirects()).isFalse();
+        assertThat(client.proxy()).isEqualTo(Proxy.NO_PROXY);
     }
 
     @Test
@@ -206,7 +224,7 @@ class WebhookServiceTest {
         when(deliveryMapper.selectById(99L)).thenReturn(inserted);
 
         WebhookService svc = Mockito.spy(service());
-        doReturn(httpClient).when(svc).clientFor(any(), anyInt());
+        doReturn(httpClient).when(svc).clientFor(anyString(), any(), anyInt());
         svc.init();
 
         svc.dispatch("delivery.completed", java.util.Map.of("accountId", 7L, "orderId", "O1"));
@@ -320,4 +338,58 @@ class WebhookServiceTest {
         assertThatThrownBy(() -> svc.validateWebhookUrl("https://example.invalid/ok"))
                 .isInstanceOf(BusinessException.class);
     }
+
+    @Test
+    void deliveryResolvesOncePinsCanonicalHostAndRevalidatesNextAttempt() throws Exception {
+        InetAddress approved = InetAddress.getByAddress(new byte[]{93, (byte) 184, (byte) 216, 34});
+        InetAddress local = InetAddress.getByAddress(new byte[]{10, 0, 0, 1});
+        Dns resolver = mock(Dns.class);
+        when(resolver.lookup("receiver.example")).thenReturn(List.of(approved), List.of(local));
+        OkHttpClient client = mock(OkHttpClient.class);
+        Call call = mock(Call.class);
+        Response response = mock(Response.class);
+        when(client.newCall(any(Request.class))).thenReturn(call);
+        when(call.execute()).thenReturn(response);
+        when(response.code()).thenReturn(204);
+        WebhookService svc = Mockito.spy(service());
+        ReflectionTestUtils.setField(svc, "hostResolver", resolver);
+        doReturn(client).when(svc).clientFor(eq("receiver.example"), eq(List.of(approved)), anyInt());
+
+        assertThat(svc.test("HTTPS://Receiver.Example:8443/hook?mode=test", null, null)).isTrue();
+        assertThat(svc.test("HTTPS://Receiver.Example:8443/hook?mode=test", null, null)).isFalse();
+
+        verify(resolver, times(2)).lookup("receiver.example");
+        verify(svc).clientFor("receiver.example", List.of(approved), 10);
+        ArgumentCaptor<Request> request = ArgumentCaptor.forClass(Request.class);
+        verify(client).newCall(request.capture());
+        assertThat(request.getValue().url().toString()).isEqualTo("https://receiver.example:8443/hook?mode=test");
+    }
+
+    @Test
+    void refusesMixedOrEmptyDnsAnswersBeforeBuildingTransport() throws Exception {
+        InetAddress approved = InetAddress.getByAddress(new byte[]{93, (byte) 184, (byte) 216, 34});
+        InetAddress local = InetAddress.getByAddress(new byte[]{10, 0, 0, 1});
+        Dns resolver = mock(Dns.class);
+        when(resolver.lookup("receiver.example")).thenReturn(List.of(approved, local), List.of());
+        WebhookService svc = Mockito.spy(service());
+        ReflectionTestUtils.setField(svc, "hostResolver", resolver);
+
+        assertThat(svc.test("https://receiver.example/hook", null, null)).isFalse();
+        assertThat(svc.test("https://receiver.example/hook", null, null)).isFalse();
+        verify(svc, never()).clientFor(anyString(), any(), anyInt());
+    }
+
+    @Test
+    void derivedClientPinsOnlyExpectedHostAndRetainsTransportPolicy() throws Exception {
+        InetAddress approved = InetAddress.getByAddress(new byte[]{93, (byte) 184, (byte) 216, 34});
+        OkHttpClient client = service().clientFor("receiver.example", List.of(approved), 7);
+        assertThat(client.proxy()).isEqualTo(Proxy.NO_PROXY);
+        assertThat(client.followRedirects()).isFalse();
+        assertThat(client.followSslRedirects()).isFalse();
+        assertThat(client.callTimeoutMillis()).isEqualTo(7_000);
+        assertThat(client.dns().lookup("receiver.example")).containsExactly(approved);
+        assertThatThrownBy(() -> client.dns().lookup("other.example"))
+                .isInstanceOf(UnknownHostException.class);
+    }
+
 }
