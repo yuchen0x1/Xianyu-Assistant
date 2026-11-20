@@ -124,7 +124,7 @@ class WebhookDeliveryReliabilityTest {
             when(success.code()).thenReturn(204);
             when(client.newCall(any(Request.class))).thenReturn(call);
             when(call.execute()).thenReturn(failure, success);
-            doReturn(client).when(service).clientFor(any(), anyInt());
+            doReturn(client).when(service).clientFor(anyString(), any(), anyInt());
 
             ReflectionTestUtils.invokeMethod(service, "sendWebhook", hook(), "delivery.completed", Map.of(), 1L);
             session.clearCache();
@@ -188,7 +188,7 @@ class WebhookDeliveryReliabilityTest {
         record.setNextAttemptAt(LocalDateTime.now().minusMinutes(1));
         when(deliveries.selectById(8L)).thenReturn(record);
         ReflectionTestUtils.invokeMethod(service, "sendWebhook", hook(), "test", Map.of(), 8L);
-        verify(service, never()).clientFor(any(), anyInt());
+        verify(service, never()).clientFor(anyString(), any(), anyInt());
         assertThat(record.getAttempts()).isEqualTo(3);
         assertThat(record.getNextAttemptAt()).isNull();
     }

@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.feijimiao.xianyuassistant.exception.BusinessException;
+import com.feijimiao.xianyuassistant.security.PublicAddressPolicy;
 import com.feijimiao.xianyuassistant.webhook.dto.WebhookDeliveryVO;
 import com.feijimiao.xianyuassistant.webhook.dto.WebhookVO;
 import com.feijimiao.xianyuassistant.webhook.entity.WebhookConfig;
@@ -15,6 +16,8 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.Dns;
+import okhttp3.HttpUrl;
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -28,10 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.IOException;
-import java.net.Inet4Address;
-import java.net.Inet6Address;
 import java.net.InetAddress;
 import java.net.URI;
+import java.net.Proxy;
 import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -40,7 +42,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Base64;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -99,9 +100,13 @@ public class WebhookService {
     /** 所有 Webhook 请求共用连接池；发送时通过 clientFor 派生绑定已校验 IP 的派生客户端。 */
     private final OkHttpClient baseClient = new OkHttpClient.Builder()
             // 禁止跟随重定向，避免把请求转发到 SSRF 白名单之外的私网目标。
+            .proxy(Proxy.NO_PROXY)
             .followRedirects(false)
+            .followSslRedirects(false)
             .connectTimeout(Duration.ofSeconds(10))
             .build();
+
+    private Dns hostResolver = Dns.SYSTEM;
 
     private ExecutorService executor;
 
@@ -590,47 +595,45 @@ public class WebhookService {
      * 发送阶段直接使用这些已校验地址建立连接（保留原始主机名以生成 Host/SNI），
      * 关闭校验与发送之间二次 DNS 解析带来的重绑定窗口。
      */
-    private PinnedTarget resolveValidatedTarget(String url) throws BusinessException {
-        validateWebhookUrl(url);
-        URI original = URI.create(url.trim());
-        String host = original.getHost();
-        InetAddress[] addresses;
+    private PinnedTarget resolveValidatedTarget(String rawUrl) throws BusinessException {
+        HttpUrl url = parseWebhookUrl(rawUrl);
+        List<InetAddress> addresses;
         try {
-            addresses = InetAddress.getAllByName(host);
+            addresses = hostResolver.lookup(url.host());
         } catch (UnknownHostException e) {
             throw new BusinessException("回调域名无法解析");
         }
-        if (addresses.length == 0 || Arrays.stream(addresses).anyMatch(this::isPrivateOrSpecialAddress)) {
-            throw new BusinessException("回调地址不能指向本机或私有网络");
+        if (addresses == null || addresses.isEmpty()
+                || addresses.stream().anyMatch(address -> !PublicAddressPolicy.isPublic(address))) {
+            throw new BusinessException("回调地址不能指向本机、私有或特殊用途网络");
         }
-        return new PinnedTarget(original, List.of(addresses));
+        return new PinnedTarget(url, List.copyOf(addresses));
     }
 
-    /** 已通过 SSRF 校验的发送目标：原始 URI + 校验通过的地址集合。 */
-    private record PinnedTarget(URI uri, List<InetAddress> addresses) {}
+    /** Canonical URL and immutable DNS answers from one validation immediately before delivery. */
+    private record PinnedTarget(HttpUrl url, List<InetAddress> addresses) {}
 
     /**
-     * 派生一个绑定指定超时的客户端；pinned 非空时 DNS 解析固定为已校验地址。
-     * newBuilder 复用共享连接池，派生成本可忽略。
+     * Public HTTP/HTTPS integrations and custom ports remain supported. Requests connect directly
+     * (system proxies are bypassed) and never follow redirects. Pinning is host-specific and retained
+     * on retries; endpoints requiring a redirect must be configured with their final public URL.
      */
-    OkHttpClient clientFor(List<InetAddress> pinned, int timeoutSeconds) {
-        OkHttpClient.Builder builder = baseClient.newBuilder()
-                .callTimeout(Duration.ofSeconds(timeoutSeconds));
-        if (pinned != null && !pinned.isEmpty()) {
-            builder.dns(hostname -> pinned);
-        }
-        return builder.build();
+    OkHttpClient clientFor(String expectedHost, List<InetAddress> pinned, int timeoutSeconds) {
+        return baseClient.newBuilder()
+                .callTimeout(Duration.ofSeconds(timeoutSeconds))
+                .dns(PublicAddressPolicy.pinnedDns(expectedHost, pinned))
+                .build();
     }
 
     /** 发送 JSON POST，返回 HTTP 状态码；仅使用 target 中已校验的地址建立连接。 */
     private int postJson(PinnedTarget target, Map<String, List<String>> headers, String body, int timeoutSeconds)
             throws IOException {
         Request.Builder builder = new Request.Builder()
-                .url(target.uri().toString())
+                .url(target.url())
                 .post(RequestBody.create(body, MediaType.parse("application/json")));
         headers.forEach((name, values) -> values.forEach(value -> builder.header(name, value)));
         Request request = builder.build();
-        OkHttpClient client = clientFor(target.addresses(), timeoutSeconds);
+        OkHttpClient client = clientFor(target.url().host(), target.addresses(), timeoutSeconds);
         try (Response response = client.newCall(request).execute()) {
             return response.code();
         }
@@ -729,6 +732,10 @@ public class WebhookService {
      * 且解析后的所有地址不得指向本机、环回、链路本地、站点本地、组播或保留网段。
      */
     public void validateWebhookUrl(String url) {
+        resolveValidatedTarget(url);
+    }
+
+    private HttpUrl parseWebhookUrl(String url) {
         if (url == null || url.isBlank()) {
             throw new BusinessException("回调 URL 不能为空");
         }
@@ -742,55 +749,19 @@ public class WebhookService {
         if (scheme == null || (!"https".equalsIgnoreCase(scheme) && !"http".equalsIgnoreCase(scheme))) {
             throw new BusinessException("仅支持 http/https 回调地址");
         }
-        String host = uri.getHost();
-        if (host == null || uri.getUserInfo() != null) {
+        if (uri.getHost() == null || uri.getUserInfo() != null) {
             throw new BusinessException("回调地址必须包含有效主机且不能携带用户信息");
         }
-        if (host.length() > 253 || host.chars().anyMatch(Character::isWhitespace)) {
-            throw new BusinessException("回调地址主机无效");
-        }
+        // Parse once with the same URL parser as the transport, before resolving the canonical host.
         try {
-            InetAddress[] addresses = InetAddress.getAllByName(host);
-            if (addresses.length == 0 || Arrays.stream(addresses).anyMatch(this::isPrivateOrSpecialAddress)) {
-                throw new BusinessException("回调地址不能指向本机或私有网络");
+            HttpUrl parsed = HttpUrl.get(uri.toString());
+            if (parsed.host().length() > 253 || parsed.port() < 1) {
+                throw new IllegalArgumentException();
             }
-        } catch (UnknownHostException e) {
-            throw new BusinessException("回调域名无法解析");
+            return parsed;
+        } catch (IllegalArgumentException e) {
+            throw new BusinessException("回调 URL 格式无效");
         }
-    }
-
-    private boolean isPrivateOrSpecialAddress(InetAddress address) {
-        if (address.isAnyLocalAddress() || address.isLoopbackAddress()
-                || address.isLinkLocalAddress() || address.isSiteLocalAddress()
-                || address.isMulticastAddress()) {
-            return true;
-        }
-
-        byte[] bytes = address.getAddress();
-        if (address instanceof Inet4Address && bytes.length == 4) {
-            int first = Byte.toUnsignedInt(bytes[0]);
-            int second = Byte.toUnsignedInt(bytes[1]);
-            return first == 0
-                    || first == 100 && second >= 64 && second <= 127
-                    || first == 198 && (second == 18 || second == 19);
-        }
-        if (address instanceof Inet6Address && bytes.length == 16) {
-            boolean mappedIpv4 = true;
-            for (int i = 0; i < 10; i++) {
-                mappedIpv4 &= bytes[i] == 0;
-            }
-            mappedIpv4 &= bytes[10] == (byte) 0xff && bytes[11] == (byte) 0xff;
-            if (mappedIpv4) {
-                byte[] ipv4Bytes = Arrays.copyOfRange(bytes, 12, 16);
-                try {
-                    return isPrivateOrSpecialAddress(InetAddress.getByAddress(ipv4Bytes));
-                } catch (UnknownHostException impossible) {
-                    return true;
-                }
-            }
-            return (bytes[0] & 0xfe) == 0xfc;
-        }
-        return false;
     }
 
     private int clampRetry(int value) {

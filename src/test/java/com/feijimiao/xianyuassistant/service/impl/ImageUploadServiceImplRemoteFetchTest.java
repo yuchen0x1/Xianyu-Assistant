@@ -1,6 +1,7 @@
 package com.feijimiao.xianyuassistant.service.impl;
 
 import okhttp3.Call;
+import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 import okhttp3.ResponseBody;
@@ -16,18 +17,23 @@ import java.io.ByteArrayOutputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.Proxy;
+import java.net.UnknownHostException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.zip.CRC32;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -107,6 +113,49 @@ class ImageUploadServiceImplRemoteFetchTest {
         assertFalse(service.isSourceImageSizeAllowed(8_193, 1));
         assertTrue(service.isSourceImageSizeAllowed(4_000, 5_000));
         assertNull(service.compressImage(pngWithDimensions(100_000, 100_000)));
+        verifyNoInteractions(pinnedClientFactory);
+    }
+
+    @Test
+    void canonicalizesAllowedHostAndUsesOnlyTheValidatedDnsSnapshot() throws Exception {
+        ImageUploadServiceImpl.HostResolver resolver = mock(ImageUploadServiceImpl.HostResolver.class);
+        when(resolver.resolve("cdn.example.com")).thenReturn(new InetAddress[]{publicAddress},
+                new InetAddress[]{InetAddress.getByAddress(new byte[]{10, 0, 0, 1})});
+        ReflectionTestUtils.setField(service, "hostResolver", resolver);
+        stubResponse();
+        when(response.code()).thenReturn(200);
+        when(response.body()).thenReturn(responseBody);
+        when(response.header("Content-Type", "")).thenReturn("image/png");
+        when(responseBody.contentLength()).thenReturn(1L);
+        when(responseBody.byteStream()).thenReturn(new ByteArrayInputStream(new byte[]{1}));
+
+        assertArrayEquals(new byte[]{1}, service.downloadImage("HTTPS://CDN.Example.Com:443/image.png"));
+        verify(resolver).resolve("cdn.example.com");
+        verify(pinnedClientFactory).create("cdn.example.com", List.of(publicAddress));
+    }
+
+    @Test
+    void rejectsMixedAndEmptyDnsAnswersBeforeBuildingTransport() throws Exception {
+        InetAddress local = InetAddress.getByAddress(new byte[]{10, 0, 0, 1});
+        ReflectionTestUtils.setField(service, "hostResolver",
+                (ImageUploadServiceImpl.HostResolver) host -> new InetAddress[]{publicAddress, local});
+        assertThrows(IllegalArgumentException.class,
+                () -> service.downloadImage("https://cdn.example.com/image.png"));
+        ReflectionTestUtils.setField(service, "hostResolver",
+                (ImageUploadServiceImpl.HostResolver) host -> new InetAddress[0]);
+        assertThrows(IllegalArgumentException.class,
+                () -> service.downloadImage("https://cdn.example.com/image.png"));
+        verifyNoInteractions(pinnedClientFactory);
+    }
+
+    @Test
+    void pinnedImageClientBypassesProxiesRejectsRedirectsAndOtherHosts() throws Exception {
+        OkHttpClient client = (OkHttpClient) service.createPinnedClient("cdn.example.com", List.of(publicAddress));
+        assertEquals(Proxy.NO_PROXY, client.proxy());
+        assertFalse(client.followRedirects());
+        assertFalse(client.followSslRedirects());
+        assertEquals(List.of(publicAddress), client.dns().lookup("cdn.example.com"));
+        assertThrows(UnknownHostException.class, () -> client.dns().lookup("other.example.com"));
         verifyNoInteractions(pinnedClientFactory);
     }
 
