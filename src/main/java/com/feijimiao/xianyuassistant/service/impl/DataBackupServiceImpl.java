@@ -162,37 +162,12 @@ public class DataBackupServiceImpl implements DataBackupService {
         int totalCount = 0;
         int successCount = 0;
 
-        Map<String, Object> allData;
-        try {
-            allData = objectMapper.readValue(reqBO.getJsonData(), new TypeReference<Map<String, Object>>() {});
-        } catch (Exception e) {
-            throw new BusinessException("解析备份数据失败: " + e.getMessage(), e);
-        }
+        ParsedBackup parsed = parseBackup(reqBO);
+        String backupVersion = parsed.backupVersion();
+        Map<String, Object> modulesData = parsed.modulesData();
+        Map<String, DataBackupHandler> handlerMap = parsed.handlerMap();
+        List<String> modulesToImport = parsed.modulesToImport();
 
-        Object version = allData.get("version");
-        if (!(version instanceof String backupVersion)
-                || !SUPPORTED_BACKUP_VERSIONS.contains(backupVersion)) {
-            throw new IllegalArgumentException("不支持的备份版本: " + version);
-        }
-
-        Object rawModules = allData.get("modules");
-        if (!(rawModules instanceof Map<?, ?> rawModulesMap)) {
-            throw new BusinessException("备份数据格式错误: 缺少 modules 字段");
-        }
-        Map<String, Object> modulesData = new LinkedHashMap<>();
-        for (Map.Entry<?, ?> entry : rawModulesMap.entrySet()) {
-            if (!(entry.getKey() instanceof String moduleKey)) {
-                throw new IllegalArgumentException("备份数据格式错误: 模块键必须是字符串");
-            }
-            modulesData.put(moduleKey, entry.getValue());
-        }
-
-        List<String> selectedModules = reqBO.getModules();
-
-        Map<String, DataBackupHandler> handlerMap = buildHandlerMap();
-
-        List<String> modulesToImport = resolveModulesToImport(
-                selectedModules, modulesData, handlerMap, backupVersion);
         Map<String, Object> importContext = new LinkedHashMap<>();
         importContext.put(DataBackupHandler.BACKUP_VERSION_CONTEXT_KEY, backupVersion);
         importContext.put(DataBackupHandler.SELECTED_MODULES_CONTEXT_KEY,
@@ -222,6 +197,156 @@ public class DataBackupServiceImpl implements DataBackupService {
         respBO.setSuccessCount(successCount);
         respBO.setFailedModules(failedModules);
         return respBO;
+    }
+
+    @Override
+    public BackupPreflightRespBO preflightImport(BackupImportReqBO reqBO) {
+        BackupPreflightRespBO respBO = new BackupPreflightRespBO();
+
+        Map<String, Object> allData;
+        try {
+            allData = objectMapper.readValue(reqBO.getJsonData(), new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            // 不回传解析器原始异常：其中可能带有用户数据片段。
+            respBO.getErrors().add("备份文件不是有效的 JSON 对象");
+            return respBO;
+        }
+
+        Object version = allData.get("version");
+        if (version instanceof String versionText) {
+            respBO.setBackupVersion(versionText);
+        }
+        if (allData.get("exportTime") instanceof String exportTime) {
+            respBO.setExportTime(exportTime);
+        }
+        if (allData.get("includeSecrets") instanceof Boolean includeSecrets) {
+            respBO.setIncludeSecrets(includeSecrets);
+        }
+
+        if (!(allData.get("modules") instanceof Map<?, ?> rawModulesMap)) {
+            respBO.getErrors().add("备份数据缺少 modules 字段");
+            return respBO;
+        }
+        List<String> fileModuleKeys = new ArrayList<>();
+        for (Object key : rawModulesMap.keySet()) {
+            if (key instanceof String moduleKey) {
+                fileModuleKeys.add(moduleKey);
+            }
+        }
+        respBO.setAvailableModules(fileModuleKeys);
+
+        ParsedBackup parsed;
+        try {
+            parsed = parseBackup(reqBO);
+        } catch (Exception e) {
+            respBO.getErrors().add(e.getMessage() == null ? "备份校验失败" : e.getMessage());
+            return respBO;
+        }
+
+        respBO.setImportOrder(new ArrayList<>(parsed.modulesToImport()));
+        if (Boolean.TRUE.equals(respBO.getIncludeSecrets())) {
+            respBO.getWarnings().add("该备份包含明文凭据（Cookie/Token/API 密钥），请确认文件来源可信并妥善保管");
+        }
+        if ("1.0".equals(parsed.backupVersion())) {
+            respBO.getWarnings().add("这是旧版 1.0 备份，将按兼容模式导入，部分新字段会缺失");
+        }
+        for (String fileModuleKey : fileModuleKeys) {
+            if (!parsed.handlerMap().containsKey(fileModuleKey) && !fileModuleKey.startsWith("_")) {
+                respBO.getWarnings().add("备份中模块 " + fileModuleKey + " 在当前版本没有对应处理器，将被忽略");
+            }
+        }
+
+        for (DataBackupHandler handler : parsed.handlerMap().values()) {
+            String moduleKey = handler.getModuleKey();
+            if (!parsed.modulesData().containsKey(moduleKey)) {
+                continue;
+            }
+            BackupPreflightRespBO.ModuleDetail detail = new BackupPreflightRespBO.ModuleDetail();
+            detail.setModuleKey(moduleKey);
+            detail.setModuleName(handler.getModuleName());
+            @SuppressWarnings("unchecked")
+            Map<String, Object> moduleData = (Map<String, Object>) parsed.modulesData().get(moduleKey);
+            detail.setRecordCount(countRecords(moduleData, requiredListKeys(handler, parsed.backupVersion())));
+            detail.setMissingFields(findMissingListKeys(handler, moduleData, parsed.backupVersion()));
+            if (!detail.getMissingFields().isEmpty()) {
+                detail.getWarnings().add("缺少必需字段，导入时会失败");
+            }
+            respBO.getModules().add(detail);
+        }
+
+        return respBO;
+    }
+
+    /**
+     * 解析并严格校验备份结构。导入与预检共用，保证两边结论一致。
+     */
+    private ParsedBackup parseBackup(BackupImportReqBO reqBO) {
+        Map<String, Object> allData;
+        try {
+            allData = objectMapper.readValue(reqBO.getJsonData(), new TypeReference<Map<String, Object>>() {});
+        } catch (Exception e) {
+            throw new BusinessException("解析备份数据失败: " + e.getMessage(), e);
+        }
+
+        Object version = allData.get("version");
+        if (!(version instanceof String backupVersion)
+                || !SUPPORTED_BACKUP_VERSIONS.contains(backupVersion)) {
+            throw new IllegalArgumentException("不支持的备份版本: " + version);
+        }
+
+        Object rawModules = allData.get("modules");
+        if (!(rawModules instanceof Map<?, ?> rawModulesMap)) {
+            throw new BusinessException("备份数据格式错误: 缺少 modules 字段");
+        }
+        Map<String, Object> modulesData = new LinkedHashMap<>();
+        for (Map.Entry<?, ?> entry : rawModulesMap.entrySet()) {
+            if (!(entry.getKey() instanceof String moduleKey)) {
+                throw new IllegalArgumentException("备份数据格式错误: 模块键必须是字符串");
+            }
+            modulesData.put(moduleKey, entry.getValue());
+        }
+
+        Map<String, DataBackupHandler> handlerMap = buildHandlerMap();
+        List<String> modulesToImport = resolveModulesToImport(
+                reqBO.getModules(), modulesData, handlerMap, backupVersion);
+        return new ParsedBackup(backupVersion, modulesData, handlerMap, modulesToImport);
+    }
+
+    private record ParsedBackup(String backupVersion,
+                                Map<String, Object> modulesData,
+                                Map<String, DataBackupHandler> handlerMap,
+                                List<String> modulesToImport) {
+    }
+
+    private Set<String> requiredListKeys(DataBackupHandler handler, String backupVersion) {
+        Set<String> requiredKeys = new LinkedHashSet<>(handler.getRequiredImportListKeys());
+        Set<String> additionalRequiredKeys = handler.getAdditionalRequiredImportListKeys(backupVersion);
+        if (additionalRequiredKeys != null) {
+            requiredKeys.addAll(additionalRequiredKeys);
+        }
+        return requiredKeys;
+    }
+
+    private List<String> findMissingListKeys(DataBackupHandler handler,
+                                             Map<String, Object> moduleData,
+                                             String backupVersion) {
+        List<String> missing = new ArrayList<>();
+        for (String requiredKey : requiredListKeys(handler, backupVersion)) {
+            if (!(moduleData.get(requiredKey) instanceof List<?>)) {
+                missing.add(requiredKey);
+            }
+        }
+        return missing;
+    }
+
+    private int countRecords(Map<String, Object> moduleData, Set<String> requiredKeys) {
+        int count = 0;
+        for (String key : requiredKeys) {
+            if (moduleData.get(key) instanceof List<?> list) {
+                count += list.size();
+            }
+        }
+        return count;
     }
 
     private List<String> resolveModulesToImport(List<String> selectedModules,
@@ -262,13 +387,7 @@ public class DataBackupServiceImpl implements DataBackupService {
             if (moduleData.containsKey("_error")) {
                 throw new IllegalArgumentException("备份模块导出不完整，拒绝导入: " + moduleKey);
             }
-            Set<String> requiredKeys = new LinkedHashSet<>(handler.getRequiredImportListKeys());
-            Set<String> additionalRequiredKeys =
-                    handler.getAdditionalRequiredImportListKeys(backupVersion);
-            if (additionalRequiredKeys != null) {
-                requiredKeys.addAll(additionalRequiredKeys);
-            }
-            for (String requiredKey : requiredKeys) {
+            for (String requiredKey : requiredListKeys(handler, backupVersion)) {
                 if (!(moduleData.get(requiredKey) instanceof List<?>)) {
                     throw new IllegalArgumentException(
                             "备份模块缺少数组字段 " + requiredKey + ": " + moduleKey);

@@ -7,7 +7,7 @@ vi.mock('@/utils/toast', () => ({
   },
 }))
 
-import { clearAuthToken, getAuthToken, request, setAuthToken } from '@/utils/request'
+import { clearAuthToken, getAuthToken, getLastRequestId, request, setAuthToken, withRequestId } from '@/utils/request'
 import { toast } from '@/utils/toast'
 
 function successfulAdapter<T>(data: T): AxiosAdapter {
@@ -155,5 +155,31 @@ describe('request', () => {
     } finally {
       postSpy.mockRestore()
     }
+  })
+
+  it('captures the server request id so failures can be traced in logs', async () => {
+    let calls = 0
+    const adapter: AxiosAdapter = async (config) => {
+      calls += 1
+      // 第一次失败时服务端带回了编号（用于反馈），第二次成功也应被记录
+      if (calls === 1) {
+        throw new AxiosError('Request failed with status code 500', 'ERR_BAD_RESPONSE', config, undefined, {
+          status: 500,
+          statusText: 'Internal Server Error',
+          headers: { 'x-request-id': 'req-abc12345' },
+          data: {},
+          config,
+        } as never)
+      }
+      return { data: { code: 0, data: 'ok' }, status: 200, statusText: 'OK', headers: {}, config }
+    }
+
+    const error = await request({ url: '/goods', adapter, retry: false }).catch((reason: unknown) => reason)
+
+    expect(error).toMatchObject({ messageShown: true })
+    // 编号只用于诊断，不应被拼进对用户展示的错误文案里
+    expect((error as Error).message).not.toContain('req-abc12345')
+    expect(getLastRequestId()).toBe('req-abc12345')
+    expect(withRequestId('保存失败')).toBe('保存失败（故障编号 req-abc12345）')
   })
 })

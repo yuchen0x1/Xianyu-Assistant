@@ -1,6 +1,6 @@
 # 项目升级路线图
 
-版本基线：v3.5.25 / `e141e18`
+版本基线：v3.5.29（本轮升级前为 v3.5.28 / `970489b`）
 建立日期：2026-11-16（Asia/Shanghai）
 
 ## 使用说明
@@ -45,23 +45,23 @@
 | EV-032 | 历史接口分页 / Webhook、日志、消息 | 固定最近数量会在数据增长后丢失可浏览性 | Chatwoot、Uptime Kuma 列表分页 | 增加 cursor/limit 上限、总数或下一页标识，前端增量加载 | 降低查询负担，支持长期运营 | 对应 Controller/Mapper/页面 | 中 | P2 | 旧调用兼容，分页边界和排序稳定 | 待实施 |
 | EV-033 | 多实例持久化租约 / 任务与发货 | 进程内保护不能覆盖多节点 | Temporal/BullMQ worker lease | 明确部署前提后再新增节点身份、数据库租约和 fencing | 支持受控横向扩展 | `job`、`delivery`、新增迁移 | 高 | P1 | kill worker 后新 worker 可接管且旧回写被拒 | 待实施 |
 | EV-034 | HttpOnly 会话 Cookie 评估 / 认证 | localStorage Token 受 XSS 影响 | OWASP session management | 设计同源 HttpOnly/SameSite Cookie 迁移，保留旧 Token 兼容窗口 | 降低浏览器脚本窃取面 | `AuthInterceptor`、前端 request、登录接口 | 高 | P1 | CSRF、反代、移动浏览器和升级兼容测试通过 | 待实施 |
-| EV-035 | CSP 与安全响应头 / Web 安全 | 当前主要依赖 Vue 模板安全和无第三方脚本 | OWASP CSP | 先审计静态资源/内联样式，再按 report-only→enforce 加 CSP、Referrer-Policy | 降低 XSS/资源注入面 | `WebMvcConfig`、静态入口 | 中 | P1 | 登录、上传、AI、WebSocket 页面无误伤且策略生效 | 待实施 |
-| EV-036 | 结构化 trace/request ID / 运维 | 跨 HTTP、任务、Webhook、WS 的日志关联仍需统一 | OpenTelemetry/Micrometer | 增加脱敏 request id 和异步上下文传播，不记录凭据 | 缩短排障链路 | filter、async、webhook、job | 中 | P2 | 同一操作可从 API 追到任务/投递，日志无敏感字段 | 待实施 |
+| EV-035 | CSP 与安全响应头 / Web 安全 | 当前主要依赖 Vue 模板安全和无第三方脚本 | OWASP CSP | 直接 enforce CSP（脚本仅同源、允许 https 图片和内联样式），加 nosniff/DENY/no-referrer/Permissions-Policy，并移除首屏内联样式 | 降低 XSS/资源注入面 | `SecurityHeadersFilter`、`index.html` | 中 | P1 | 页面、上传、AI、日志下载均正常；`SecurityHeadersFilterTest` 断言不含 unsafe-inline 脚本 | 已完成 |
+| EV-036 | 结构化 trace/request ID / 运维 | 跨 HTTP、任务、Webhook、WS 的日志关联仍需统一 | OpenTelemetry/Micrometer | 每请求生成/沿用安全编号，写入响应头与日志 MDC，前端“关于”页展示并可复制 | 缩短排障链路 | `RequestCorrelationFilter`、`logback-spring.xml`、`request.ts` | 中 | P2 | 请求头、日志 `reqId=` 与页面编号一致；异步线程传播仍待补 | 部分完成 |
 | EV-037 | 启动/内存/长稳基线 / 性能 | 目前只有功能测试，没有量化运行基线 | Grafana/Prometheus dashboard | 用固定数据集和本地脚本记录启动时间、堆、CPU、查询/WS指标 | 让优化有前后证据 | `scripts`、Actuator、docs | 中 | P2 | 同一环境可重复采集并比较版本 | 待实施 |
 | EV-038 | SQLite 维护与大库策略 / 数据层 | 长期运行会产生 WAL、日志和历史增长 | SQLite production checklist | 提供安全 checkpoint、历史保留、VACUUM 前置检查和磁盘告警 | 降低磁盘耗尽和慢查询 | backup/monitor/config | 中 | P2 | 低磁盘告警、维护不破坏并发写入 | 待实施 |
-| EV-039 | 备份预检/恢复演练 / 数据可靠性 | 有备份文件不等于可恢复 | restic/SQLite restore practices | 增加 manifest、版本、校验和 dry-run，隔离临时库恢复校验 | 发现坏备份而不是出事后才发现 | backup controller/service、docs | 高 | P1 | 坏包拒绝，临时库恢复通过后才允许替换 | 待实施 |
+| EV-039 | 备份预检/恢复演练 / 数据可靠性 | 有备份文件不等于可恢复 | restic/SQLite restore practices | 已加只读导入预检（版本、模块、条数、缺失字段）；临时库隔离恢复校验仍待实施 | 发现坏备份而不是出事后才发现 | `DataBackupServiceImpl`、settings 界面 | 高 | P1 | 结构错误在导入前即被拒绝，前端禁止跳过预检 | 部分完成 |
 | EV-040 | SBOM 与许可证快照 / 供应链 | CI 有漏洞审计，但缺少可审计依赖清单 | Syft/OWASP Dependency-Track | 在发布前生成 Maven/npm SBOM，保存许可证和依赖版本快照 | 便于漏洞响应与许可审查 | release workflow、docs | 中 | P2 | 发布工件带 SBOM，依赖变化可审阅 | 待实施 |
 | EV-041 | 浏览器 E2E 隔离验收 / 测试 | 页面单测不能证明路由、窄屏、权限链路 | Playwright、Chatwoot browser tests | 保持隔离 SQLite/假服务，覆盖登录、关键页面、空/错态、响应式 | 防止跨层回归 | `src/test/.../webhook/WebhookBrowserIT.java`、新增 IT | 高 | P1 | 无真实账号时也可重复跑，截图/日志可审阅 | 部分完成 |
 | EV-042 | 无障碍自动检查 / UI | 语义和焦点已有，但缺少自动回归 | axe-core/WCAG | 在隔离 E2E 中加入键盘、焦点、对比度和 aria 断言 | 提升可访问性 | frontend tests、E2E | 中 | P2 | 关键页面无高优先级违规 | 待实施 |
-| EV-043 | 配置导入 dry-run / 运维 | 备份/配置错误可能在应用阶段才暴露 | n8n import validation | 先解析、校验版本/敏感字段/依赖关系，再报告差异，用户确认后应用 | 降低迁移事故 | backup/settings controllers | 中 | P1 | 错误配置不写库，报告包含可修复路径 | 待实施 |
+| EV-043 | 配置导入 dry-run / 运维 | 备份/配置错误可能在应用阶段才暴露 | n8n import validation | 新增 `/api/backup/preflight` 与前端预检面板：版本、模块数组、缺失字段、明文凭据提示，通过后才允许导入 | 降低迁移事故 | `DataBackupController`、settings 界面 | 中 | P1 | 预检不写库；结构错误返回明确字段名；预检未通过时导入按钮禁用 | 本轮完成 |
 | EV-044 | 插件/命令契约版本化 / 扩展 | MCP/命令扩展依赖内部类结构 | MCP tool schema、n8n node contract | 为命令输入输出加 schema version、能力发现和弃用标记 | 扩展升级更稳定 | `command`、`mcp` | 高 | P2 | 旧客户端仍可调用，未知版本给明确错误 | 待实施 |
 | EV-045 | 多语言与时区显式化 / UI 与调度 | 目前界面中文、业务时间依赖本地配置 | Vue i18n、Quartz 时区实践 | 抽取用户可见文案，设置显示时区与 Cron 解释，保持数据库 UTC/本地兼容 | 降低跨地区使用误解 | frontend views、schedule services | 中 | P3 | 切换语言/时区后列表、Cron、通知一致 | 待实施 |
 
 ## 优先执行顺序
 
 1. **P0**：EV-001、EV-002、EV-004、EV-006、EV-007、EV-010、EV-011、EV-013、EV-014、EV-015、EV-016、EV-017、EV-018、EV-020、EV-021、EV-023、EV-024。
-2. **P1**：EV-003、EV-005、EV-008、EV-009、EV-012、EV-019、EV-022、EV-025、EV-026、EV-028、EV-030、EV-031、EV-033、EV-034、EV-035、EV-039、EV-041、EV-043。
-3. **P2/P3**：EV-027、EV-029、EV-032、EV-036、EV-037、EV-038、EV-040、EV-042、EV-044、EV-045。
+2. **P1**：EV-003、EV-005、EV-008、EV-009、EV-012、EV-019、EV-022、EV-025、EV-026、EV-028、EV-030、EV-031、EV-033、EV-034、EV-039（剩余临时库恢复校验）、EV-041、EV-043（已完成）。
+3. **P2/P3**：EV-027、EV-029、EV-032、EV-036（HTTP 已完成，异步传播待补）、EV-037、EV-038、EV-040、EV-042、EV-044、EV-045。
 
 ## 实施边界
 

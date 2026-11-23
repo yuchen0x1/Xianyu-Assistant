@@ -195,6 +195,47 @@ public class DataBackupController {
     }
 
     /**
+     * 导入预检：只读解析备份并给出可导入模块、记录条数和字段问题。
+     *
+     * <p>与 {@code /import} 使用同一个管理员闸门：预检结果包含全库记录条数，
+     * 不应让普通操作员用来推断别人的数据规模。整个过程不写库，也不解密凭据。</p>
+     */
+    @PostMapping("/preflight")
+    @RequirePermission("backup:write")
+    public ResultObject<BackupPreflightRespDTO> preflightImport(@Valid @RequestBody BackupImportReqDTO reqDTO) {
+        if (!isCurrentUserAdmin()) {
+            log.warn("[Backup] 非ADMIN用户尝试预检全库备份，已拒绝: userId={}", UserContext.getUserId());
+            return ResultObject.forbiddenWithMessage("数据恢复会覆盖全部账号的数据，仅管理员可执行预检");
+        }
+
+        BackupImportReqBO reqBO = new BackupImportReqBO();
+        reqBO.setJsonData(reqDTO.getJsonData());
+        reqBO.setModules(reqDTO.getModules());
+
+        BackupPreflightRespBO respBO = dataBackupService.preflightImport(reqBO);
+
+        BackupPreflightRespDTO respDTO = new BackupPreflightRespDTO();
+        respDTO.setImportable(respBO.isImportable());
+        respDTO.setBackupVersion(respBO.getBackupVersion());
+        respDTO.setExportTime(respBO.getExportTime());
+        respDTO.setIncludeSecrets(respBO.getIncludeSecrets());
+        respDTO.setAvailableModules(respBO.getAvailableModules());
+        respDTO.setImportOrder(respBO.getImportOrder());
+        respDTO.setWarnings(respBO.getWarnings());
+        respDTO.setErrors(respBO.getErrors());
+        for (BackupPreflightRespBO.ModuleDetail module : respBO.getModules()) {
+            BackupPreflightRespDTO.ModulePreview preview = new BackupPreflightRespDTO.ModulePreview();
+            preview.setModuleKey(module.getModuleKey());
+            preview.setModuleName(module.getModuleName());
+            preview.setRecordCount(module.getRecordCount());
+            preview.setMissingFields(module.getMissingFields());
+            preview.setWarnings(module.getWarnings());
+            respDTO.getModules().add(preview);
+        }
+        return ResultObject.success(respDTO);
+    }
+
+    /**
      * 备份是**整库快照**，无法按账号裁剪：12 个模块之间存在外键与业务关联，
      * 裁一半的备份恢复回去只会制造脏数据。因此导出/导入都收敛到 ADMIN。
      *

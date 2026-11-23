@@ -1,11 +1,32 @@
 <script setup lang="ts">
+import { ref } from 'vue'
+import { getLastRequestId } from '@/utils/request'
+
 declare const __APP_VERSION__: string
 
 defineOptions({ name: 'AboutPanel' })
 
-const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '3.5.28'
+const appVersion = typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : '3.5.29'
 // 动态绑定资源路径，避免测试环境（Windows jsdom）对静态 src 的 file URL 解析问题
 const brandMark = '/brand-mark.svg'
+
+const lastRequestId = ref(getLastRequestId())
+const copied = ref(false)
+
+async function copyDiagnostics() {
+  const lines = [
+    `版本: v${appVersion}`,
+    `故障编号: ${lastRequestId.value ?? '暂无（本次会话还没有失败的请求）'}`,
+    `页面: ${window.location.origin}${window.location.pathname}`,
+  ]
+  try {
+    await navigator.clipboard.writeText(lines.join('\n'))
+    copied.value = true
+    window.setTimeout(() => { copied.value = false }, 2000)
+  } catch {
+    copied.value = false
+  }
+}
 </script>
 
 <template>
@@ -66,6 +87,31 @@ const brandMark = '/brand-mark.svg'
     <section class="about-footer" aria-label="应用信息">
       <span>XianYu Seller Console · Self-hosted Edition</span>
       <span>数据保存在当前服务实例中</span>
+    </section>
+
+    <section class="about-diagnostics" aria-labelledby="about-diagnostics-title">
+      <div>
+        <h3 id="about-diagnostics-title" class="about-note__title">故障诊断信息</h3>
+        <p class="about-diagnostics__desc">
+          遇到报错时可复制这组信息反馈。服务端日志按同一编号记录，能直接定位到出错的那一次请求。
+        </p>
+        <dl class="about-diagnostics__list">
+          <div>
+            <dt>版本</dt>
+            <dd>v{{ appVersion }}</dd>
+          </div>
+          <div>
+            <dt>最近一次故障编号</dt>
+            <dd>{{ lastRequestId ?? '暂无（本次会话还没有失败的请求）' }}</dd>
+          </div>
+        </dl>
+        <button type="button" class="about-diagnostics__copy" @click="copyDiagnostics">
+          {{ copied ? '已复制' : '复制诊断信息' }}
+        </button>
+        <p v-if="lastRequestId" class="about-diagnostics__hint">
+          若在日志目录中检索，可搜索 <code>reqId={{ lastRequestId }}</code>。
+        </p>
+      </div>
     </section>
   </div>
 </template>
