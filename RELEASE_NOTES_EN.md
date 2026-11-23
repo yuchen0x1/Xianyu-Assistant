@@ -2,7 +2,33 @@
 
 > Current product scope (2026-11-13): web only. Android/iOS sources and standalone desktop launch packaging have been removed. Native-mobile features and checks below are historical records, not current client offerings. Desktop and mobile users access the same web application in a browser.
 
-Version-by-version notes for v3.5.16–v3.5.28. See the [complete history](docs/releases/release-notes.md) for older versions. Dates follow the project’s Asia/Shanghai convention; historical verification records were not rerun for this documentation update.
+Version-by-version notes for v3.5.16–v3.5.29. See the [complete history](docs/releases/release-notes.md) for older versions. Dates follow the project’s Asia/Shanghai convention; historical verification records were not rerun for this documentation update.
+
+## v3.5.29
+
+> Delivery candidate: 2026-11-23. The formal Release waits for PR merge and the release workflow.
+
+Security headers, traceable request IDs, and a backup import preflight.
+
+### Changes
+
+- Every response now carries a CSP plus `nosniff`, `DENY` framing, and `no-referrer`. Scripts are limited to same-origin without `unsafe-inline` or `unsafe-eval`, while marketplace image hosts remain allowed.
+- Each request returns `X-Request-Id` and logs it as `reqId=`. The About panel can copy the most recent failure ID so a report maps directly to a log line.
+- New backup import preflight, in the API and the UI: review backup version, export time, modules, record counts, missing fields, and warnings before restoring. The import button stays disabled until preflight passes.
+- Preflight is strictly read-only: it parses and validates but never writes, and never decrypts credentials.
+- The boot inline style moved into the built CSS bundle, so the page no longer depends on an inline `<style>` block.
+
+### Upgrade notes
+
+- No schema change or migration. Backing up `dbdata/` and key files before upgrading is still recommended.
+- Reverse proxies should pass through the `X-Request-Id` response header; without it the browser still shows the locally generated ID.
+- API contracts are unchanged. Custom pages that embedded this service must switch to same-origin access or adjust `frame-ancestors`.
+
+### Verification boundary
+
+- 724 backend tests passed with 0 failures, 0 errors, and 3 existing conditional skips.
+- 45 frontend tests across 10 files passed; type checking, lint, and the production build passed.
+- Real Xianyu account transactions, production deployment, and an in-place upgrade were not executed.
 
 ## v3.5.28
 

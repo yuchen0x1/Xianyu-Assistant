@@ -5,7 +5,7 @@ import { getCurrentUser, changePassword } from '@/api/system'
 import { logout } from '@/api/auth'
 import { getSetting, saveSetting, testEmail, testNotifyChannel } from '@/api/setting'
 import { chatTestWithAI, consumeAIStream, getAIStatus, listModels, type AIModelItem } from '@/api/ai'
-import { getBackupModules, downloadBackupStream, importBackup, getBackupSchedule, getLogDates, downloadLog, type BackupModule, type BackupScheduleStatus } from '@/api/backup'
+import { getBackupModules, downloadBackupStream, importBackup, preflightBackup, getBackupSchedule, getLogDates, downloadLog, type BackupModule, type BackupScheduleStatus, type BackupPreflightResult } from '@/api/backup'
 import { formatTime } from '@/utils'
 import { toast } from '@/utils/toast'
 import { showConfirm } from '@/utils/confirm'
@@ -927,6 +927,8 @@ const backupImporting = ref(false)
 const backupImportProgress = ref(0)
 const backupImportAvailableModules = ref<BackupModule[]>([])
 const backupImportSelectedModules = ref<string[]>([])
+const backupPreflight = ref<BackupPreflightResult | null>(null)
+const backupPreflighting = ref(false)
 const backupSchedule = ref<BackupScheduleStatus | null>(null)
 const backupScheduleLoading = ref(false)
 
@@ -1021,6 +1023,8 @@ function toggleBackupImportModule(key: string) {
   } else if (backupImportAvailableModules.value.some(module => module.moduleKey === key)) {
     backupImportSelectedModules.value.push(key)
   }
+  // 模块选择变了，上一轮的预检结论就不再有意义，必须重新校验。
+  backupPreflight.value = null
 }
 
 const backupIncludeSecrets = ref(false)
@@ -1078,6 +1082,7 @@ function handleImportFileChange(e: Event) {
   importJsonData.value = ''
   backupImportAvailableModules.value = []
   backupImportSelectedModules.value = []
+  backupPreflight.value = null
   const reader = new FileReader()
   reader.onload = async (ev) => {
     try {
@@ -1096,11 +1101,13 @@ function handleImportFileChange(e: Event) {
       importJsonData.value = jsonData
       backupImportAvailableModules.value = availableModules
       backupImportSelectedModules.value = availableModules.map(module => module.moduleKey)
+      backupPreflight.value = null
     } catch (error: unknown) {
       importFileName.value = ''
       importJsonData.value = ''
       backupImportAvailableModules.value = []
       backupImportSelectedModules.value = []
+      backupPreflight.value = null
       if (importFileInput.value) importFileInput.value.value = ''
       toast.error(getErrorMessage(error, '备份文件格式错误'))
     }
@@ -1112,6 +1119,31 @@ function handleImportFileChange(e: Event) {
   reader.readAsText(file)
 }
 
+async function handlePreflightBackup() {
+  if (!importJsonData.value || backupImportSelectedModules.value.length === 0) return
+  backupPreflighting.value = true
+  try {
+    const res = await preflightBackup({
+      jsonData: importJsonData.value,
+      modules: backupImportSelectedModules.value
+    })
+    if (res.code === 200 && res.data) {
+      backupPreflight.value = res.data
+      if (!res.data.importable) {
+        toast.error(res.data.errors[0] || '备份预检未通过')
+      }
+    } else {
+      backupPreflight.value = null
+      toast.error(res.msg || '备份预检失败')
+    }
+  } catch (e: unknown) {
+    backupPreflight.value = null
+    toast.error(getErrorMessage(e, '备份预检失败'))
+  } finally {
+    backupPreflighting.value = false
+  }
+}
+
 async function handleImportBackup() {
   if (!importJsonData.value) {
     toast.warning('请先选择备份文件')
@@ -1119,6 +1151,10 @@ async function handleImportBackup() {
   }
   if (backupImportSelectedModules.value.length === 0) {
     toast.warning('请至少选择一个模块')
+    return
+  }
+  if (!backupPreflight.value?.importable) {
+    toast.warning('请先执行导入预检，确认无误后再导入')
     return
   }
 
@@ -1156,6 +1192,7 @@ async function handleImportBackup() {
       importFileName.value = ''
       backupImportAvailableModules.value = []
       backupImportSelectedModules.value = []
+      backupPreflight.value = null
       if (importFileInput.value) importFileInput.value.value = ''
     } else {
       toast.error(res.msg || '导入失败')
@@ -2262,10 +2299,41 @@ function handleBackupMenuEnter() {
             </div>
             <span class="settings__progress-text">{{ backupImportProgress }}%</span>
           </div>
+          <div v-if="backupPreflight" class="settings__preflight" role="status" aria-live="polite">
+            <div class="settings__preflight-head">
+              <strong>{{ backupPreflight.importable ? '预检通过' : '预检未通过' }}</strong>
+              <span class="settings__preflight-meta">
+                备份版本 {{ backupPreflight.backupVersion || '未知' }}
+                <template v-if="backupPreflight.exportTime"> · 导出于 {{ backupPreflight.exportTime }}</template>
+              </span>
+            </div>
+            <p v-if="backupPreflight.importable" class="settings__desc">
+              将按以下顺序写入 {{ backupPreflight.importOrder.length }} 个模块，不会修改未选中的模块。
+            </p>
+            <ul v-if="backupPreflight.modules.length" class="settings__preflight-modules">
+              <li v-for="mod in backupPreflight.modules" :key="`preflight-${mod.moduleKey}`">
+                <span>{{ mod.moduleName }}</span>
+                <span class="settings__preflight-count">{{ mod.recordCount }} 条</span>
+              </li>
+            </ul>
+            <ul v-if="backupPreflight.errors.length" class="settings__preflight-issues settings__preflight-issues--error">
+              <li v-for="err in backupPreflight.errors" :key="`err-${err}`">{{ err }}</li>
+            </ul>
+            <ul v-if="backupPreflight.warnings.length" class="settings__preflight-issues">
+              <li v-for="warn in backupPreflight.warnings" :key="`warn-${warn}`">{{ warn }}</li>
+            </ul>
+          </div>
           <div class="settings__actions">
             <button
+              class="settings__btn settings__btn--secondary"
+              :disabled="backupPreflighting || backupImporting || !importJsonData || backupImportSelectedModules.length === 0"
+              @click="handlePreflightBackup"
+            >
+              {{ backupPreflighting ? '预检中...' : '导入预检' }}
+            </button>
+            <button
               class="settings__btn settings__btn--danger"
-              :disabled="backupImporting || !importJsonData || backupImportSelectedModules.length === 0"
+              :disabled="backupImporting || !importJsonData || backupImportSelectedModules.length === 0 || !backupPreflight?.importable"
               @click="handleImportBackup"
             >
               {{ backupImporting ? '导入中...' : '导入恢复' }}

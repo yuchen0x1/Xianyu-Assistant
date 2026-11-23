@@ -6,6 +6,25 @@
 
 日期沿用项目历史记录（北京时间），不把标签重建或迁仓日期当作原始发布日期。未记载的日期保持未知；旧版本功能和发布源描述仅反映当时状态。官方发布源在 2026-11-03 随 v3.5.16 迁至 GitHub，此前 Gitee 说明属于历史记录。旧测试记录不表示本轮重新执行或验证真实交易。v3.5 系列的原始实现记录保存在[技术档案](docs/releases/technical-history-v3.5.md)。
 
+# Version 3.5.29
+
+安全响应头、故障编号与备份导入预检升级。
+
+- 所有响应统一启用 CSP 等安全头：脚本只允许同源执行，禁止嵌入第三方页面，降低 XSS 与点击劫持风险；商品封面等平台图片仍可正常加载。
+- 每个请求返回 `X-Request-Id` 并写入日志 `reqId=` 字段，前端“关于”页可一键复制最近一次故障编号，报障时能直接定位日志。
+- 新增备份导入预检：按下“导入”前先完整解析备份，看到版本、导出时间、模块、记录条数、缺失字段与警告；预检不通过时禁止导入。预检是只读操作，不写库、不解密凭据。
+- 首页内联样式迁移到外链 CSS，构建产物不再依赖内联 `<style>` 块。
+
+### Release overview
+
+Adds strict security response headers, per-request trace IDs surfaced in the console, and a read-only backup import preflight that validates version, modules, record counts, and required fields before a destructive restore.
+
+### 验证记录
+
+- 后端 `mvnw.cmd test -DskipITs`：724 个测试，0 失败、0 错误、3 个既有条件跳过。
+- 前端 `npm test -- --run`：10 个文件、45 个测试通过；类型检查、Lint 和生产构建通过。
+- 未执行真实闲鱼账号交易、生产部署或在线升级安装验证。
+
 # Version 3.5.28
 
 ## 版本概述

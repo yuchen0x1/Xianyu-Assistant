@@ -12,6 +12,26 @@ export interface BackupImportResult {
   failedModules: string[]
 }
 
+export interface BackupPreflightModule {
+  moduleKey: string
+  moduleName: string
+  recordCount: number
+  missingFields: string[]
+  warnings: string[]
+}
+
+export interface BackupPreflightResult {
+  importable: boolean
+  backupVersion: string | null
+  exportTime: string | null
+  includeSecrets: boolean | null
+  availableModules: string[]
+  importOrder: string[]
+  modules: BackupPreflightModule[]
+  warnings: string[]
+  errors: string[]
+}
+
 export interface BackupScheduleStatus {
   enabled: boolean
   intervalMillis: number
@@ -94,6 +114,15 @@ export async function downloadBackupStream(data: {
 export function importBackup(data: { jsonData: string; modules: string[] }) {
   return request<BackupImportResult>({
     url: '/backup/import',
+    method: 'post',
+    data
+  })
+}
+
+/** 导入预检：只读解析，不写库。 */
+export function preflightBackup(data: { jsonData: string; modules: string[] }) {
+  return request<BackupPreflightResult>({
+    url: '/backup/preflight',
     method: 'post',
     data
   })

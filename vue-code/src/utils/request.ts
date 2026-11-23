@@ -9,6 +9,32 @@ let redirectingToLogin = false
 
 type MessageShownError = Error & { messageShown?: boolean }
 
+/**
+ * 最近一次失败请求的服务端编号。
+ *
+ * 服务端会在每个响应上返回 `X-Request-Id`，并把它写进日志的 `reqId=` 字段。
+ * 页面把编号展示出来，用户报障时直接给出编号即可在日志里定位这一次请求，
+ * 不需要靠发生时间猜测。只保留最近一次，避免在内存里累积诊断数据。
+ */
+let lastRequestId: string | null = null
+
+export function getLastRequestId(): string | null {
+  return lastRequestId
+}
+
+function captureRequestId(headers: unknown) {
+  if (!headers || typeof headers !== 'object') return
+  const value = (headers as Record<string, unknown>)['x-request-id']
+  if (typeof value === 'string' && value.trim()) {
+    lastRequestId = value.trim()
+  }
+}
+
+/** 供“关于”页等诊断场景读取：失败提示附加编号，成功路径不改变文案。 */
+export function withRequestId(message: string, requestId = lastRequestId): string {
+  return requestId ? `${message}（故障编号 ${requestId}）` : message
+}
+
 function hasMessageBeenShown(error: unknown): boolean {
   return typeof error === 'object'
     && error !== null
@@ -109,6 +135,7 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   (response) => {
+    captureRequestId(response.headers)
     const res = response.data as ApiResponse<unknown>
 
     // 401未登录 -> 跳转登录页
@@ -136,6 +163,9 @@ service.interceptors.response.use(
     return response // 保持返回完整的 AxiosResponse
   },
   async (error: unknown) => {
+    if (axios.isAxiosError(error)) {
+      captureRequestId(error.response?.headers)
+    }
     // 401 先尝试静默续期一次并重放原请求；失败才走提示与跳转流程
     const authRetried = await attemptUnauthorizedRetry(error)
     if (authRetried) {

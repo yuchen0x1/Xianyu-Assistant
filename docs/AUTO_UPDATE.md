@@ -62,7 +62,7 @@
 ```bash
 RELEASE_SIGN_PRIVATE_KEY='...' \
 GITHUB_TOKEN='...' \
-bash scripts/publish-github.sh 3.5.28
+bash scripts/publish-github.sh 3.5.29
 ```
 
 从已有远程标签的同一提交运行脚本。失败留在草稿时，可从原提交重跑。已公开的版本会被拒绝重复发布。

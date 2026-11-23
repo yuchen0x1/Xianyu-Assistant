@@ -31,7 +31,7 @@
 
 ## 最新更新
 
-**v3.5.28 · 部署与更新可靠性**。Docker Compose 保留数据库和日志并提供健康检查。独立 JAR 更新会核对包内版本，Windows 重启换包时先准备完整文件再替换。
+**v3.5.29 · 安全头、故障编号与备份预检**。所有响应启用 CSP 等安全头，脚本仅同源执行；每个请求返回 `X-Request-Id` 并写入日志，“关于”页可一键复制故障编号。备份恢复前新增只读预检，先看清模块、条数与缺失字段再导入。
 
 [下载最新正式版](https://github.com/yuchen0x1/Xianyu-Assistant/releases/latest) · [完整发布记录](docs/releases/release-notes.md)
 
@@ -132,7 +132,7 @@ bash install.sh
 
 手动部署请从[最新 Release](https://github.com/yuchen0x1/Xianyu-Assistant/releases/latest) 下载同一版本的 JAR、`.sha256` 校验文件和 `.sig` 签名文件。
 
-Windows、Linux 和 macOS 可用 Java 21 启动同一个服务 JAR。把文件保存到专用目录，在该目录运行 `java --enable-native-access=ALL-UNNAMED -jar XianYuSellerConsole-3.5.28.jar`，再打开 `http://127.0.0.1:12400`。手机需通过有访问权限的 HTTPS 部署地址连接。
+Windows、Linux 和 macOS 可用 Java 21 启动同一个服务 JAR。把文件保存到专用目录，在该目录运行 `java --enable-native-access=ALL-UNNAMED -jar XianYuSellerConsole-3.5.29.jar`，再打开 `http://127.0.0.1:12400`。手机需通过有访问权限的 HTTPS 部署地址连接。
 
 ### 方式三：Windows 本地开发
 
@@ -239,7 +239,7 @@ export XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false
 - 推荐使用应用内在线更新、自动更新或重新执行 `bash install.sh`。
 - 升级前备份 `dbdata/`，尤其是 SQLite 数据库、JWT 密钥和凭据密钥文件。
 - 独立 JAR 使用默认 `exit` 模式时，确认 systemd 或守护循环具备自动重启能力。
-- v3.5.28 沿用原有数据库结构。从更早版本启动时，服务仍会执行所需的既有增量迁移。
+- v3.5.29 沿用原有数据库结构。从更早版本启动时，服务仍会执行所需的既有增量迁移。
 - 旧的单段自动发货配置继续可用；模板发货支持在后台按商品或 SKU 绑定后启用。
 - 不需要自动更新时设置 `XIANYU_ASSISTANT_AUTO_UPDATE_ENABLED=false`。
 

@@ -3,8 +3,8 @@
 在带 Docker Engine 和 Compose v2 的 Linux 主机上，以 GitHub 上选定的版本源码构建镜像。运行时使用 Java 21、Playwright Chromium 和独立的 SQLite 数据卷，主机端口默认只绑定 `127.0.0.1`。手机和其他电脑通过你管理的 HTTPS 反向代理访问。
 
 ```bash
-XIANYU_IMAGE_TAG=3.5.28 docker compose build
-XIANYU_IMAGE_TAG=3.5.28 docker compose up -d --wait
+XIANYU_IMAGE_TAG=3.5.29 docker compose build
+XIANYU_IMAGE_TAG=3.5.29 docker compose up -d --wait
 docker compose logs --tail 100
 ```
 
